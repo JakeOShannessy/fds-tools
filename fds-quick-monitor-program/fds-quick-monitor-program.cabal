@@ -1,0 +1,24 @@
+name: fds-quick-monitor-program
+version:             0.1.0.7
+synopsis:            A simple utility to display basic simulation results.
+license:             AllRightsReserved
+author:              Jake O'Shannessy
+maintainer:          joshannessy@gmail.com
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable FDSQuickMon
+  main-is: Main.hs
+  build-depends:  base -any
+               , containers -any
+               , directory -any
+               , filepath -any
+               , old-locale -any
+               , process -any
+               , namelist-parser -any
+               -- , parsec -any
+               , fds-utilities >=0.0.30.1
+               , data-default -any
+               , lens -any
+  hs-source-dirs:      src
+  

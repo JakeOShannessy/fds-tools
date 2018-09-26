@@ -1,0 +1,35 @@
+name: fute
+version: 0.0.39.0
+cabal-version: >=1.2
+build-type: Simple
+license: AllRightsReserved
+synopsis: Utilities to use with Fire Dynamics Simulator.
+
+executable fute
+  main-is: Main.hs
+  other-modules: Commands
+  build-depends:  base
+               , aeson
+               , bytestring
+               , blaze-html
+               , blaze-markup
+               , containers
+               , data-default
+               , directory
+               , filepath
+               -- , old-locale
+               , open-browser
+               , process
+               , namelist-parser >=0.2.0
+               , fds-input-parser
+               -- , parsec
+               , fds-utilities >=0.0.32
+               , fds-case-manage
+               , text
+               , vector
+               , formattable
+               , tabular
+               , time
+               , optparse-applicative
+  ghc-options:
+  hs-source-dirs:      src

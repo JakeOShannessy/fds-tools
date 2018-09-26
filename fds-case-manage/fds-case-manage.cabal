@@ -1,0 +1,26 @@
+name: fds-case-manage
+version:             0.2.0.0
+synopsis:            A collection of tools to help manage FDS simulation files.
+license:             AllRightsReserved
+author:              Jake O'Shannessy
+maintainer:          joshannessy@gmail.com
+build-type:          Simple
+cabal-version:       >=1.8
+
+library
+  exposed-modules: FDSCaseManage
+  build-depends:  base -any
+               , aeson -any
+               , bytestring -any
+               , containers -any
+               , directory -any
+               , filepath -any
+               , old-locale -any
+               , MissingH -any
+               -- , parsec -any
+               , fds-utilities >=0.0.17
+               , data-default -any
+               , lens -any
+               , parsec -any
+  hs-source-dirs:      src
+

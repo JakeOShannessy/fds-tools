@@ -1,0 +1,24 @@
+resolver: lts-12.5
+packages:
+  - ./fds-utilities
+  - ./fds-case-manage
+  - ./fds-quick-monitor-program
+  - ./fute
+extra-deps:
+  - attoparsec-binary-0.2
+  - Chart-1.9
+  - Chart-cairo-1.9
+  - time-1.6.0.1
+  - git: https://github.com/JakeOShannessy/namelist-parser.git
+    commit: 8c0148c088c10c4580dd127153555d077977d05a
+  - git: https://github.com/JakeOShannessy/fds-input-parser.git
+    commit: 3e9d379cf9465d1d8284ece9af7281b3280a4613
+  - git: https://github.com/Soostone/formattable.git
+    commit: 53895d38610c8f0c8bce787279bc1bb023ee819d
+
+
+# Override default flag values for local packages and extra-deps
+flags: {}
+
+# Extra package databases containing global packages
+extra-package-dbs: []
