@@ -14,22 +14,18 @@ main = shakeArgs shakeOptions
         let buildDir = "_build"
             inBuildDir x = joinPath [buildDir, x]
             installer = "FDSToolsInstaller.msi"
-            verifProg = "dist/fds-verification.exe"
             monitorProg = "dist/FDSQuickMon.exe"
             futeProg = "dist/fute.exe"
 
         want [installer]
         installer *> \out -> do
             let wixobj = "_build/FDSToolsInstaller.wixobj"
-            need [wixobj, futeProg, verifProg, monitorProg]
+            need [wixobj, futeProg, monitorProg]
             cmd "light" [wixobj, "-o", out]
         "_build/FDSToolsInstaller.wixobj" *> \out -> do
             let wxs = "FDSToolsInstaller.wxs"
             need [wxs]
             cmd "candle" [wxs, "-o", "_build/FDSToolsInstaller.wixobj"]
-        verifProg *> \out -> do
-            alwaysRerun
-            command_ [] "stack" ["install", "--local-bin-path", "dist"]
         monitorProg *> \out -> do
             alwaysRerun
             command_ [] "stack" ["install", "--local-bin-path", "dist"]
