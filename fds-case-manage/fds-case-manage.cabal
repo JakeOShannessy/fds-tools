@@ -1,7 +1,7 @@
 name: fds-case-manage
 version:             0.2.0.0
 synopsis:            A collection of tools to help manage FDS simulation files.
-license:             AllRightsReserved
+license:             MPL-2.0
 author:              Jake O'Shannessy
 maintainer:          joshannessy@gmail.com
 build-type:          Simple

@@ -2,7 +2,7 @@ name: fute
 version: 0.0.39.0
 cabal-version: >=1.2
 build-type: Simple
-license: AllRightsReserved
+license: MPL-2.0
 synopsis: Utilities to use with Fire Dynamics Simulator.
 
 executable fute
