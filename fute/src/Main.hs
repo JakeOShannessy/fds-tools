@@ -11,7 +11,7 @@ import Data.Monoid ((<>))
 import Data.Version
 
 import FDSUtilities.Types
-import FDSCaseManage (createNewRev)
+import FDS.CaseManage (createNewRev)
 
 import Options.Applicative
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module FDSCaseManage (createNewRev) where
+module FDS.CaseManage (createNewRev) where
 
 import Data.String.Utils
 
