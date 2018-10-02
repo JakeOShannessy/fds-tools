@@ -1,7 +1,9 @@
 module Main where
 
--- import Control.Exception
+import Control.Concurrent (threadDelay)
+import Control.Exception
 import Control.Lens
+import Control.Monad
 
 import Data.Default
 import qualified Data.Map as M
@@ -23,7 +25,10 @@ import System.FilePath
 import System.Process
 import System.Info
 
+import Web.Browser (openBrowser)
+
 launch path = do
+    putStrLn "Rendering, please wait..."
     let simulation = FDSSimulation
             { simDir = "."
             , simCHID = takeBaseName path
@@ -34,23 +39,35 @@ launch path = do
                 $ def
     chartPath' <- performCompilationAction "Charts" simulation chartAction
     let chartPath = case chartPath' of
-			[x] -> x
-			[] -> error "no chartPath"
+            [x] -> x
+            [] -> error "no chartPath"
     chartPathAbs <- canonicalizePath $ joinPath ["Charts", chartPath]
     putStrLn ("\"" ++ chartPathAbs ++ "\"")
-    (exitCode, stdout, stderr) <- case os of
-        "windows" -> readProcessWithExitCode "start" [chartPathAbs] []
-        "mingw32" -> readProcessWithExitCode "start" [chartPathAbs] []
-        "linux" -> readProcessWithExitCode "xdg-open" [chartPathAbs] []
-    print exitCode
-    if not (null stdout) then putStrLn stdout else return ()
-    if not (null stderr) then putStrLn stderr else return ()
+    putStrLn ("Opening: \"" ++ chartPathAbs ++ "\" in browser")
+    r <- openBrowser ("file://" ++ chartPathAbs)
+    if r
+        then do
+            putStrLn "Browser window opened"
+            threadDelay (3*1000*1000)
+        else do
+            putStrLn "Opening failed, press any key to continue"
+            void getChar
 
+guardedLaunch file = do
+    res <- Control.Exception.try $ launch file
+    case res of
+        Right x -> pure x
+        Left err -> do
+            print (err :: SomeException)
+            putStrLn ""
+            putStrLn "Rendering failed, press any key to continue."
+            void getChar
+            pure ()
 
 main = do
     args <- getArgs
     case args of
         ["--version"] -> print "version"
-        [file] -> launch file
+        [file] -> guardedLaunch file
         []     -> error "No monitor file specified."
         (x:xs:xss) -> error "Too many arguments."

@@ -41,6 +41,8 @@ produceVerificationAssessmentCompile destDir fdsSim = do
 produceVerificationAssessment :: FDSSimulation -> IO H.Html
 produceVerificationAssessment fdsSim = do
     assessment <- verifySimulationInputData fdsSim
-    return $ H.toMarkup assessment
+    case assessment of
+        Left err -> return $ H.pre $ H.string err
+        Right ass -> return $ H.toMarkup ass
 
 

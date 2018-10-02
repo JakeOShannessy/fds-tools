@@ -16,6 +16,7 @@ executable FDSQuickMon
                , old-locale -any
                , process -any
                , namelist-parser -any
+               , open-browser
                -- , parsec -any
                , fds-utilities >=0.0.30.1
                , data-default -any

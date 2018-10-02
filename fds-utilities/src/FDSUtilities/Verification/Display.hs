@@ -16,9 +16,9 @@ instance ToMarkup Assessment where
 
 instance ToMarkup (Either String Assessment) where
     toMarkup (Left err) = do
-        H.toHtml $ ("Simulation Verification Assessment could not be completed due to:" :: String)
+        H.string $ ("Simulation Verification Assessment could not be completed due to:" :: String)
         H.br
-        H.pre $ H.toHtml $ show err
+        H.pre $ H.string err
     toMarkup (Right ass) = H.toHtml ass
 
 testTreeToHtml :: Tree CompletedTest -> H.Html

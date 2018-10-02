@@ -1,14 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module FDSUtilities.CompileCompress
---     ( performCompilation
---     , performCompression
---     )
-    where
+module FDSUtilities.CompileCompress where
 
 import Control.Exception as E
 import Control.Lens
 import Control.Monad
--- import Control.Seq
 
 import Data.Default
 import Data.List
@@ -17,7 +12,6 @@ import Data.Time
 import qualified Data.Text as T
 import Data.Tree hiding (drawTree)
 import qualified Data.Map as M
--- import Data.Maybe
 
 import FDSUtilities.CompileCompress.Screenshots
 import FDSUtilities.CompileCompress.Compression
@@ -29,9 +23,6 @@ import FDSUtilities.Verification.Display
 import FDSUtilities.Verification
 import FDSUtilities.Parsing
 import FDSUtilities.RunTimeCalc
--- import FDSUtilities.Monitor
--- import FDSUtilities.Paths
--- import FDSUtilities.Simulation
 import FDSUtilities.Types
 import FDSUtilities.Types.Assess
 import FDSUtilities.Types.Monitor
@@ -40,8 +31,6 @@ import FDSUtilities.Summary
 import FDSUtilities.DeviceActivationTimes
 import FDSUtilities.Parsing.SimulationData
 
--- import GHC.IO.Handle
-
 import System.Directory
 import System.IO.Error
 import System.FilePath
@@ -49,22 +38,6 @@ import System.FilePath
 import qualified Text.Blaze.XHtml5 as H
 import qualified Text.Blaze.XHtml5.Attributes as A
 import Text.Blaze.Html.Renderer.Pretty
-
--- import System.Process
--- --import System.Process.Pipe
--- import System.IO
-
--- import Text.Printf
-
--- TODO: currently does not flag errors if time does not exist but names file incorrectly
--- canonicalizePath
-
--- TODO: plot all devices and quantities
--- TODO: manage smokeview stdout better
--- TODO: create default views depending on the dimensions of the geometry
-
--- TODO: This sub-system needs to use lens
-
 
 produceDeviceTimes :: [(String, Double)] -> CompilationActionFunction
 produceDeviceTimes devSpecs path simulation = do
@@ -141,8 +114,6 @@ copyFileWithDirs oldPath newPath = do
 
 -- |Create a summary page that includes an input verification assessment
 -- and output charts.
--- summaryHtml :: ServeType -> FilePath -> WatchCase -> IO FilePath
--- summaryHtml :: FDS
 summaryHtml fdsSim = do
   outData <- parseSimulationOutFile fdsSim
   let monitorDict = MonitorDict $ M.empty
@@ -165,24 +136,20 @@ summaryHtml fdsSim = do
 summaryHtmlServe dir fdsSim monitorDict = do
   outData <- parseSimulationOutFile fdsSim
   case outData of
-      (Left err) -> return $ H.toHtml $ show err
+      (Left err) -> return $ H.pre $ H.string $ show err
       (Right outData) -> do
           tZone <- getCurrentTimeZone
           run <- runInfo tZone outData fdsSim
-          verif <- produceVerificationAssessment fdsSim
+        --   verif <- produceVerificationAssessment fdsSim
           chart <- chartsServe dir tZone outData monitorDict fdsSim
           let
               html = do
                   run
-                  H.br
-                  verif
+                --   H.br
+                --   verif
                   H.br
                   chart
           return html
-
-
---     let sim = watchCase ^. watchCaseSim
---         monitors = watchCase ^. watchCaseMonitors
 
 -- |The current status of the model, generally for use while it is running.
 runInfo tZone outData fdsSim = do
@@ -225,53 +192,23 @@ charts location tZone outData monitorDict fdsSim = do
             Local -> "."
             Server -> "media"
         genChartHtml :: String -> H.Html
-        genChartHtml chartPath = H.object
-            H.! A.type_ (H.toValue ("image/svg+xml" :: String))
-            H.! A.data_ (H.toValue (chartPath :: String))
-            $ H.toHtml $ takeBaseName chartPath
---         dirName = casename
+        genChartHtml chartPath = H.img
+            H.! A.src (H.toValue (takeFileName chartPath :: String))
 
 chartsServe dir tZone outData monitorDict fdsSim = do
     chartPaths <- produceMonitorCharts monitorDict dir fdsSim
-    return $ mapM_ (\x->(do; genChartHtml x; H.br;)) chartPaths
+    -- only use the SVGs
+    return $ mapM_ (\x->(do; genChartHtml x; H.br;)) $ filter (\fp->takeExtension fp == ".svg") chartPaths
     where
         genChartHtml :: String -> H.Html
-        genChartHtml chartPath = H.object
-            H.! A.type_ (H.toValue ("image/svg+xml" :: String))
-            H.! A.data_ (H.toValue (chartPath :: String))
-            $ H.toHtml $ takeBaseName chartPath
---         dirName = casename
-
-
+        genChartHtml chartPath = H.img
+            H.! A.src (H.toValue (takeFileName chartPath :: String))
 
 data ServeType = Local | Server
 
 createInputVerificationPage sim = do
   assess <- verifySimulationInputData sim
   return $ toPage "test" css jscript $ H.toHtml assess
-
--- createSummaryFile :: FilePath -> TimeZone -> String -> [String] -> CaseStatus -> H.Html -> NominalDiffTime -> IO FilePath
--- createSummaryFile destinationPath tZone casename chartNames caseStatus verifAss currentRunTime = do
---     createDirectoryIfMissing True destinationPath
---     writeFile filename htmlText
---     return filename
---     where
---         htmlText = renderHtml $ createStatusHtml destinationPath tZone casename chartNames caseStatus verifAss currentRunTime
---         filename = joinPath [destinationPath, "Status.html"]
-
-
--- createProjectFile :: String -> FilePath -> [WatchCase] -> IO ()
--- createProjectFile projectName destinationPath sims = do
---     createDirectoryIfMissing True destinationPath
---     writeFile filename htmlText
---     where
---         links = map createLink sims
---         createLink watchCase = let casename = chid sim in "    <a href=\"./" ++ casename ++ "/Status.html\">" ++ casename ++ "</a><br>\n"
---             where
---                 sim = watchCase ^. watchCaseSim
---         htmlText = "<html><head><title>" ++ projectName ++ " Status</title>" ++ "</head><body>\n" ++ "<center><h1>" ++ projectName ++ " Status</h1></center>\n" ++ "<center>\n" ++ (unlines links) ++ "</center>\n" ++ "</body></html>"
---         filename = joinPath [destinationPath, projectName ++ " Status.html"]
-
 
 produceInputPage
     :: FilePath -- ^The output directory
@@ -422,11 +359,6 @@ produceVerificationPage assess = do
 produceFullPageCompile :: MonitorDict -> CompilationActionFunction
 produceFullPageCompile monitorDict destDir simulation = do
     createDirectoryIfMissing True destDir
-    -- let chartAction
-    --         = compilationActionFunction .~ produceMonitorCharts monitorDict
-    --             $ compilationActionPath .~ "charts"
-    --             $ def
-    -- chartPaths <- performCompilationAction destDir simulation chartAction
     assessRaw <- verifySimulationInputData simulation
     let assess = case assessRaw of
             Left e -> H.toHtml e
@@ -502,6 +434,6 @@ produceStdOutputPageCompile destDir simulation = do
 stdChartsSection :: [FilePath] -> H.Html
 stdChartsSection paths' = H.div $ do
     let paths = filter isSVG paths'
-    mapM_ (\path -> H.object H.! A.type_ "image/svg+xml" H.! A.data_ (H.toValue path) $ H.toHtml path) paths
+    mapM_ (\path -> H.img H.! A.src (H.toValue path)) paths
     where
-        isSVG path = takeExtension path == ".svg"
+        isSVG path = takeExtension path == ".png"

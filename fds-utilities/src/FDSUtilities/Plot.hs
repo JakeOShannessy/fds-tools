@@ -21,52 +21,27 @@ import qualified Data.Vector.Unboxed as V
 import Debug.Trace
 
 import Graphics.Rendering.Chart
--- import Graphics.Rendering.Chart.Axis.LocalTime
--- -- import Graphics.Rendering.Chart.Backend.Diagrams
 import Graphics.Rendering.Chart.Backend.Cairo
 import Graphics.Rendering.Chart.Plot
 
--- import System.Console.GetOpt
--- import System.Directory
--- import System.Environment
--- import System.Exit
 import System.FilePath
--- import System.IO
--- import System.Locale
--- import System.Process
-
--- import Text.CSV
--- import Text.ParserCombinators.Parsec
--- import Text.Printf
-
--- import FDSUtilities.Parsing.OutFile
--- import FDSUtilities.RunTimeCalc
--- import FDSUtilities.SimulationData
 import FDSUtilities.Types
 import FDSUtilities.Types.Monitor
 import FDSUtilities.Histogram
 
--- produceHRRChart destinationPath = produceChart destinationPath eurocodeHRRChartConfig dList "HRR"
--- produceChart :: _
 produceChart destinationPath chartConfig dList title filename = produceChartC destinationPath chartConfig (800,400) dList title filename
 
 produceChartC destinationPath chartConfig (width, height) dList title filename = do
-    -- print "about to render SVG"
+    print "about to render SVG"
     -- TODO: rendering to svg has been hanging
-    -- _ <- renderableToFile (FileOptions (width, height) SVG) (joinPath [destinationPath, filename ++ ".svg"]) chR
-    -- print "SVG rendered"
+    _ <- renderableToFile (FileOptions (width, height) SVG) (joinPath [destinationPath, filename ++ ".svg"]) chR
+    print "SVG rendered"
     print "about to render PNG"
     _ <- renderableToFile (FileOptions (width, height) PNG) (joinPath [destinationPath, filename ++ ".png"]) chR
     print "PNG rendered"
-    -- return $ [joinPath [destinationPath, filename ++ ".svg"]]
     return $ [joinPath [destinationPath, filename ++ ".png"], joinPath [destinationPath, filename ++ ".svg"]]
     where
         chR = chart title chartConfig dList
-
--- produceChartPNG destinationPath chartConfig dList name =
-    -- renderableToFile (FileOptions (800,400) PNG) chR (joinPath [destinationPath, name ++ ".png"])
-    -- where
-        -- chR = chart name chartConfig dList
 
 
 produceRunChart :: FilePath -> TimeZone -> Double -> [(UTCTime, Double)] -> IO [FilePath]
