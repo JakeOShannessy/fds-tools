@@ -431,7 +431,11 @@ miscParameters' (Node val [(Node entries [])]) = parse theParser "" entries
             spaces
             string "LES Calculation"
             eol
-            choice [try smagorinskyConstant, try deardorffModel]
+            choice [try smagorinskyConstant, try deardorffModel, (try $ do
+                string "Eddy Viscosity:           Deardorff Model (C_DEARDORFF)                          0.10" >> eol
+                string "Near-wall Eddy Viscosity: Smagorinsky with Van Driest damping (C_SMAGORINSKY)    0.20" >> eol
+                pure ())
+                ]
 
             spaces
             string "Turbulent Prandtl Number"

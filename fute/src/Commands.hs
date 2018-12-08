@@ -53,7 +53,7 @@ import Text.Printf
 import Text.Tabular
 import Text.Tabular.AsciiArt
 
-import Text.Namelist.Types (Namelist)
+import Text.Namelist.Types (Namelist, ParameterValue(..))
 
 import Web.Browser (openBrowser)
 
@@ -84,7 +84,6 @@ countCells path = do
             --[
             --, [printf "%.2g kW" ((sum $ map simout_maxHRR $ setout_simOuts outA)/(fromIntegral (setout_nSims outA))), printf "%.2g kW" ((sum $ map simout_maxHRR $ setout_simOuts outB)/(fromIntegral (setout_nSims outB)))]
             --]
-    --printf "### Set Simulation Comparison ###\n"
     let
         s :: String
         s = Text.Tabular.AsciiArt.render T.unpack T.unpack T.unpack tab

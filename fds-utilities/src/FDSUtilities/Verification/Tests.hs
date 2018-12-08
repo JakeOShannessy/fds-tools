@@ -112,6 +112,7 @@ verificationTests fdsData =
       , meshOverlapTests
       , flowCoverage
       , leakage
+      , devicesTest
       ]
     testResults = pam tests fdsData
     summaryResults = worstN testResults
@@ -155,6 +156,17 @@ leakage fdsData =
             then Node (CompletedTest testName $ Success $ "No inert screens.") []
             else Node (CompletedTest testName $ Failure $ "PART uses the SCREEN drag law, but uses an INERT surface.") []
 
+-- |Ensure that no devices are stuck in solids.
+devicesTest :: NamelistFile -> Tree CompletedTest
+devicesTest fdsData =
+    let
+        testName = "Devices Stuck in Solids Test"
+        stuckDevices = filter (fromMaybe False . stuckInSolid fdsData) $ getDevices fdsData
+    in if null stuckDevices
+        then Node (CompletedTest testName $ Success $ "No stuck devices.") []
+        else Node (CompletedTest testName $ Failure $ unlines $ map formatRes stuckDevices) []
+    where
+        formatRes nml = "Device " ++ getIdString nml ++ " is placed within a solid obstruction.\n    " ++ T.unpack (pprint nml)
 
 ventHasFlow :: NamelistFile -> Namelist -> Bool
 ventHasFlow fdsData vent =
@@ -166,12 +178,40 @@ ventHasFlow fdsData vent =
         isHVAC = (not . null) linkedHVACs
     in isHVAC || (maybe False id (surfHasFlow <$> getSurf (findNamelists fdsData "SURF") vent))
 
--- take the xb dimensions of a vent and see if there is a flow vent with the matching dimensions
+-- |Take the xb dimensions of a vent and see if there is a flow vent with the
+-- matching dimensions, or a device that references it as a duct node.
 hasFlowDevc :: NamelistFile -> Namelist ->  Bool
 hasFlowDevc fdsData namelist =
     let
         devcs = filter (\nml->getParameterMaybe nml "QUANTITY" == (Just (ParString "VOLUME FLOW"))) (findNamelists fdsData "DEVC")
-    in any (matchXBs namelist) devcs
+        trackingFlowMatchingXB = any (matchXBs namelist) devcs
+        -- get all the devices
+        allDevcs = findNamelists fdsData "DEVC"
+        -- take only the devices which have a "DUCT_ID" parameter
+        ductIDDevices = filter (\nml->isJust $ getParameterMaybe nml "DUCT_ID") allDevcs
+        -- take only the devices where the "DUCT_ID" matches the flowing namelist
+        relevantDuctIDDevices = filter (\nml-> (Just True) == (do
+            ductId <- getParameterMaybe nml "DUCT_ID"
+            flowId <- getParameterMaybe namelist "ID"
+            pure (ductId == flowId))) ductIDDevices
+        -- take only the devices that measure "DUCT VOLUME FLOW", and check that
+        -- the list is not null
+        trackingFlowViaDuctID = not $ null $ filter (\nml->getParameterMaybe nml "QUANTITY" == (Just (ParString "DUCT VOLUME FLOW"))) allDevcs
+    in trackingFlowMatchingXB || trackingFlowViaDuctID
+    -- where
+    --     matchingDuctId namelist devc =
+    --         let res = do
+    --             ductId <- getParameterMaybe devc "DUCT_ID"
+    --             flowId <- getParameterMaybe namelist "ID"
+    --             pure (ductId == flowId)
+    --         in res == (Just True)
+    --     isDuctFlowTrackingDevc devc = all
+    --         -- Check that the flow device has a "DUCT_ID" matching our flowing
+    --         -- object.
+    --         [ matchingDuctId namelist devc
+    --         -- Check that the device is measuring "DUCT VOLUME FLOW"
+    --         , getParameterMaybe nml "QUANTITY" == (Just (ParString "DUCT VOLUME FLOW"))
+    --         ]
 
 -- Check one obstruction and determine if it intersects any other namelists.
 obstIntersectsWithOthers :: NamelistFile -> Namelist -> [Namelist]

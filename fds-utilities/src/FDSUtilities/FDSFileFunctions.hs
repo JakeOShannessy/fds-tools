@@ -4,6 +4,7 @@ module FDSUtilities.FDSFileFunctions where
 import qualified Data.Array as A
 import           Data.List
 import qualified Data.Map as M
+import           Data.Maybe
 import qualified Data.Vector as V
 
 import           FDSUtilities.Parsing
@@ -87,17 +88,190 @@ addRestartDT dt inputScript =
                     inputScript
                     ("&DUMP DT_RESTART=" ++ show dt ++ " /\n\n&MESH ")
 
+getMeshes :: NamelistFile -> [Namelist]
 getMeshes fdsData = findNamelists fdsData "MESH"
+
+getDevices :: NamelistFile -> [Namelist]
+getDevices fdsData = findNamelists fdsData "DEVC"
+
+getTRNs :: NamelistFile -> [Namelist]
+getTRNs fdsData = getTRNXs fdsData ++ getTRNYs fdsData ++ getTRNZs fdsData
+
+getTRNXs :: NamelistFile -> [Namelist]
+getTRNXs fdsData = (findNamelists fdsData "TRNX")
+
+getTRNYs :: NamelistFile -> [Namelist]
+getTRNYs fdsData = (findNamelists fdsData "TRNY")
+
+getTRNZs :: NamelistFile -> [Namelist]
+getTRNZs fdsData = (findNamelists fdsData "TRNZ")
 
 getNCells nml@(Namelist "MESH" _ parameters _) = i*j*k
     where
         (i,j,k) = getMeshIJK nml
 
+-- |Check if a device is stuck in a solid. Returns Nothing if it's not a
+-- sensible question (e.g. it is not a point device).
+stuckInSolid :: NamelistFile -> Namelist -> Maybe Bool
+stuckInSolid fdsData devc = isCellSolid fdsData
+    <$> determineCell fdsData
+    <$> getXYZ devc
+
+-- |Determine the cell in which a point lies. The output is (MeshNum, (I,J,K)).
+determineCell :: NamelistFile -> (Double, Double, Double) -> (Int,(Int,Int,Int))
+determineCell fdsData point = (meshIndex, determineCellInMesh fdsData point mesh)
+    where
+        Just meshIndex = determineMeshIndex fdsData point
+        mesh = getMeshes fdsData !! (meshIndex - 1)
+
+determineCellInMesh :: NamelistFile -> (Double, Double, Double) -> Namelist -> (Int,Int,Int)
+determineCellInMesh fdsData point@(x,y,z) mesh = (iCell, jCell, kCell)
+    where
+        (xs, ys, zs) = getMeshLines fdsData mesh
+        Just iCell = findPointInLine xs x
+        Just jCell = findPointInLine ys y
+        Just kCell = findPointInLine zs z
+
+findPointInLine :: [Double] -> Double -> Maybe Int
+findPointInLine (x:xs) p = if (p < x) then Nothing
+    else findPointInLine' 0 xs p
+
+findPointInLine' :: Int -> [Double] -> Double -> Maybe Int
+findPointInLine' _ [] _ = Nothing
+findPointInLine' index (x:xs) p = if p < x
+    then Just index
+    else findPointInLine' (index + 1) xs p
+
+-- |Determine which mesh the point is in. Output is MeshNum. This assumes that
+-- there are no overlapping meshes.
+determineMesh :: NamelistFile -> (Double, Double, Double) -> Maybe Namelist
+determineMesh fdsData point = find (isInMesh point) meshes
+        where
+            meshes = getMeshes fdsData :: [Namelist]
+
+-- |Same as determineMesh but returns the index of the mesh rather than the mesh
+-- itself.
+determineMeshIndex :: NamelistFile -> (Double, Double, Double) -> Maybe Int
+determineMeshIndex fdsData point = fmap (+1) $ findIndex (isInMesh point) meshes
+        where
+            meshes = getMeshes fdsData :: [Namelist]
+
+-- |Use the OBST namelists to determine if a particular cell is solid or not.
+-- TODO: only considers basic OBSTs and not MULT or the like.
+isCellSolid :: NamelistFile -> (Int, (Int, Int, Int)) -> Bool
+isCellSolid fdsData cell@(meshNum,(i,j,k)) = case find (\obst->xbOccupy (getXB obst) cellXB) obsts of
+    Nothing -> False
+    Just _ -> True
+    where
+        cellXB = FDSUtilities.FDSFileFunctions.getCellXB fdsData cell
+        -- If any obst overlaps with this cell, then it's solid
+        obsts = findNamelists fdsData "OBST"
+
+-- |Determine if if the first XB occupies more than or equal to 50% of the
+-- second XB in all dimensions. This is used to determine if an obstruction
+-- (first XB) causes a cell (second XB) to be solid or not.
+xbOccupy :: XB -> XB -> Bool
+xbOccupy xbA xbB = occupyX && occupyY && occupyZ
+    where
+        occupyX = occupy (x1A,x2A) (x1B,x2B)
+        occupyY = occupy (y1A,y2A) (y1B,y2B)
+        occupyZ = occupy (z1A,z2A) (z1B,z2B)
+
+        (x1A,x2A,y1A,y2A,z1A,z2A) = sortXB xbA
+        (x1B,x2B,y1B,y2B,z1B,z2B) = sortXB xbB
+
+-- |xbOccupy but along one dimension. Testing if the first occupies the second.
+occupy :: (Double, Double) -> (Double, Double) -> Bool
+occupy (xMin,xMax) (xMin',xMax') = (xMin < xMid') && (xMax >= xMid')
+    where
+        xMid' = (xMin'+xMax')/2
+
+getCellXB :: NamelistFile -> (Int, (Int, Int, Int)) -> XB
+getCellXB fdsData cell@(meshNum,(i,j,k)) = (x1,x2,y1,y2,z1,z2)
+    where
+        meshes = getMeshes fdsData
+        mesh = meshes !! (meshNum - 1)
+        (xs, ys, zs) = getMeshLines fdsData mesh
+        x1 = xs !! i
+        x2 = xs !! (i+1)
+        y1 = ys !! j
+        y2 = ys !! (j+1)
+        z1 = zs !! k
+        z2 = zs !! (k+1)
+
+isInMesh :: (Double, Double, Double) -> Namelist -> Bool
+isInMesh point@(x,y,z) mesh = and
+    [ (x >= xmin) && (x <= xmax)
+    , (y >= ymin) && (y <= ymax)
+    , (z >= zmin) && (z <= zmax)
+    ]
+    where
+        (x1,x2,y1,y2,z1,z2) = getXB mesh
+
+        xmin = min x1 x2
+        ymin = min y1 y2
+        zmin = min z1 z2
+
+        xmax = max x1 x2
+        ymax = max y1 y2
+        zmax = max z1 z2
+
 getMeshIJK nml@(Namelist "MESH" _ parameters _) = (toInt i, toInt j,toInt k)
     where
         [i, j, k] = case getArrayToList "IJK" nml of
-            [i,j,k] -> [i,j,k]
-            xs -> error $ "wrong number of IJK elements, expected 3, got " ++ (show (length xs))
+            Just [i,j,k] -> [i,j,k]
+            Just xs -> error $ "wrong number of IJK elements, expected 3, got " ++ (show (length xs))
+            Nothing -> error $ "IJK not found"
+
+-- |Uniform meshes can be determined using simply the MESH namelist. For
+-- non-uniform meshes we need to use the TRN entries.
+getMeshLines :: NamelistFile -> Namelist -> ([Double], [Double], [Double])
+getMeshLines fdsData mesh = (xs, ys, zs)
+    where
+        (i,j,k) = getMeshIJK mesh
+        (x1,x2,y1,y2,z1,z2) = getXB mesh
+
+        xmin = min x1 x2
+        ymin = min y1 y2
+        zmin = min z1 z2
+
+        xmax = max x1 x2
+        ymax = max y1 y2
+        zmax = max z1 z2
+
+        delX = (xmax - xmin)/(fromIntegral i)
+        delY = (ymax - ymin)/(fromIntegral j)
+        delZ = (zmax - zmin)/(fromIntegral k)
+
+        xs = case trnx of
+            Nothing -> map (\n->xmin + (fromIntegral n)*(delX)) [0..i]
+            Just x -> trnBased
+        ys = case trny of
+            Nothing -> map (\n->ymin + (fromIntegral n)*(delY)) [0..j]
+            Just x -> trnBased
+        zs = case trnz of
+            Nothing -> map (\n->zmin + (fromIntegral n)*(delZ)) [0..k]
+            Just x -> trnBased
+
+        trnBased = undefined
+
+        Just meshIndex = findIndex (== mesh) $ getMeshes fdsData
+
+        trnx = case filter
+                (\p-> (getParameterMaybe p "MESH_NUMBER") == (Just (ParInt (meshIndex+1))))
+                $ getTRNXs fdsData of
+            [] -> Nothing
+            [x] -> Just x
+        trny = case filter
+                (\p-> (getParameterMaybe p "MESH_NUMBER") == (Just (ParInt (meshIndex+1))))
+                $ getTRNYs fdsData of
+            [] -> Nothing
+            [x] -> Just x
+        trnz = case filter
+                (\p-> (getParameterMaybe p "MESH_NUMBER") == (Just (ParInt (meshIndex+1))))
+                $ getTRNZs fdsData of
+            [] -> Nothing
+            [x] -> Just x
 
 -- TODO: check that any float is a whole number first
 toInt :: ParameterValue -> Int
@@ -129,8 +303,17 @@ getXB nml@(Namelist _ _ parameters _) = (x1,x2,y1,y2,z1,z2)
     where
         [ x1, x2, y1, y2, z1, z2] =
             case getArrayToList "XB" nml of
-                [a,b,c,d,e,f] -> map parToDouble [a,b,c,d,e,f]
-                e -> error $ T.unpack $ "Failed to parse XB array: " <> T.unlines (map pprint e)
+                Just [a,b,c,d,e,f] -> map parToDouble [a,b,c,d,e,f]
+                Just e -> error $ T.unpack $ "Failed to parse XB array: " <> T.unlines (map pprint e)
+
+getXYZ nml@(Namelist _ _ parameters _) = case r of
+    Just [x, y, z] -> Just (x, y, z)
+    _ -> Nothing
+    where
+        r = case getArrayToList "XYZ" nml of
+                Just [a,b,c] -> Just $ map parToDouble [a,b,c]
+                Just e -> error $ T.unpack $ "Failed to parse XYZ array: " <> T.unlines (map pprint e)
+                Nothing -> Nothing
 
 getObstResolutions fdsData obst =
     map getMeshResolution $ findObstMesh fdsData obst
@@ -400,9 +583,9 @@ getFlowRate fdsData nml = case flowRate of
       surfIds <- case getParameterMaybe nml "SURF_ID" of
                       Just x -> Just [x]
                       Nothing -> case getParameterMaybe nml "SURF_IDS" of
-                          Just x -> Just $ getArrayToList "SURF_IDS" nml
+                          Just x -> getArrayToList "SURF_IDS" nml
                           Nothing -> case getParameterMaybe nml "SURF_ID6" of
-                              Just x -> Just $ getArrayToList "SURF_ID6" nml
+                              Just x -> getArrayToList "SURF_ID6" nml
                               Nothing -> Nothing
       let surfs =
               case (filter (\p-> (getParameter p "ID") `elem` surfIds)
@@ -462,9 +645,9 @@ getObstSurfNames :: Namelist -> (String, String, String, String, String, String)
 getObstSurfNames obst = if hasParameter obst "SURF_ID"
       then let (ParString name) = getParameter obst "SURF_ID" in (T.unpack name, T.unpack name, T.unpack name, T.unpack name, T.unpack name, T.unpack name)
       else if hasParameter obst "SURF_IDS"
-              then let [topName, sidesName, bottomName] = map parToString $ getArrayToList "SURF_IDS" obst in (sidesName, sidesName, sidesName, sidesName, bottomName, topName)
+              then let [topName, sidesName, bottomName] = map parToString $ (fromMaybe (error "No surf_id6") $ getArrayToList "SURF_IDS" obst) in (sidesName, sidesName, sidesName, sidesName, bottomName, topName)
               else if hasParameter obst "SURF_ID6"
-                      then let [xMinName,xMaxName,yMinName,yMaxName,zMinName,zMaxName] = map parToString $ getArrayToList "SURF_ID6" obst in (xMinName,xMaxName,yMinName,yMaxName,zMinName,zMaxName)
+                      then let [xMinName,xMaxName,yMinName,yMaxName,zMinName,zMaxName] = map parToString $ (fromMaybe (error "No surf_ids") $ getArrayToList "SURF_ID6" obst) in (xMinName,xMaxName,yMinName,yMaxName,zMinName,zMaxName)
                                                                                                                           else error "Surfaces not parsed correctly. 7687"
 
 
@@ -473,11 +656,11 @@ getBurnerSurfNames fdsData nml@(Namelist _ _  parameters _)
     | hasParameter nml "SURF_IDS"
         = (intersect burnerSurfNames
         $ map getString
-        $ getArrayToList "SURF_IDS" nml)
+        $ fromMaybe (error "No surf_ids") $ getArrayToList "SURF_IDS" nml)
     | hasParameter nml "SURF_ID6"
         = (intersect burnerSurfNames
         $ map getString
-        $ getArrayToList "SURF_ID6" nml)
+        $ fromMaybe (error "No surf_id6") $ getArrayToList "SURF_ID6" nml)
     | hasParameter nml "SURF_ID" =
         let currentSurf = getString
                 $ getParameter nml "SURF_ID"
@@ -491,12 +674,12 @@ isBurner fdsData nml@(Namelist _ _ parameters _)
         = 0 < (length
         $ intersect burnerSurfNames
         $ map getString
-        $ getArrayToList "SURF_IDS" nml)
+        $ fromMaybe (error "No surf_ids") $ getArrayToList "SURF_IDS" nml)
     | hasParameter nml "SURF_ID6"
         = 0 < (length
         $ intersect burnerSurfNames
         $ map getString
-        $ getArrayToList "SURF_ID6" nml)
+        $ fromMaybe (error "No surf_id6") $ getArrayToList "SURF_ID6" nml)
     | hasParameter nml "SURF_ID" =
         let currentSurf = getString
                 $ getParameter nml "SURF_ID"
@@ -510,12 +693,12 @@ isExhaust fdsData nml@(Namelist _ _ parameters _)
         = 0 < (length
         $ intersect exhaustSurfNames
         $ map getString
-        $ getArrayToList "SURF_IDS" nml)
+        $ fromMaybe (error "No surf_ids") $getArrayToList "SURF_IDS" nml)
      | hasParameter nml "SURF_ID6"
         = 0 < (length
         $ intersect exhaustSurfNames
         $ map getString
-        $ getArrayToList "SURF_ID6" nml)
+        $ fromMaybe (error "No surf_id6") $getArrayToList "SURF_ID6" nml)
     | hasParameter nml "SURF_ID" =
         let currentSurf = getString
                 $ getParameter nml "SURF_ID"
@@ -529,7 +712,7 @@ isSupply fdsData nml@(Namelist _ _ parameters _)
         = 0 < (length
         $ intersect supplySurfNames
         $ map getString
-        $ getArrayToList "SURF_IDS" nml)
+        $ fromMaybe (error "No surf_id6") $ getArrayToList "SURF_IDS" nml)
     | hasParameter nml "SURF_ID" =
         let currentSurf = getString
                 $ getParameter nml "SURF_ID"
@@ -632,7 +815,7 @@ getBurnerSurf fdsData nml@(Namelist _ _ parameters _)
               matchingSurfNames
                 = intersect burnerSurfNames
                 $ map getString
-                $ getArrayToList "SURF_IDS" nml
+                $ fromMaybe (error "No surf_id6") $ getArrayToList "SURF_IDS" nml
               matches = filter
                     (\n-> currentSurfName == (getIdString n))
                     surfs
@@ -647,7 +830,7 @@ getBurnerSurf fdsData nml@(Namelist _ _ parameters _)
               matchingSurfNames
                 = intersect burnerSurfNames
                 $ map getString
-                $ getArrayToList "SURF_ID6" nml
+                $ fromMaybe (error "No SURF_ID6") $ getArrayToList "SURF_ID6" nml
               matches = filter
                     (\n-> currentSurfName == (getIdString n))
                     surfs
@@ -674,6 +857,8 @@ getIdStringMaybe nml = getString <$> getParameterMaybe nml "ID"
 
 getString :: ParameterValue -> String
 getString = (\(ParString string) -> T.unpack string)
+
+
 getDouble par = case par of
     (ParDouble d) -> d
     (ParInt i)    -> fromIntegral i
@@ -778,10 +963,9 @@ hasParameterValue parName parValue nml =
         Just x -> x == (toParameterValue parValue)
 
 
-getArrayToList parName nml = ls
-    where
-        Just (ParArray arr) = M.lookup parName (nml_params nml)
-        ls = M.elems arr
+getArrayToList parName nml = case M.lookup parName (nml_params nml) of
+    Just (ParArray arr) -> Just $ M.elems arr
+    _ -> Nothing
 
 -- TODO: make sure to take the closest one
 -- the time of measurement is at the cap tiem

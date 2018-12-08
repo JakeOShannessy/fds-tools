@@ -140,13 +140,10 @@ summaryHtmlServe dir fdsSim monitorDict = do
       (Right outData) -> do
           tZone <- getCurrentTimeZone
           run <- runInfo tZone outData fdsSim
-        --   verif <- produceVerificationAssessment fdsSim
           chart <- chartsServe dir tZone outData monitorDict fdsSim
           let
               html = do
                   run
-                --   H.br
-                --   verif
                   H.br
                   chart
           return html
