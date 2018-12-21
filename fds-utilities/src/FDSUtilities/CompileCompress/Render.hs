@@ -32,4 +32,5 @@ jscript = unlines
   , "}//-->"
   ]
 
-css = C8.unpack $(embedFile "data/CompileCompress.css")
+css = C8.unpack
+    $(makeRelativeToProject "data/CompileCompress.css" >>= embedFile)

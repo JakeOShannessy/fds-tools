@@ -4,6 +4,7 @@ cabal-version: >=1.8
 build-type: Simple
 license: MPL-2.0
 synopsis: Utilities to use with Fire Dynamics Simulator.
+Data-Files: data/CompileCompress.css
 
 library
     build-depends:  base -any
@@ -58,6 +59,7 @@ library
                     , FDSUtilities.Types.Assess
                     , FDSUtilities.Types.OutFile
                     , FDSUtilities.Types.Data
+                    , FDSUtilities.Types.FDSFile
                     , FDSUtilities.Types.Screenshots
                     , FDSUtilities.Types.Smokeview
                     , FDSUtilities.Types.Simulation
