@@ -135,8 +135,6 @@ fullVerificationTest1 = TestLabel "verificationTest1" $ TestCase $ do
             H.toHtml assess
     writeFile "test-out/verif2.html" $ renderHtml h
 
-
-
 fullVerificationTest2 = TestLabel "verificationTest2" $ TestCase $ do
     let
       simulation = FDSSimulation {simDir = "test-data/BunDF1_WCb", simCHID = "BunDF1_WCb"}

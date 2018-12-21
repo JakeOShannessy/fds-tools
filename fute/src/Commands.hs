@@ -111,11 +111,8 @@ printOverlapError ((iA, meshA), (iB, meshB))
 
 isOverlappingNml nmlA nmlB = isOverlappingXB (getXB nmlA) (getXB nmlB)
 
-isOverlappingXB
-    :: (Double, Double, Double, Double, Double, Double)
-    -> (Double, Double, Double, Double, Double, Double)
-    -> Bool
-isOverlappingXB (x1A,x2A,y1A,y2A,z1A,z2A) (x1B,x2B,y1B,y2B,z1B,z2B) =
+isOverlappingXB :: XB -> XB -> Bool
+isOverlappingXB (XB x1A x2A y1A y2A z1A z2A) (XB x1B x2B y1B y2B z1B z2B) =
     all (uncurry isOverlappingRange)
         [ ((x1A,x2A), (x1B,x2B))
         , ((y1A,y2A), (y1B,y2B))
@@ -222,7 +219,7 @@ verifyInput path = do
 showInputVerification path = do
     let
         simulation = FDSSimulation
-            { simDir = "."
+            { simDir = takeDirectory path
             , simCHID = takeBaseName path
             }
     verifPath <- produceInputPage (joinPath [simDir simulation, "verification"]) simulation

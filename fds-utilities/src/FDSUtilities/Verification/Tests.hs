@@ -103,6 +103,7 @@ requiredSuffixes =
 
 verificationAssessment = Assessment . verificationTests
 
+verificationTests :: NamelistFile -> Tree CompletedTest
 verificationTests fdsData =
   let
     testName = "Verification Assessment"
@@ -113,6 +114,7 @@ verificationTests fdsData =
       , flowCoverage
       , leakage
       , devicesTest
+      , spkDetCeilingTest
       ]
     testResults = pam tests fdsData
     summaryResults = worstN testResults
@@ -167,6 +169,18 @@ devicesTest fdsData =
         else Node (CompletedTest testName $ Failure $ unlines $ map formatRes stuckDevices) []
     where
         formatRes nml = "Device " ++ getIdString nml ++ " is placed within a solid obstruction.\n    " ++ T.unpack (pprint nml)
+
+-- |Ensure that sprinklers and smoke detectors are beneath a ceiling.
+spkDetCeilingTest :: NamelistFile -> Tree CompletedTest
+spkDetCeilingTest fdsData =
+    let
+        testName = "Sprinklers and detectors below ceiling"
+        nonBeneathCeiling = filter (not . fromMaybe False . beneathCeiling fdsData) $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x) $ getDevices fdsData
+    in if null nonBeneathCeiling
+        then Node (CompletedTest testName $ Success $ "No distant devices.") []
+        else Node (CompletedTest testName $ Failure $ unlines $ map formatRes nonBeneathCeiling) []
+    where
+        formatRes nml = "Device " ++ getIdString nml ++ " is not directly beneath the ceiling.\n    " ++ T.unpack (pprint nml)
 
 ventHasFlow :: NamelistFile -> Namelist -> Bool
 ventHasFlow fdsData vent =
