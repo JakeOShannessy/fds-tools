@@ -7,7 +7,7 @@ synopsis: Utilities to use with Fire Dynamics Simulator.
 
 executable fute
   main-is: Main.hs
-  other-modules: Commands
+  other-modules: Commands, Paths_fute
   build-depends:  base
                , aeson
                , bytestring

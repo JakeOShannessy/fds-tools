@@ -1406,7 +1406,7 @@ wVelDefaults = SliceProperties
 class FDSPrint a where
     fdsPrint :: a -> String
 
-data Axis = X | Y | Z deriving Show
+data Axis = AxisX | AxisY | AxisZ deriving Show
 data WindowSize = WindowSize Int Int deriving Show
 
 makeLenses ''IniConfig

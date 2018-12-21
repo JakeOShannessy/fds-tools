@@ -7,11 +7,6 @@ import FDSUtilities.Types.Screenshots
 
 import Control.Lens
 
-
-
-
-    
-
 siToLuaString :: ScriptInstruction -> String -- this string may include new lines, but does not end in one
 siToLuaString (SILoadFile path) = "loaddatafile(" ++ show path ++ ")"
 siToLuaString (SILoadVFile path) = "loaddatavfile(" ++ show path ++ ")"
@@ -22,9 +17,9 @@ siToLuaString (SISetRenderDir path) = "setrenderdir(" ++ show path ++ ")"
 siToLuaString (SILoadIniFile path) = "loadinifile(" ++ show path ++ ")"
 siToLuaString (SISetViewpoint viewpoint) = "setviewpoint(" ++ show (viewpoint ^. viewpoint5Name) ++ ")" -- relies on the viewpoint being preloaded in ini
 siToLuaString (SISetSceneClip axis clipMin min clipMax max) = (case axis of
-    X -> "set_sceneclip_x("
-    Y -> "set_sceneclip_y("
-    Z -> "set_sceneclip_z("
+    AxisX -> "set_sceneclip_x("
+    AxisY -> "set_sceneclip_y("
+    AxisZ -> "set_sceneclip_z("
     ) ++ (if clipMin then "1" else "0") ++ "," ++ show min ++ "," ++ (if clipMax then "1" else "0") ++ "," ++ show max ++ ")"
 
 scriptToSSFString :: Script -> String

@@ -6,20 +6,20 @@ module FDSUtilities.Smokeview.SSF
 import FDSUtilities.Types.Smokeview
 import System.FilePath
 import Text.Printf
-    
+
 -- makeSSF :: LoadData -> [Double] -> String -> String
 -- makeSSF loadData times casename =  "RENDERDIR\n"
     -- ++ " " ++ "\n"
     -- ++ load loadData
     -- ++ concat (map (rendering casename loadData) times)
-    
+
 -- |Make an SSF that load each slice individually rather than relyin on multi-slices
 makeSSFInd :: {-LoadData ->-} [(FilePath, Bool)] -> [Double] -> String -> String
 makeSSFInd {-loadData-} filenames times casename =  "RENDERDIR\n"
     ++ " " ++ "\n"
     ++ concatMap (loadFile) filenames
     ++ concat (map (rendering casename {-loadData-}) times)
-    
+
 -- |Make a lua script.
 -- makeLuaScript :: -> String
 
@@ -39,6 +39,6 @@ loadFile (filename, vec)
 setTime time = "SETTIMEVAL\n " ++ show time ++ "\n"
 
 axisToNum axis = case axis of
-                    X -> 1
-                    Y -> 2
-                    Z -> 3
+                    AxisX -> 1
+                    AxisY -> 2
+                    AxisZ -> 3

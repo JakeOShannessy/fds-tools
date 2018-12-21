@@ -34,8 +34,7 @@ parseSimulationSMVFile simulation = parseSMVFile (smvFilePath simulation)
 parseSimulationOutFile :: FDSSimulation -> IO (Either ParseError OutData)
 parseSimulationOutFile simulation = parseOutFile (outFilePath simulation)
 
-type FDSFile = NamelistFile
-parseSimulationFDSFile :: FDSSimulation -> IO (Either ParseError FDSFile)
+parseSimulationFDSFile :: FDSSimulation -> IO (Either ParseError NamelistFile)
 parseSimulationFDSFile simulation = parseFDSFile (fdsFilePath simulation)
 
 {-# DEPRECATED getSMVData "Use parseSimulationSMVFile instead" #-}

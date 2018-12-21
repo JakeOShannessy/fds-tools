@@ -21,6 +21,7 @@ import FDSUtilities.CompileCompress.Verification
 import FDSUtilities.CompileCompress.Render
 import FDSUtilities.Verification.Display
 import FDSUtilities.Verification
+import FDSUtilities.FDSFileFunctions
 import FDSUtilities.Parsing
 import FDSUtilities.RunTimeCalc
 import FDSUtilities.Types
@@ -215,7 +216,7 @@ produceInputPage outputDir simulation = do
     -- Create the directory for output
     createDirectoryIfMissing True outputDir
     -- Parse the input data
-    fdsDataRaw <- parseSimulationFDSFile simulation :: IO (Either ParseError FDSFile)
+    fdsDataRaw <- parseSimulationFDSFile simulation :: IO (Either ParseError NamelistFile)
     -- If the input data was successfully parsed, perform the verification.
     assess <- case fdsDataRaw of
         (Right fdsData) -> do

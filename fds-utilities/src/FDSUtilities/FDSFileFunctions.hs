@@ -22,6 +22,68 @@ import qualified System.IO.Strict as StrictIO
 import System.Directory
 
 
+-- |Convert a @NamelistFile@ to an @FDSFile@.
+decodeNamelistFile :: NamelistFile -> FDSFile
+decodeNamelistFile nmlFile = foldl' decodeNamelist initFDSFile $ nmlFile_namelists nmlFile
+    where
+        initFDSFile = FDSFile
+            { fdsFile_Head = Nothing
+            , fdsFile_Time = Nothing
+            , fdsFile_Dump = Nothing
+            , fdsFile_Misc = Nothing
+            , fdsFile_Meshes = []
+            , fdsFile_Reacs = []
+            , fdsFile_Devcs = []
+            , fdsFile_Matls = []
+            , fdsFile_Surfs = []
+            , fdsFile_Obsts = []
+            , fdsFile_Holes = []
+            , fdsFile_Vents = []
+            , fdsFile_Bndfs = []
+            , fdsFile_Isofs = []
+            , fdsFile_Slcfs = []
+            , fdsFile_unknownNamelists = []
+            }
+
+decodeNamelist fdsData nml = case nml_name nml of
+    "OBST" -> decodeObst fdsData nml
+    _ -> decodeUnknown fdsData nml
+
+decodeUnknown fdsData nml = fdsData { fdsFile_unknownNamelists = nml:(fdsFile_unknownNamelists fdsData)}
+
+decodeObst fdsData nml =
+    let obst = Obst
+            { obst_ALLOW_VENT = True
+            , obst_BNDF_FACE = (False, False, False, False, False, False)
+            , obst_BNDF_OBST = True
+            , obst_BULK_DENSITY = Nothing
+            , obst_COLOR = Nothing
+            , obst_CTRL_ID = Nothing
+            , obst_DEVC_ID = Nothing
+            , obst_EVACUATION = False
+            , obst_FYI = Nothing
+            , obst_HT3D = False
+            , obst_ID = Nothing
+            , obst_MATL_ID = Nothing
+            , obst_MESH_ID = Nothing
+            , obst_MULT_ID = Nothing
+            -- , obst_NOTERRAIN :: Bool
+            , obst_OUTLINE = False
+            , obst_OVERLAY = True
+            , obst_PERMIT_HOLE = True
+            , obst_PROP_ID = Nothing
+            , obst_REMOVABLE = True
+            , obst_RGB = Nothing
+            , obst_SURF_ID = Nothing
+            , obst_SURF_ID6 = Nothing
+            , obst_SURF_IDS = Nothing
+            , obst_TEXTURE_ORIGIN = XYZ 0 0 0
+            , obst_THICKEN = False
+            , obst_TRANSPARENCY = 1
+            , obst_XB = fromMaybe (error "No XB value") $ getXBMaybe nml
+            }
+    in fdsData { fdsFile_Obsts = obst:(fdsFile_Obsts fdsData)}
+
 addRestartToFile path = do
     exists <- doesFileExist path
     if exists
@@ -31,7 +93,6 @@ addRestartToFile path = do
             writeFile path newInputScript
         else error $ "addRestartToFile: " ++ path ++ " does not exist."
 
--- TODO: this belongs in FDSUtilities
 addRestart inputScript =
     let
         restartExists = matchRegex
@@ -114,23 +175,71 @@ getNCells nml@(Namelist "MESH" _ parameters _) = i*j*k
 -- sensible question (e.g. it is not a point device).
 stuckInSolid :: NamelistFile -> Namelist -> Maybe Bool
 stuckInSolid fdsData devc = isCellSolid fdsData
-    <$> determineCell fdsData
-    <$> getXYZ devc
+    <$> ((determineCell fdsData)
+    =<< (getXYZ devc))
+
+-- |Check if the cell directly above a device is solid. This is useful to make
+-- sure that sprinklers and smoke detectors are directly beneath the a ceiling.
+--
+-- TODO: This is more complicated as it may not be a solid cell, but a solid
+-- surface. This is exacerbated by being on a mesh boundary.
+beneathCeiling :: NamelistFile -> Namelist -> Maybe Bool
+beneathCeiling fdsData devc = do
+    xyz <- getXYZ devc
+    cell <- determineCell fdsData xyz
+    pure $ isFaceSolid fdsData cell PosZ
+
+-- |((MeshNum, IJK), FACEDIR)
+type Face = ((Int, (Int, Int, Int)), Direction)
+
+isSolidFace :: NamelistFile -> Face -> Bool
+isSolidFace fdsData face@(cell, dir) =
+    let (a,b,c,d,e,f) = getCellFacesSolidness fdsData cell
+    in case dir of
+        NegX -> a
+        PosX -> b
+        NegY -> c
+        PosY -> d
+        NegZ -> e
+        PosZ -> f
+
+getCellFacesSolidness :: NamelistFile -> (Int, (Int, Int, Int)) -> (Bool, Bool, Bool, Bool, Bool, Bool)
+getCellFacesSolidness fdsData cell = if thisCell
+    -- If this cell is sold then all its face must be solid. This is the
+    -- simplest case.
+    then (True, True, True, True, True, True)
+    -- Otherwise we need to test the cells around it, however, we need to be
+    -- careful as we might need to step out of the particulary mesh.
+    --
+    -- We also need to account for thin obstructions. This means making a data
+    -- structure that shows the solidness of each face.
+    --
+    -- We also need to consider when the cell above is only partially covered.
+    else undefined
+    where
+        thisCell = isCellSolid fdsData cell
 
 -- |Determine the cell in which a point lies. The output is (MeshNum, (I,J,K)).
-determineCell :: NamelistFile -> (Double, Double, Double) -> (Int,(Int,Int,Int))
-determineCell fdsData point = (meshIndex, determineCellInMesh fdsData point mesh)
-    where
-        Just meshIndex = determineMeshIndex fdsData point
-        mesh = getMeshes fdsData !! (meshIndex - 1)
+determineCell :: NamelistFile -> (Double, Double, Double) -> Maybe (Int,(Int,Int,Int))
+determineCell fdsData point = do
+    meshIndex <- determineMeshIndex fdsData point
+    let mesh = getMeshes fdsData !! (meshIndex - 1)
+    cell <- determineCellInMesh fdsData point mesh
+    pure (meshIndex, cell)
 
-determineCellInMesh :: NamelistFile -> (Double, Double, Double) -> Namelist -> (Int,Int,Int)
-determineCellInMesh fdsData point@(x,y,z) mesh = (iCell, jCell, kCell)
+-- |Determine in which cell within a mesh a point lies. Return Nothing if the
+-- point does not lie within the mesh.
+determineCellInMesh :: NamelistFile -> (Double, Double, Double) -> Namelist -> Maybe (Int,Int,Int)
+determineCellInMesh fdsData point@(x,y,z) mesh = do
+    iCell <- findPointInLine xs x
+    jCell <- findPointInLine ys y
+    kCell <- findPointInLine zs z
+    pure (iCell, jCell, kCell)
     where
         (xs, ys, zs) = getMeshLines fdsData mesh
-        Just iCell = findPointInLine xs x
-        Just jCell = findPointInLine ys y
-        Just kCell = findPointInLine zs z
+
+moveInMesh :: NamelistFile -> (Int,(Int,Int,Int)) -> Direction -> Maybe [(Int,(Int,Int,Int))]
+moveInMesh fdsData currentCell dir = undefined
 
 findPointInLine :: [Double] -> Double -> Maybe Int
 findPointInLine (x:xs) p = if (p < x) then Nothing
@@ -156,6 +265,31 @@ determineMeshIndex fdsData point = fmap (+1) $ findIndex (isInMesh point) meshes
         where
             meshes = getMeshes fdsData :: [Namelist]
 
+-- |Get the solidness of a single face at cell @cell@ and direction @dir@. NB:
+-- This does not consider neighbouring cells.
+--
+-- TODO: Doesn't incorporate mesh boundaries.
+isFaceSolid :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
+isFaceSolid fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB) (obsts ++ vents) of
+    Nothing -> False
+    Just _ -> True
+    where
+        faceXB = getFaceXB fdsData cell dir
+        obsts = findNamelists fdsData "OBST"
+        vents = findNamelists fdsData "VENT"
+
+getFaceXB :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> XB
+getFaceXB fdsData cell dir =
+    let cellXB = FDSUtilities.FDSFileFunctions.getCellXB fdsData cell
+        XB x1A x2A y1A y2A z1A z2A = sortXB cellXB
+    in case dir of
+        NegX -> XB x1A x1A y1A y2A z1A z2A
+        PosX -> XB x2A x2A y1A y2A z1A z2A
+        NegY -> XB x1A x2A y1A y1A z1A z2A
+        PosY -> XB x1A x2A y2A y2A z1A z2A
+        NegZ -> XB x1A x2A y1A y2A z1A z1A
+        PosZ -> XB x1A x2A y1A y2A z2A z2A
+
 -- |Use the OBST namelists to determine if a particular cell is solid or not.
 -- TODO: only considers basic OBSTs and not MULT or the like.
 isCellSolid :: NamelistFile -> (Int, (Int, Int, Int)) -> Bool
@@ -173,21 +307,70 @@ isCellSolid fdsData cell@(meshNum,(i,j,k)) = case find (\obst->xbOccupy (getXB o
 xbOccupy :: XB -> XB -> Bool
 xbOccupy xbA xbB = occupyX && occupyY && occupyZ
     where
-        occupyX = occupy (x1A,x2A) (x1B,x2B)
-        occupyY = occupy (y1A,y2A) (y1B,y2B)
-        occupyZ = occupy (z1A,z2A) (z1B,z2B)
+        occupyX = occupyFatly (x1A,x2A) (x1B,x2B)
+        occupyY = occupyFatly (y1A,y2A) (y1B,y2B)
+        occupyZ = occupyFatly (z1A,z2A) (z1B,z2B)
 
-        (x1A,x2A,y1A,y2A,z1A,z2A) = sortXB xbA
-        (x1B,x2B,y1B,y2B,z1B,z2B) = sortXB xbB
+        XB x1A x2A y1A y2A z1A z2A = sortXB xbA
+        XB x1B x2B y1B y2B z1B z2B = sortXB xbB
+
+-- |This is a lower requirement than xbOccupy. All xbOccupy satisfies this as
+-- well.
+faceOccupy :: XB -> XB -> Bool
+faceOccupy xbA xbB@(XB xMin xMax yMin yMax zMin zMax) = case (xSame, ySame, zSame) of
+    (True, False, False) -> faceOccupyX xbA xbB
+    (False, True, False) -> faceOccupyY xbA xbB
+    (False, False, True) -> faceOccupyZ xbA xbB
+    _ -> error "Not a face"
+    where
+        xSame = xMin == xMax
+        ySame = yMin == yMax
+        zSame = zMin == zMax
+
+faceOccupyX :: XB -> XB -> Bool
+faceOccupyX xbA xbB = occupyX && occupyY && occupyZ
+    where
+        occupyX = occupyThinly (x1A,x2A) (x1B,x2B)
+        occupyY = occupyFatly (y1A,y2A) (y1B,y2B)
+        occupyZ = occupyFatly (z1A,z2A) (z1B,z2B)
+
+        XB x1A x2A y1A y2A z1A z2A = sortXB xbA
+        XB x1B x2B y1B y2B z1B z2B = sortXB xbB
+
+faceOccupyY :: XB -> XB -> Bool
+faceOccupyY xbA xbB = occupyX && occupyY && occupyZ
+    where
+        occupyX = occupyFatly (x1A,x2A) (x1B,x2B)
+        occupyY = occupyThinly (y1A,y2A) (y1B,y2B)
+        occupyZ = occupyFatly (z1A,z2A) (z1B,z2B)
+
+        XB x1A x2A y1A y2A z1A z2A = sortXB xbA
+        XB x1B x2B y1B y2B z1B z2B = sortXB xbB
+
+faceOccupyZ :: XB -> XB -> Bool
+faceOccupyZ xbA xbB = occupyX && occupyY && occupyZ
+    where
+        occupyX = occupyFatly (x1A,x2A) (x1B,x2B)
+        occupyY = occupyFatly (y1A,y2A) (y1B,y2B)
+        occupyZ = occupyThinly (z1A,z2A) (z1B,z2B)
+
+        XB x1A x2A y1A y2A z1A z2A = sortXB xbA
+        XB x1B x2B y1B y2B z1B z2B = sortXB xbB
+
 
 -- |xbOccupy but along one dimension. Testing if the first occupies the second.
-occupy :: (Double, Double) -> (Double, Double) -> Bool
-occupy (xMin,xMax) (xMin',xMax') = (xMin < xMid') && (xMax >= xMid')
+occupyFatly :: (Double, Double) -> (Double, Double) -> Bool
+occupyFatly (xMin,xMax) (xMin',xMax') = (xMin < xMid') && (xMax >= xMid')
     where
         xMid' = (xMin'+xMax')/2
 
+-- |xbOccupy but along one dimension. Testing if the first occupies the second.
+occupyThinly :: (Double, Double) -> (Double, Double) -> Bool
+occupyThinly (xMin,xMax) (xMin',xMax') = ((xMin >= xMin') && (xMin <= xMax'))
+    || ((xMax >= xMin') && (xMax <= xMax'))
+
 getCellXB :: NamelistFile -> (Int, (Int, Int, Int)) -> XB
-getCellXB fdsData cell@(meshNum,(i,j,k)) = (x1,x2,y1,y2,z1,z2)
+getCellXB fdsData cell@(meshNum,(i,j,k)) = (XB x1 x2 y1 y2 z1 z2)
     where
         meshes = getMeshes fdsData
         mesh = meshes !! (meshNum - 1)
@@ -206,7 +389,7 @@ isInMesh point@(x,y,z) mesh = and
     , (z >= zmin) && (z <= zmax)
     ]
     where
-        (x1,x2,y1,y2,z1,z2) = getXB mesh
+        XB x1 x2 y1 y2 z1 z2 = getXB mesh
 
         xmin = min x1 x2
         ymin = min y1 y2
@@ -229,7 +412,7 @@ getMeshLines :: NamelistFile -> Namelist -> ([Double], [Double], [Double])
 getMeshLines fdsData mesh = (xs, ys, zs)
     where
         (i,j,k) = getMeshIJK mesh
-        (x1,x2,y1,y2,z1,z2) = getXB mesh
+        XB x1 x2 y1 y2 z1 z2 = getXB mesh
 
         xmin = min x1 x2
         ymin = min y1 y2
@@ -294,17 +477,20 @@ getMeshResolution _ = error "Incorrect namelist supplied."
 getObstDimensions = getDimensions
 getDimensions nml@(Namelist _ _ parameters _) = (x,y,z)
     where
-        (x1,x2,y1,y2,z1,z2) = getXB nml
+        XB x1 x2 y1 y2 z1 z2 = getXB nml
         x = x2 - x1
         y = y2 - y1
         z = z2 - z1
 
-getXB nml@(Namelist _ _ parameters _) = (x1,x2,y1,y2,z1,z2)
-    where
-        [ x1, x2, y1, y2, z1, z2] =
-            case getArrayToList "XB" nml of
-                Just [a,b,c,d,e,f] -> map parToDouble [a,b,c,d,e,f]
-                Just e -> error $ T.unpack $ "Failed to parse XB array: " <> T.unlines (map pprint e)
+getXB nml = fromMaybe (error "No XB") $ getXBMaybe nml
+
+getXBMaybe :: Namelist -> Maybe XB
+getXBMaybe nml@(Namelist _ _ parameters _) = case getArrayToList "XB" nml of
+    Just [a,b,c,d,e,f] ->
+        let [x1, x2, y1, y2, z1, z2] = map parToDouble [a,b,c,d,e,f]
+        in Just $ XB x1 x2 y1 y2 z1 z2
+    Just e -> error $ T.unpack $ "Failed to parse XB array: " <> T.unlines (map pprint e)
+    Nothing -> Nothing
 
 getXYZ nml@(Namelist _ _ parameters _) = case r of
     Just [x, y, z] -> Just (x, y, z)
@@ -341,7 +527,6 @@ nmlIntersect nmlA nmlB = xbIntersect xbA xbB
         xbA = getXB nmlA
         xbB = getXB nmlB
 
-type XB = (Double, Double, Double, Double, Double, Double)
 -- |Test if two XBs intersect (i.e. their bounding boxes). Two bounding boxes
 -- intersect of all 3 dimensions have overlap. EQ is considered overlap.
 xbIntersect :: XB -> XB -> Bool
@@ -351,12 +536,12 @@ xbIntersect xbA xbB = intersectX && intersectY && intersectZ
         intersectY = y2A > y1B && y2B > y1A
         intersectZ = z2A > z1B && z2B > z1A
 
-        (x1A,x2A,y1A,y2A,z1A,z2A) = sortXB xbA
-        (x1B,x2B,y1B,y2B,z1B,z2B) = sortXB xbB
+        XB x1A x2A y1A y2A z1A z2A = sortXB xbA
+        XB x1B x2B y1B y2B z1B z2B  = sortXB xbB
 
 -- | Sort an XB such that x2>x1 y2>y1 and z2>z1.
 sortXB :: XB -> XB
-sortXB (x1',x2',y1',y2',z1',z2') = (x1,x2,y1,y2,z1,z2)
+sortXB (XB x1' x2' y1' y2' z1' z2') = (XB x1 x2 y1 y2 z1 z2)
     where
         x1 = min x1' x2'
         x2 = max x1' x2'
@@ -374,18 +559,20 @@ isOverlap nmlA nmlB = not $ any id [cond1, cond2, cond3, cond4, cond5, cond6]
         cond4 = y1A > y2B
         cond5 = z2A < z1B
         cond6 = z1A > z2B
-        (x1A,x2A,y1A,y2A,z1A,z2A) = getXB nmlA --peform min/max
-        (x1B,x2B,y1B,y2B,z1B,z2B) = getXB nmlB
+        XB x1A x2A y1A y2A z1A z2A = getXB nmlA --peform min/max
+        XB x1B x2B y1B y2B z1B z2B = getXB nmlB
 
 
 getSprinklers fdsData = filter (isSprinkler fdsData)
     $ findNamelists fdsData "DEVC"
 
+isSprinkler :: NamelistFile -> Namelist -> Bool
 isSprinkler fdsData nml@(Namelist _ _ parameters _) =
     case getParameterMaybe nml "PROP_ID" of
          Nothing -> False
          Just propName -> propName `elem` (getSprinklerPropIds fdsData)
 
+getSprinklerPropIds :: NamelistFile -> [ParameterValue]
 getSprinklerPropIds fdsData =
     fmap (flip getParameter "ID")
     $ filter (isSprinklerProp fdsData)
@@ -928,7 +1115,7 @@ determineSurfAreaObst obst surfName = sum
                                   , zMaxSurfArea
                                   ]
   where
-    (x1,x2,y1,y2,z1,z2)  = getXB obst
+    XB x1 x2 y1 y2 z1 z2  = getXB obst
     delX = abs (x2-x1)
     delY = abs (y2-y1)
     delZ = abs (z2-z1)
