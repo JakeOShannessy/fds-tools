@@ -313,7 +313,7 @@ produceVerificationFragment assess = do
 
 -- |Render an input verification assessment (console text).
 renderVerificationConsoleText :: Assessment -> T.Text
-renderVerificationConsoleText (Assessment tree) = T.pack $ drawTree $ fmap (T.unpack) $ testTreeToTextTree tree
+renderVerificationConsoleText (Assessment tree) = T.pack $ FDSUtilities.CompileCompress.drawTree $ fmap (T.unpack) $ testTreeToTextTree tree
 
 -- renderTextTree
 --     :: T.Text -- ^Indentation string

@@ -5,14 +5,18 @@ import qualified Data.Map as M
 import qualified Data.Array as A
 import Data.Default
 
+import FDSUtilities.Parsing
 import FDSUtilities.Verification.Tests
 import Text.Namelist
 import Test.HUnit
 import FDSUtilities.Types
+import FDSUtilities.Types.Assess
 import FDSUtilities.FDSFileFunctions
 
 import Text.Parsec (SourcePos)
 import Text.Parsec.Pos (initialPos)
+
+import Paths_fds_utilities
 
 verificationTests = TestList
     [ testFlowDevc1
@@ -20,6 +24,10 @@ verificationTests = TestList
     , testFlowDevc3
     , testFlowDevc4
     , fdsData1
+    , deviceWithinObstruction
+    , deviceNotWithinObstruction
+    , deviceBelowObstruction
+    , deviceNotBelowObstruction
     ]
 
 testFlowDevc1 = TestLabel "Unmetered flow device" $
@@ -148,6 +156,46 @@ testFlowDevc4 = TestLabel "Incorrectly metered flow device (wrong QUANTITY)" $
                 (initialPos "Test Input")
             ]
     in hasFlowDevc fdsData ventNml ~?= False
+
+deviceWithinObstruction = TestLabel "Device correctly identified as being within obstruction" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-within-obstruction/detector-inside-block.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = devicesTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> return ()
+        Node (CompletedTest _ (Success _)) _ -> assertFailure "Verification test incorrectly succeeded"
+        _ -> assertFailure "Incorrect result"
+
+deviceNotWithinObstruction = TestLabel "Device correctly identified as not being within obstruction" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-within-obstruction/detector-not-inside-block.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = devicesTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> assertFailure "Verification test incorrectly failed"
+        Node (CompletedTest _ (Success _)) _ -> return ()
+        _ -> assertFailure "Incorrect result"
+
+deviceBelowObstruction = TestLabel "Device correctly identified as being beneath an obstruction" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-ceiling.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = spkDetCeilingTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> assertFailure "Verification test incorrectly failed"
+        Node (CompletedTest _ (Success _)) _ -> return ()
+        _ -> assertFailure "Incorrect result"
+
+deviceNotBelowObstruction = TestLabel "Device correctly identified as not being beneath an obstruction" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-not-beneath-ceiling.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = spkDetCeilingTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> return ()
+        Node (CompletedTest _ (Success _)) _ -> assertFailure "Verification test incorrectly succeeded"
+        _ -> assertFailure "Incorrect result"
 
 -- |Should parse an example NamelistFile into an FDSFile with a single
 -- obstruction.

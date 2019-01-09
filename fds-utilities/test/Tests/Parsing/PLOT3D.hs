@@ -18,7 +18,7 @@ test1 = TestLabel "parse a PLOT3D file" $ TestCase $ do
     -- print res
     assertRight res *> pure ()
     where
-        testPath = "test-data/testq.q"
+        testPath = "test-data/test_pl3d.q"
 
 -- test2 = TestLabel "Current Date Parser" $ TestCase $ do
 --     let Right res = parse currentDateParser "testString" testString

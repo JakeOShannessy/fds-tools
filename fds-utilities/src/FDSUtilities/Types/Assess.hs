@@ -1,5 +1,8 @@
 {-# LANGUAGE RankNTypes, TemplateHaskell, OverloadedStrings, FunctionalDependencies, MultiParamTypeClasses, FlexibleInstances #-}
-module FDSUtilities.Types.Assess where
+module FDSUtilities.Types.Assess
+    ( module FDSUtilities.Types.Assess
+    , module Data.Tree
+    ) where
 
 
 

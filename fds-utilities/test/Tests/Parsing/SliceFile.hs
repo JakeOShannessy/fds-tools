@@ -18,7 +18,7 @@ test1 = TestLabel "parse a slice file" $ TestCase $ do
     print res
     assertRight res *> pure ()
     where
-        testPath = "test-data/20108_MT1_R4_UnionPark_0001_01.sf"
+        testPath = "test-data/test_slice.sf"
 
 -- test2 = TestLabel "Current Date Parser" $ TestCase $ do
 --     let Right res = parse currentDateParser "testString" testString
