@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<?define ProductVersion = "1.9.14"?>
+<?define ProductVersion = "1.9.15"?>
 <?define ProductUpgradeCode = "18709979-23a5-45d7-a7f3-1b3fedb0f653"?>
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
@@ -73,24 +73,22 @@
                                 </RegistryKey> -->
                             </Component>
                             <Component Id='CommonRender' Guid='ec39446c-f8ef-4fbf-a75f-8bc07c87dce1'>
-                                <File Id='libcairo' Name='libcairo-2.dll' Source='lib64/libcairo-2.dll' KeyPath='yes'>
-                                </File>
-                                <File Id='libfontconfig' Name='libfontconfig-1.dll' Source='lib64/libfontconfig-1.dll'>
-                                </File>
-                                <File Id='libfreetype' Name='libfreetype-6.dll' Source='lib64/libfreetype-6.dll'>
-                                </File>
-                                <File Id='libiconv' Name='libiconv-2.dll' Source='lib64/libiconv-2.dll'>
-                                </File>
-                                <File Id='liblzma' Name='liblzma-5.dll' Source='lib64/liblzma-5.dll'>
-                                </File>
-                                <File Id='libpixman' Name='libpixman-1-0.dll' Source='lib64/libpixman-1-0.dll'>
-                                </File>
-                                <File Id='libpng' Name='libpng15-15.dll' Source='lib64/libpng15-15.dll'>
-                                </File>
-                                <File Id='libxml2' Name='libxml2-2.dll' Source='lib64/libxml2-2.dll'>
-                                </File>
-                                <File Id='zlib1' Name='zlib1.dll' Source='lib64/zlib1.dll'>
-                                </File>
+                                <File Id='libcairo' Name='libcairo-2.dll' Source='lib64/libcairo-2.dll' KeyPath='yes'></File>
+                                <File Id='libfontconfig' Name='libfontconfig-1.dll' Source='lib64/libfontconfig-1.dll'></File>
+                                <File Id='libfreetype' Name='libfreetype-6.dll' Source='lib64/libfreetype-6.dll'></File>
+                                <File Id='libiconv' Name='libiconv-2.dll' Source='lib64/libiconv-2.dll'></File>
+                                <File Id='liblzma' Name='liblzma-5.dll' Source='lib64/liblzma-5.dll'></File>
+                                <File Id='libpixman' Name='libpixman-1-0.dll' Source='lib64/libpixman-1-0.dll'></File>
+                                <File Id='libpng' Name='libpng16-16.dll' Source='lib64/libpng16-16.dll'></File>
+                                <File Id='libbz2' Name='libbz2-1.dll' Source='lib64/libbz2-1.dll'></File>
+                                <File Id='libexpat' Name='libexpat-1.dll' Source='lib64/libexpat-1.dll'></File>
+                                <File Id='libgcc_s_seh' Name='libgcc_s_seh-1.dll' Source='lib64/libgcc_s_seh-1.dll'></File>
+                                <File Id='libintl' Name='libintl-8.dll' Source='lib64/libintl-8.dll'></File>
+                                <File Id='libwinpthread' Name='libwinpthread-1.dll' Source='lib64/libwinpthread-1.dll'></File>
+                                <File Id='libharfbuzz' Name='libharfbuzz-0.dll' Source='lib64/libharfbuzz-0.dll'></File>
+                                <File Id='libgraphite2' Name='libgraphite2.dll' Source='lib64/libgraphite2.dll'></File>
+                                <File Id='libstdcpp' Name='libstdc++-6.dll' Source='lib64/libstdc++-6.dll'></File>
+                                <File Id='zlib1' Name='zlib1.dll' Source='lib64/zlib1.dll'></File>
                             </Component>
                         </Directory>
                     </Directory>

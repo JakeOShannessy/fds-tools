@@ -33,7 +33,14 @@ main = shakeArgs shakeOptions
             command_ [] "stack" ["install", "fds-quick-monitor-program", "--local-bin-path", "dist"]
         futeProg *> \out -> do
             alwaysRerun
+            cmd_ "which" "libcairo-2.dll"
             command_ [] "stack" ["install", "fute", "--local-bin-path", "dist"]
+
+        "lib64/*.dll" *> \out -> do
+            let filename = dropDirectory1 out
+            let path = "C:/Users/josha/AppData/Local/Programs/stack/x86_64-windows/msys2-20180531/mingw64/bin" </> filename
+            copyFile' path out
+            -- cmd_ "stack" "exec" "--" "xcopy" path out
 
 -- buildWixObj
 imConvert = "C:/Program Files (x86)/ImageMagick-6.8.9-Q16/convert.exe"
@@ -48,7 +55,14 @@ libs =
     , "lib64/libiconv-2.dll"
     , "lib64/liblzma-5.dll"
     , "lib64/libpixman-1-0.dll"
-    , "lib64/libpng15-15.dll"
-    , "lib64/libxml2-2.dll"
+    , "lib64/libpng16-16.dll"
+    , "lib64/libbz2-1.dll"
+    , "lib64/libexpat-1.dll"
+    , "lib64/libgcc_s_seh-1.dll"
+    , "lib64/libintl-8.dll"
+    , "lib64/libwinpthread-1.dll"
+    , "lib64/libharfbuzz-0.dll"
+    , "lib64/libgraphite2.dll"
+    , "lib64/libstdc++-6.dll"
     , "lib64/zlib1.dll"
     ]
