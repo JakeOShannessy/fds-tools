@@ -28,6 +28,9 @@ verificationTests = TestList
     , deviceNotWithinObstruction
     , deviceBelowObstruction
     , deviceNotBelowObstruction
+    , deviceBelowSolidMeshBoundary
+    , deviceBelowOpenMeshBoundary
+    , deviceBelowSharedMeshBoundary
     ]
 
 testFlowDevc1 = TestLabel "Unmetered flow device" $
@@ -189,6 +192,36 @@ deviceBelowObstruction = TestLabel "Device correctly identified as being beneath
 
 deviceNotBelowObstruction = TestLabel "Device correctly identified as not being beneath an obstruction" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-not-beneath-ceiling.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = spkDetCeilingTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> return ()
+        Node (CompletedTest _ (Success _)) _ -> assertFailure "Verification test incorrectly succeeded"
+        _ -> assertFailure "Incorrect result"
+
+deviceBelowSolidMeshBoundary = TestLabel "Device correctly identified as being beneath a solid mesh boundary" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-solid-mesh-boundary.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = spkDetCeilingTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> assertFailure "Verification test incorrectly failed"
+        Node (CompletedTest _ (Success _)) _ -> return ()
+        _ -> assertFailure "Incorrect result"
+
+deviceBelowOpenMeshBoundary = TestLabel "Device correctly identified as being beneath an open mesh boundary" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-open-mesh-boundary.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = spkDetCeilingTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> return ()
+        Node (CompletedTest _ (Success _)) _ -> assertFailure "Verification test incorrectly succeeded"
+        _ -> assertFailure "Incorrect result"
+
+deviceBelowSharedMeshBoundary = TestLabel "Device correctly identified as being beneath an shared mesh boundary" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-shared-mesh-boundary.fds"
     Right fdsData <- parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result

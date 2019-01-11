@@ -265,18 +265,108 @@ determineMeshIndex fdsData point = fmap (+1) $ findIndex (isInMesh point) meshes
         where
             meshes = getMeshes fdsData :: [Namelist]
 
--- |Get the solidness of a single face at cell @cell@ and direction @dir@. NB:
--- This does not consider neighbouring cells.
---
--- TODO: Doesn't incorporate mesh boundaries.
-isFaceSolid :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
-isFaceSolid fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB) (obsts ++ vents) of
+-- |Determine if a face is an 'OPEN' vent at cell @cell@ and direction @dir@. NB:
+-- This does not consider MB style mesh boundary specs
+isFaceOpenVent :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
+isFaceOpenVent fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB) (filter (hasOpenSurf) $ obsts ++ vents) of
     Nothing -> False
     Just _ -> True
     where
         faceXB = getFaceXB fdsData cell dir
         obsts = findNamelists fdsData "OBST"
         vents = findNamelists fdsData "VENT"
+
+hasOpenSurf :: Namelist -> Bool
+hasOpenSurf nml = case getSurfId nml of
+    Just "OPEN" -> True
+    _ -> False
+
+-- |Get the solidness of a single face at cell @cell@ and direction @dir@. NB:
+-- This does not consider neighbouring cells.
+isFaceSolid :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
+isFaceSolid fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB) obstsAndVents of
+    Nothing ->
+        -- Face is an external mesh boundary
+        (isFaceExternalMeshBoundary fdsData cell PosZ)
+            -- Which is not covered by an 'OPEN' vent
+            && (not (isFaceOpenVent fdsData cell PosZ))
+    Just _ -> True
+    where
+        faceXB = getFaceXB fdsData cell dir
+        -- Exclude 'OPEN' vents and obsts, as they are not solid
+        obstsAndVents = filter (not . hasOpenSurf) $ obsts ++ vents
+        obsts = findNamelists fdsData "OBST"
+        vents = findNamelists fdsData "VENT"
+
+-- |Determine if a face is an external mesh boundary. I.e., it could be 'OPEN'.
+isFaceExternalMeshBoundary :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
+isFaceExternalMeshBoundary fdsData cell@(meshNum, (i,j,k)) dir =
+    let
+        mesh = getMeshes fdsData !! (meshNum - 1)
+        -- First we need to determine if the cell is on the edge of the mesh (in the chosen direction)
+        -- | @cellN@ is the cell number in the chosen direction
+        cellN = case dir of
+            PosX -> i
+            NegX -> i
+            PosY -> j
+            NegY -> j
+            PosZ -> k
+            NegZ -> k
+        (meshMaxI, meshMaxJ, meshMaxK) =
+            -- These are lines not cells
+            let (xs, ys, zs) = getMeshLines fdsData mesh
+                nCellsI = length xs - 1
+                nCellsJ = length ys - 1
+                nCellsK = length zs - 1
+            -- We need to subtract 1 to go from the quantity to the max index
+            in (nCellsI - 1, nCellsJ - 1, nCellsK - 1)
+        -- | @maxCellN@ is the boundary cell number of the mesh in the chosen direction
+        maxCellN = case dir of
+            PosX -> meshMaxI
+            NegX -> 0
+            PosY -> meshMaxJ
+            NegY -> 0
+            PosZ -> meshMaxK
+            NegZ -> 0
+        -- This determines if the cell is at the edge of the mesh in the chosen direction.
+        cellIsMeshBoundary = cellN == maxCellN
+        -- TODO: how do we determine if the cell is external?
+        --
+        -- Next we need to determine if there is another mesh on the other side of this boundary.
+        -- I.e., determine whether it is external.
+        -- To do this we will take the midpoint of the face, then go "up" a small amount in the
+        -- direction of the normal axis. We will then check if this point lies within another mesh.
+        -- This is not a great way to do this, but it will suffice for now, until we have better
+        -- data structures in place.
+        -- TODO: improve this.
+        faceMidPoint =
+            let (XB x1 x2 y1 y2 z1 z2) = getFaceXB fdsData cell dir
+            in case dir of
+                PosX -> midpointXB (XB x2 x2 y1 y2 z1 z2)
+                NegX -> midpointXB (XB x1 x1 y1 y2 z1 z2)
+                PosY -> midpointXB (XB x1 x2 y2 y2 z1 z2)
+                NegY -> midpointXB (XB x1 x2 y1 y1 z1 z2)
+                PosZ -> midpointXB (XB x1 x2 y1 y2 z2 z2)
+                NegZ -> midpointXB (XB x1 x2 y1 y2 z1 z1)
+        faceMidPointPlus = case dir of
+            PosX -> faceMidPoint `addXYZ` (XYZ   0.000001    0           0        )
+            NegX -> faceMidPoint `addXYZ` (XYZ (-0.000001)   0           0        )
+            PosY -> faceMidPoint `addXYZ` (XYZ   0           0.000001    0        )
+            NegY -> faceMidPoint `addXYZ` (XYZ   0         (-0.000001)   0        )
+            PosZ -> faceMidPoint `addXYZ` (XYZ   0           0           0.000001 )
+            NegZ -> faceMidPoint `addXYZ` (XYZ   0           0         (-0.000001))
+        
+    in and
+        [ cellIsMeshBoundary
+        -- check if the point just over the bounday is within any mesh
+        , not $ any (\mesh->isInMeshXYZ mesh faceMidPointPlus) (getMeshes fdsData)
+        ]
+
+addXYZ :: XYZ -> XYZ -> XYZ
+addXYZ (XYZ x1 y1 z1) (XYZ x2 y2 z2) = (XYZ (x1+x2) (y1+y2) (z1+z2))
+
+midpointXB :: XB -> XYZ
+midpointXB (XB x1 x2 y1 y2 z1 z2) = XYZ ((x1+x2)/2) ((y1+y2)/2) ((z1+z2)/2)
 
 getFaceXB :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> XB
 getFaceXB fdsData cell dir =
@@ -381,6 +471,9 @@ getCellXB fdsData cell@(meshNum,(i,j,k)) = (XB x1 x2 y1 y2 z1 z2)
         y2 = ys !! (j+1)
         z1 = zs !! k
         z2 = zs !! (k+1)
+
+isInMeshXYZ :: Namelist -> XYZ -> Bool
+isInMeshXYZ mesh (XYZ x y z) = isInMesh (x, y, z) mesh
 
 isInMesh :: (Double, Double, Double) -> Namelist -> Bool
 isInMesh point@(x,y,z) mesh = and
@@ -1141,6 +1234,8 @@ getParameter nml parameterName =
 getParameterMaybe :: Namelist -> T.Text -> Maybe ParameterValue
 getParameterMaybe nml parameterName =
     M.lookup parameterName (nml_params nml)
+
+getSurfId nml = getString <$> getParameterMaybe nml "SURF_ID"
 
 hasParameterValue :: ToParameterValue a => T.Text -> a -> Namelist -> Bool
 hasParameterValue parName parValue nml =
