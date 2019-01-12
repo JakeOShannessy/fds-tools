@@ -33,14 +33,15 @@ main = shakeArgs shakeOptions
             command_ [] "stack" ["install", "fds-quick-monitor-program", "--local-bin-path", "dist"]
         futeProg *> \out -> do
             alwaysRerun
-            cmd_ "which" "libcairo-2.dll"
             command_ [] "stack" ["install", "fute", "--local-bin-path", "dist"]
 
         "lib64/*.dll" *> \out -> do
             let filename = dropDirectory1 out
-            let path = "C:/Users/josha/AppData/Local/Programs/stack/x86_64-windows/msys2-20180531/mingw64/bin" </> filename
-            copyFile' path out
-            -- cmd_ "stack" "exec" "--" "xcopy" path out
+            Stdout pathMSYS <- cmd ["stack", "exec", "--", "which", filename] 
+            -- We use "init" to ditch the the newline returned from these commmands
+            let trimmedMSYSPath = init pathMSYS :: String 
+            Stdout realPath <- cmd ["cygpath", "-w", trimmedMSYSPath]
+            copyFile' (init realPath) out
 
 -- buildWixObj
 imConvert = "C:/Program Files (x86)/ImageMagick-6.8.9-Q16/convert.exe"
