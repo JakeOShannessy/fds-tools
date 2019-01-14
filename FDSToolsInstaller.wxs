@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<?define ProductVersion = "1.9.16"?>
+<?define ProductVersion = "1.9.21"?>
 <?define ProductUpgradeCode = "18709979-23a5-45d7-a7f3-1b3fedb0f653"?>
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
@@ -88,6 +88,8 @@
                                 <File Id='libharfbuzz' Name='libharfbuzz-0.dll' Source='lib64/libharfbuzz-0.dll'></File>
                                 <File Id='libgraphite2' Name='libgraphite2.dll' Source='lib64/libgraphite2.dll'></File>
                                 <File Id='libstdcpp' Name='libstdc++-6.dll' Source='lib64/libstdc++-6.dll'></File>
+                                <File Id='libglib' Name='libglib-2.0-0.dll' Source='lib64/libglib-2.0-0.dll'></File>
+                                <File Id='libpcre' Name='libpcre-1.dll' Source='lib64/libpcre-1.dll'></File>
                                 <File Id='zlib1' Name='zlib1.dll' Source='lib64/zlib1.dll'></File>
                             </Component>
                         </Directory>
