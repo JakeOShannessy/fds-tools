@@ -268,10 +268,11 @@ determineMeshIndex fdsData point = fmap (+1) $ findIndex (isInMesh point) meshes
 -- |Determine if a face is an 'OPEN' vent at cell @cell@ and direction @dir@. NB:
 -- This does not consider MB style mesh boundary specs
 isFaceOpenVent :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
-isFaceOpenVent fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB) (filter (hasOpenSurf) $ obsts ++ vents) of
+isFaceOpenVent fdsData cell dir = case find (\obst->faceOccupy cellSize (getXB obst) faceXB) (filter (hasOpenSurf) $ obsts ++ vents) of
     Nothing -> False
     Just _ -> True
     where
+        cellSize = getMinDim fdsData cell
         faceXB = getFaceXB fdsData cell dir
         obsts = findNamelists fdsData "OBST"
         vents = findNamelists fdsData "VENT"
@@ -284,7 +285,7 @@ hasOpenSurf nml = case getSurfId nml of
 -- |Get the solidness of a single face at cell @cell@ and direction @dir@. NB:
 -- This does not consider neighbouring cells.
 isFaceSolid :: NamelistFile -> (Int, (Int, Int, Int)) -> Direction -> Bool
-isFaceSolid fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB) obstsAndVents of
+isFaceSolid fdsData cell dir = case find (\obst->faceOccupy cellSize (getXB obst) faceXB) obstsAndVents of
     Nothing ->
         -- Face is an external mesh boundary
         (isFaceExternalMeshBoundary fdsData cell PosZ)
@@ -292,6 +293,7 @@ isFaceSolid fdsData cell dir = case find (\obst->faceOccupy (getXB obst) faceXB)
             && (not (isFaceOpenVent fdsData cell PosZ))
     Just _ -> True
     where
+        cellSize = getMinDim fdsData cell
         faceXB = getFaceXB fdsData cell dir
         -- Exclude 'OPEN' vents and obsts, as they are not solid
         obstsAndVents = filter (not . hasOpenSurf) $ obsts ++ vents
@@ -406,43 +408,43 @@ xbOccupy xbA xbB = occupyX && occupyY && occupyZ
 
 -- |This is a lower requirement than xbOccupy. All xbOccupy satisfies this as
 -- well.
-faceOccupy :: XB -> XB -> Bool
-faceOccupy xbA xbB@(XB xMin xMax yMin yMax zMin zMax) = case (xSame, ySame, zSame) of
-    (True, False, False) -> faceOccupyX xbA xbB
-    (False, True, False) -> faceOccupyY xbA xbB
-    (False, False, True) -> faceOccupyZ xbA xbB
+faceOccupy :: Double -> XB -> XB -> Bool
+faceOccupy cellSize xbA xbB@(XB xMin xMax yMin yMax zMin zMax) = case (xSame, ySame, zSame) of
+    (True, False, False) -> faceOccupyX cellSize xbA xbB
+    (False, True, False) -> faceOccupyY cellSize xbA xbB
+    (False, False, True) -> faceOccupyZ cellSize xbA xbB
     _ -> error "Not a face"
     where
         xSame = xMin == xMax
         ySame = yMin == yMax
         zSame = zMin == zMax
 
-faceOccupyX :: XB -> XB -> Bool
-faceOccupyX xbA xbB = occupyX && occupyY && occupyZ
+faceOccupyX :: Double -> XB -> XB -> Bool
+faceOccupyX cellSize xbA xbB = occupyX && occupyY && occupyZ
     where
-        occupyX = occupyThinly (x1A,x2A) (x1B,x2B)
+        occupyX = occupyThinly (x1A,x2A) (x1B-(cellSize/2),x2B+(cellSize/2))
         occupyY = occupyFatly (y1A,y2A) (y1B,y2B)
         occupyZ = occupyFatly (z1A,z2A) (z1B,z2B)
 
         XB x1A x2A y1A y2A z1A z2A = sortXB xbA
         XB x1B x2B y1B y2B z1B z2B = sortXB xbB
 
-faceOccupyY :: XB -> XB -> Bool
-faceOccupyY xbA xbB = occupyX && occupyY && occupyZ
+faceOccupyY :: Double -> XB -> XB -> Bool
+faceOccupyY cellSize xbA xbB = occupyX && occupyY && occupyZ
     where
         occupyX = occupyFatly (x1A,x2A) (x1B,x2B)
-        occupyY = occupyThinly (y1A,y2A) (y1B,y2B)
+        occupyY = occupyThinly (y1A,y2A) (y1B-(cellSize/2),y2B+(cellSize/2))
         occupyZ = occupyFatly (z1A,z2A) (z1B,z2B)
 
         XB x1A x2A y1A y2A z1A z2A = sortXB xbA
         XB x1B x2B y1B y2B z1B z2B = sortXB xbB
 
-faceOccupyZ :: XB -> XB -> Bool
-faceOccupyZ xbA xbB = occupyX && occupyY && occupyZ
+faceOccupyZ :: Double -> XB -> XB -> Bool
+faceOccupyZ cellSize xbA xbB = occupyX && occupyY && occupyZ
     where
         occupyX = occupyFatly (x1A,x2A) (x1B,x2B)
         occupyY = occupyFatly (y1A,y2A) (y1B,y2B)
-        occupyZ = occupyThinly (z1A,z2A) (z1B,z2B)
+        occupyZ = occupyThinly (z1A,z2A) (z1B-(cellSize/2),z2B+(cellSize/2))
 
         XB x1A x2A y1A y2A z1A z2A = sortXB xbA
         XB x1B x2B y1B y2B z1B z2B = sortXB xbB
@@ -462,6 +464,22 @@ occupyThinly (xMin,xMax) (xMin',xMax') = ((xMin >= xMin') && (xMin <= xMax'))
 getCellXB :: NamelistFile -> (Int, (Int, Int, Int)) -> XB
 getCellXB fdsData cell@(meshNum,(i,j,k)) = (XB x1 x2 y1 y2 z1 z2)
     where
+        meshes = getMeshes fdsData
+        mesh = meshes !! (meshNum - 1)
+        (xs, ys, zs) = getMeshLines fdsData mesh
+        x1 = xs !! i
+        x2 = xs !! (i+1)
+        y1 = ys !! j
+        y2 = ys !! (j+1)
+        z1 = zs !! k
+        z2 = zs !! (k+1)
+
+getMinDim :: NamelistFile -> (Int, (Int, Int, Int)) -> Double
+getMinDim fdsData cell@(meshNum,(i,j,k)) = minimum [delX, delY, delZ]
+    where
+        delX = x2-x1
+        delY = y2-y1
+        delZ = z2-z1
         meshes = getMeshes fdsData
         mesh = meshes !! (meshNum - 1)
         (xs, ys, zs) = getMeshLines fdsData mesh

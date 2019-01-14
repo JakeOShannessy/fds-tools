@@ -27,6 +27,7 @@ verificationTests = TestList
     , deviceWithinObstruction
     , deviceNotWithinObstruction
     , deviceBelowObstruction
+    , deviceBelowObstruction2
     , deviceNotBelowObstruction
     , deviceBelowSolidMeshBoundary
     , deviceBelowOpenMeshBoundary
@@ -182,6 +183,16 @@ deviceNotWithinObstruction = TestLabel "Device correctly identified as not being
 
 deviceBelowObstruction = TestLabel "Device correctly identified as being beneath an obstruction" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-ceiling.fds"
+    Right fdsData <- parseFDSFile file
+    let tree = spkDetCeilingTest fdsData
+    -- Tree should be a single test with a failure result
+    case tree of
+        Node (CompletedTest _ (Failure _)) _ -> assertFailure "Verification test incorrectly failed"
+        Node (CompletedTest _ (Success _)) _ -> return ()
+        _ -> assertFailure "Incorrect result"
+
+deviceBelowObstruction2 = TestLabel "Device correctly identified as being beneath an obstruction #2" $ TestCase $ do
+    file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-ceiling2.fds"
     Right fdsData <- parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result

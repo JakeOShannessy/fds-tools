@@ -10,6 +10,7 @@ Data-Files: data/CompileCompress.css
     , test-data/device-within-obstruction/detector-inside-block.fds
     , test-data/device-within-obstruction/detector-not-inside-block.fds
     , test-data/device-beneath-ceiling/sprinkler-beneath-ceiling.fds
+    , test-data/device-beneath-ceiling/sprinkler-beneath-ceiling2.fds
     , test-data/device-beneath-ceiling/sprinkler-not-beneath-ceiling.fds
     , test-data/device-beneath-ceiling/sprinkler-beneath-solid-mesh-boundary.fds
     , test-data/device-beneath-ceiling/sprinkler-beneath-open-mesh-boundary.fds
