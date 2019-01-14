@@ -20,7 +20,7 @@
         <Condition Message="You need to be an administrator to install this product.">Privileged</Condition>
         <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' />
         <Property Id='DiskPrompt' Value="FDS Tools Suite Installer" />
-        <Upgrade Id="$(var.ProductUpgradeCode)">
+        <Upgrade Id="$(var.ProductUpgradeCode)" AllowDowngrade="yes">
             <UpgradeVersion Minimum="$(var.ProductVersion)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
             <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" Property="OLDERVERSIONBEINGUPGRADED"/>
         </Upgrade>
