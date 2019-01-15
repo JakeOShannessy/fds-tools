@@ -47,12 +47,12 @@ main = shakeArgs shakeOptions
             -- but we will only copy them to further processing if they have changed, to
             -- prevent unnecessary remakes.
             alwaysRerun
-            command_ [] "stack" ["install", "fds-quick-monitor-program", "--local-bin-path", "distA"]
-            copyFileChanged ("distA/FDSQuickMon.exe") out
+            command_ [] "stack" ["install", "fds-quick-monitor-program", "--local-bin-path", "_build/bins"]
+            copyFileChanged ("_build/bins/FDSQuickMon.exe") out
         futeProg *> \out -> do
             alwaysRerun
-            command_ [] "stack" ["install", "fute", "--local-bin-path", "distA"]
-            copyFileChanged ("distA/fute.exe") out
+            command_ [] "stack" ["install", "fute", "--local-bin-path", "_build/bins"]
+            copyFileChanged ("_build/bins/fute.exe") out
 
         "lib64/*.dll" *> \out -> do
             let filename = dropDirectory1 out
