@@ -32,7 +32,7 @@
                     <Directory Id='INSTALLDIR' Name='FDS Tools $(var.ProductVersion)'>
                         <Component Id='FuteScript' Guid='020e5228-fa89-48ff-add5-8d39c5d70f9b'>
                             <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="yes" Part="last" Action="set" System="yes" />
-                            <File Id='FuteScriptCMD' Name='fute.cmd' Source='fute.cmd' KeyPath='yes'>
+                            <File Id='FuteScriptCMD' Name='fute.cmd' Source='scripts/fute.cmd' KeyPath='yes'>
                             </File>
                         </Component>
                         <Directory Id='BINDIR' Name='bin'>
