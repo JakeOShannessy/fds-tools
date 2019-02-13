@@ -25,11 +25,13 @@
             <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" Property="OLDERVERSIONBEINGUPGRADED"/>
         </Upgrade>
         <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>
+
         <Directory Id='TARGETDIR' Name='SourceDir'>
             <Directory Id='ProgramFilesFolder' Name='PFiles'>
                 <Directory Id='Fireng' Name='Fireng'>
                     <Directory Id='INSTALLDIR' Name='FDS Tools $(var.ProductVersion)'>
                         <Component Id='FuteScript' Guid='020e5228-fa89-48ff-add5-8d39c5d70f9b'>
+                            <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="yes" Part="last" Action="set" System="yes" />
                             <File Id='FuteScriptCMD' Name='fute.cmd' Source='fute.cmd' KeyPath='yes'>
                             </File>
                         </Component>
