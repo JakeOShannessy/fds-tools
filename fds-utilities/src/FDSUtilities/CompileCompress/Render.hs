@@ -24,13 +24,14 @@ toPage heading style script content = H.docTypeHtml $ do
 
 jscript :: String
 jscript = unlines
-  [ "<!--\nfunction toggle_visibility(ev,el) {"
-  , "  if (el.classList.contains(\"test\")) {"
-  , "    el.classList.toggle(\"shown-test\");"
-  , "    el.classList.toggle(\"hidden-test\");"
-  , "    ev.stopPropagation();\n  };"
-  , "}//-->"
-  ]
+    [ "<!--\nfunction toggle_visibility(ev,el) {"
+    , "  if (el.classList.contains(\"test\")) {"
+    , "    el.classList.toggle(\"shown-test\");"
+    , "    el.classList.toggle(\"hidden-test\");"
+    , "    ev.stopPropagation();\n  };"
+    , "}//-->"
+    ]
 
+css :: String
 css = C8.unpack
     $(makeRelativeToProject "data/CompileCompress.css" >>= embedFile)

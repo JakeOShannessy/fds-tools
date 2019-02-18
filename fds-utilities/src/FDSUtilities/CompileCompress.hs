@@ -21,7 +21,7 @@ import FDSUtilities.CompileCompress.Verification
 import FDSUtilities.CompileCompress.Render
 import FDSUtilities.Verification.Display
 import FDSUtilities.Verification
-import FDSUtilities.FDSFileFunctions
+import FDSUtilities.FDSFile
 import FDSUtilities.Parsing
 import FDSUtilities.RunTimeCalc
 import FDSUtilities.Types
@@ -221,7 +221,7 @@ produceInputPage outputDir simulation = do
     assess <- case fdsDataRaw of
         (Right fdsData) -> do
             r <- try $ do
-                let x = verifyInputData fdsData
+                let x = verifyInputData $ decodeNamelistFile fdsData
                 seq (x) (print ())
                 print x
                 return x
@@ -235,7 +235,7 @@ produceInputPage outputDir simulation = do
     summary <- case fdsDataRaw of
         (Right fdsData) -> do
             r <- try $ do
-                let x = summariseInputData fdsData
+                let x = summariseInputData $ decodeNamelistFile fdsData
                 print x
                 return x
             return $ case r of
@@ -266,7 +266,7 @@ produceInputPageCompile destDir simulation = do
     assess <- case fdsDataRaw of
         (Right fdsData) -> do
             r <- try $ do
-                let x = verifyInputData fdsData
+                let x = verifyInputData $ decodeNamelistFile fdsData
                 seq (x) (print ())
                 print x
                 return x
@@ -278,7 +278,7 @@ produceInputPageCompile destDir simulation = do
     case fdsDataRaw of
         (Right fdsData) -> do
             r <- try $ do
-                let x = summariseInputData fdsData
+                let x = summariseInputData $ decodeNamelistFile fdsData
                 print x
                 return x
             return $ case r of

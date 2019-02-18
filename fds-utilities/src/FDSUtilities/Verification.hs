@@ -2,7 +2,7 @@ module FDSUtilities.Verification where
 
 import FDSUtilities.Simulation
 import FDSUtilities.Parsing
-import FDSUtilities.FDSFileFunctions
+import FDSUtilities.FDSFile
 import FDSUtilities.Verification.Tests
 import FDSUtilities.Verification.Display
 import FDSUtilities.Types.Assess
@@ -32,9 +32,8 @@ verifyInputFile inputPath = do
         (Right fdsData) -> do
             let (NamelistFile comments nmls) = fdsData
             r <- try $ do
-                let x = verifyInputData fdsData
+                let x = verifyInputData $ decodeNamelistFile fdsData
                 seq x (putStr "")
-                -- print x
                 return x
             return $ case r of
                 Right x -> Right x

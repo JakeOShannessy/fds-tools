@@ -6,7 +6,7 @@ import Control.Exception
 import FDSUtilities.Simulation
 import FDSUtilities.Parsing
 import FDSUtilities.Simulation
-import FDSUtilities.FDSFileFunctions
+import FDSUtilities.FDSFile
 import FDSUtilities.Types.Assess
 import FDSUtilities.Types
 import Data.List
@@ -42,7 +42,7 @@ summariseInputFile inputPath = do
     case fdsDataRaw of
         (Right fdsData) -> do
             r <- try $ do
-                let x = summariseInputData fdsData
+                let x = summariseInputData $ decodeNamelistFile fdsData
                 print x
                 return x
             return $ case r of
@@ -88,7 +88,7 @@ instance ToString InputSummary where
     toString (InputSummary dict) =
         concatMap (\(secHead,entries)->
             secHead <> (concat
-                        $ intersperse "\n  " 
+                        $ intersperse "\n  "
                         $ map (\(t,s)-> t <> ": " <> toString s) entries)) dict
 
 instance ToString InputSummaryMarkup where
@@ -128,12 +128,14 @@ summariseInputData fdsData = InputSummary
       ])
     ]
     where
-      chid = getCHID fdsData
+      chid = case getCHID fdsData of
+        Just x -> x
+        Nothing -> error "No CHID"
       (tStart,tEnd) = getSimTimes fdsData
       simulationInterval = tEnd - tStart
       totalMaxHRR = getTotalMaxHRR fdsData
       nBurners = length $ getBurners fdsData
-        
+
       ndrs = getNDRs fdsData
       nExhausts = length $ getExhausts fdsData
       exhaustRate = sum $ map abs $ fmap (getFlowRate fdsData) $ getExhausts fdsData
@@ -142,11 +144,11 @@ summariseInputData fdsData = InputSummary
       nSupplies = length $ getSupplies fdsData
       supplyRate = sum $ map abs $ fmap (getFlowRate fdsData) $ getSupplies fdsData
 
-      meshes = findNamelists fdsData "MESH"
+      meshes = fdsFile_Meshes fdsData
       nMeshes = length meshes
       nCells = sum $ fmap getNCells meshes
       (sX, sY, sZ) = getSmallestResolution fdsData
-      
+
       resolutions = nub $ getOrderedResolutions fdsData
       htmlResolution (x, y, z) =
             (show x) <> ("m x " :: String)

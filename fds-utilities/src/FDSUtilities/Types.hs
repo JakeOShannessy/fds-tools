@@ -5,7 +5,6 @@ module FDSUtilities.Types
     , module FDSUtilities.Types.Data
     , module FDSUtilities.Types.Fire
     , module FDSUtilities.Types.OutFile
-    , module FDSUtilities.Types.FDSFile
     , module FDSUtilities.Types.Simulation
     , module FDSUtilities.Types.Screenshots
     , module FDSUtilities.Types.Smokeview
@@ -20,7 +19,6 @@ import FDSUtilities.Types.Common
 import FDSUtilities.Types.Data
 import FDSUtilities.Types.Fire
 import FDSUtilities.Types.OutFile
-import FDSUtilities.Types.FDSFile
 import FDSUtilities.Types.Simulation
 import FDSUtilities.Types.Screenshots
 import FDSUtilities.Types.Smokeview

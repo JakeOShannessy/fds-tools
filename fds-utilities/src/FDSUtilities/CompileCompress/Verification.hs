@@ -8,7 +8,7 @@ import Data.Monoid
 import FDSUtilities.Types
 import FDSUtilities.Types.Assess
 import FDSUtilities.Verification.Display
-import FDSUtilities.FDSFileFunctions
+import FDSUtilities.FDSFile
 import FDSUtilities.Verification
 import FDSUtilities.CompileCompress.Render
 import FDSUtilities.Parsing
@@ -44,5 +44,3 @@ produceVerificationAssessment fdsSim = do
     case assessment of
         Left err -> return $ H.pre $ H.string err
         Right ass -> return $ H.toMarkup ass
-
-

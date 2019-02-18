@@ -11,7 +11,7 @@
 -- analysis of the values, not how it is specified. If we care about the
 -- structure of the input itself, we can always fall back to the Namelist data.
 {-# LANGUAGE OverloadedStrings #-}
-module FDSUtilities.Types.FDSFile where
+module FDSUtilities.FDSFile.Types where
 
 import Text.Namelist
 import Data.Default
@@ -40,10 +40,17 @@ data FDSFile = FDSFile
     , fdsFile_Surfs :: [Surf]
     , fdsFile_Obsts :: [Obst]
     , fdsFile_Holes :: [Hole]
+    , fdsFile_Hvacs :: [Hvac]
     , fdsFile_Vents :: [Vent]
     , fdsFile_Bndfs :: [Bndf]
     , fdsFile_Isofs :: [Isof]
     , fdsFile_Slcfs :: [Slcf]
+    , fdsFile_Ramps :: [Ramp]
+    , fdsFile_Props :: [Prop]
+    , fdsFile_Parts :: [Part]
+    , fdsFile_Trnxs :: [Trnx]
+    , fdsFile_Trnys :: [Trny]
+    , fdsFile_Trnzs :: [Trnz]
     , fdsFile_unknownNamelists :: [Namelist]
     } deriving (Show, Eq)
 
@@ -60,41 +67,77 @@ instance Default FDSFile where
         , fdsFile_Surfs = []
         , fdsFile_Obsts = []
         , fdsFile_Holes = []
+        , fdsFile_Hvacs = []
         , fdsFile_Vents = []
         , fdsFile_Bndfs = []
         , fdsFile_Isofs = []
         , fdsFile_Slcfs = []
+        , fdsFile_Ramps = []
+        , fdsFile_Props = []
+        , fdsFile_Parts = []
+        , fdsFile_Trnxs = []
+        , fdsFile_Trnys = []
+        , fdsFile_Trnzs = []
         , fdsFile_unknownNamelists = []
         }
 
 data Head = Head
-    { head_CHID :: Text -- ^CHID
-    , head_FYI :: Text -- ^FYI
-    , head_TITLE :: Text -- ^TITLE
+    { head_CHID :: Maybe String -- ^CHID
+    , head_FYI :: Maybe String -- ^FYI
+    , head_TITLE :: Maybe String -- ^TITLE
     } deriving (Show, Eq)
+
+instance Default Head where
+    def =  Head
+        { head_CHID = Nothing
+        , head_FYI = Nothing
+        , head_TITLE = Nothing
+        }
 
 data Bndf = Bndf
     { bndf_CELL_CENTRED :: Bool -- ^CELL_CENTERED --default: False
-    , bndf_FYI :: Text        -- ^FYI
-    , bndf_PART_ID :: Text    -- ^PART_ID
-    , bndf_PROP_ID :: Text    -- ^PROP_ID
+    , bndf_FYI :: Maybe String       -- ^FYI
+    , bndf_PART_ID :: Maybe Text    -- ^PART_ID
+    , bndf_PROP_ID :: Maybe Text    -- ^PROP_ID
     , bndf_RECOUNT_DRIP :: Bool -- ^RECOUNT_DRIP --default: False
-    , bndf_QUANTITY :: Text   -- ^QUANTITY
-    , bndf_SPEC_ID :: Text    -- ^SPEC_ID
-    , bndf_STATISTICS :: Text    -- ^STATISTICS
+    , bndf_QUANTITY :: Maybe Text   -- ^QUANTITY
+    , bndf_SPEC_ID :: Maybe Text    -- ^SPEC_ID
+    , bndf_STATISTICS :: Maybe Text    -- ^STATISTICS
     } deriving (Show, Eq)
+
+instance Default Bndf where
+    def = Bndf
+        { bndf_CELL_CENTRED = False
+        , bndf_FYI = Nothing
+        , bndf_PART_ID = Nothing
+        , bndf_PROP_ID = Nothing
+        , bndf_RECOUNT_DRIP = False
+        , bndf_QUANTITY = Nothing
+        , bndf_SPEC_ID = Nothing
+        , bndf_STATISTICS = Nothing
+        }
 
 data Bnde = Bnde
-    { bnde_CELL_CENTERED :: String
-    , bnde_FYI :: String
-    , bnde_PART_ID :: String
-    , bnde_PROP_ID :: String
-    , bnde_QUANTITY :: String
-    , bnde_SPEC_ID :: String
+    { bnde_CELL_CENTERED :: Bool
+    , bnde_FYI :: Maybe String
+    , bnde_PART_ID :: Maybe String
+    , bnde_PROP_ID :: Maybe String
+    , bnde_QUANTITY :: Maybe String
+    , bnde_SPEC_ID :: Maybe String
     } deriving (Show, Eq)
 
+instance Default Bnde where
+    def = Bnde
+        { bnde_CELL_CENTERED = False
+        , bnde_FYI = Nothing
+        , bnde_PART_ID = Nothing
+        , bnde_PROP_ID = Nothing
+        , bnde_QUANTITY = Nothing
+        , bnde_SPEC_ID = Nothing
+        }
+
 data Clip = Clip
-    { clip_FYI :: Text                        -- ^FYI
+    { clip_FYI :: Maybe String                        -- ^FYI
     , clip_MAXIMUM_DENSITY :: Double            -- ^MAXIMUM_DENSITY
     , clip_MAXIMUM_MASS_FRACTION :: [[Double]]  -- ^MAXIMUM_MASS_FRACTION
     , clip_MAXIMUM_TEMPERATURE :: Double        -- ^MAXIMUM_TEMPERATURE
@@ -103,6 +146,17 @@ data Clip = Clip
     , clip_MINIMUM_TEMPERATURE :: Double        -- ^MINIMUM_TEMPERATURE
     }
     deriving (Show, Eq)
+
+-- instance Default Clip where
+--     def = Clip
+--         { clip_FYI = ""
+--         , clip_MAXIMUM_DENSITY :: Double            -- ^MAXIMUM_DENSITY
+--         , clip_MAXIMUM_MASS_FRACTION :: [[Double]]  -- ^MAXIMUM_MASS_FRACTION
+--         , clip_MAXIMUM_TEMPERATURE :: Double        -- ^MAXIMUM_TEMPERATURE
+--         , clip_MINIMUM_DENSITY :: Double            -- ^MINIMUM_DENSITY
+--         , clip_MINIMUM_MASS_FRACTION :: [[Double]]  -- ^MINIMUM_MASS_FRACTION
+--         , clip_MINIMUM_TEMPERATURE :: Double        -- ^MINIMUM_TEMPERATURE
+--         }
 
 data Ctrl = Ctrl
     { ctrl_CONSTANT :: Double
@@ -135,58 +189,59 @@ data Csvf = Csvf
 
 data Devc = Devc
     { devc_BYPASS_FLOWRATE :: Double
+    , devc_CONVERSION_ADDEND :: Double
     , devc_CONVERSION_FACTOR :: Double
     , devc_COORD_FACTOR :: Double
-    , devc_CTRL_ID :: String
+    , devc_CTRL_ID :: Maybe String
     , devc_DELAY :: Double
     , devc_DEPTH :: Double
-    , devc_DEVC_ID :: String
+    , devc_DEVC_ID :: Maybe String
     , devc_DRY :: Bool
-    , devc_DUCT_ID :: String
+    , devc_DUCT_ID :: Maybe String
     , devc_EVACUATION :: Bool
     , devc_FLOWRATE :: Double
-    , devc_FYI :: String
-    -- , devc_GHOST_CELL_IOR :: String
+    , devc_FYI :: Maybe String
     , devc_HIDE_COORDINATES :: Bool
-    , devc_ID :: String
+    , devc_ID :: Maybe String
     , devc_INITIAL_STATE :: Bool
-    , devc_INIT_ID :: String
-    , devc_IOR :: Int
+    , devc_INIT_ID :: Maybe String
+    , devc_IOR :: Maybe Int
     , devc_LATCH :: Bool
-    , devc_MATL_ID :: String
+    , devc_MATL_ID :: Maybe String
     , devc_NODE_ID :: [String]
-    , devc_NO_UPDATE_DEVC_ID :: String
-    , devc_NO_UPDATE_CTRL_ID :: String
-    , devc_ORIENTATION :: [Double]
+    , devc_NO_UPDATE_DEVC_ID :: Maybe String
+    , devc_NO_UPDATE_CTRL_ID :: Maybe String
+    , devc_ORIENTATION :: XYZ
     , devc_ORIENTATION_NUMBER :: Int
     , devc_OUTPUT :: Bool
-    , devc_PART_ID :: String
+    , devc_PART_ID :: Maybe String
     , devc_PIPE_INDEX :: Int
     , devc_POINTS :: Int
-    , devc_PROP_ID :: String
-    , devc_QUANTITY :: String
-    , devc_QUANTITY2 :: String
-    , devc_QUANTITY_RANGE :: [Double]
-    , devc_R_ID :: String
-    , devc_REAC_ID :: String
+    , devc_PROP_ID :: Maybe String
+    , devc_QUANTITY :: Maybe String
+    , devc_QUANTITY2 :: Maybe String
+    , devc_QUANTITY_RANGE :: (Double, Double)
+    , devc_R_ID :: Maybe String
+    , devc_REAC_ID :: Maybe String
     , devc_RELATIVE :: Bool
     , devc_ROTATION :: Double
-    , devc_SETPOINT :: Double
+    , devc_SETPOINT :: Maybe Double
     , devc_SMOOTHING_FACTOR :: Double
-    , devc_SPEC_ID :: String
-    , devc_STATISTICS :: String
+    , devc_SPEC_ID :: Maybe String
+    , devc_STATISTICS :: Maybe String
     , devc_STATISTICS_START :: Double
-    , devc_SURF_ID :: String
+    , devc_SURF_ID :: Maybe String
     , devc_TIME_AVERAGED :: Bool
     , devc_TIME_HISTORY :: Bool
     , devc_TRIP_DIRECTION :: Int
-    , devc_UNITS :: String
+    , devc_UNITS :: Maybe String
     , devc_VELO_INDEX :: Int
-    , devc_XB :: XB
-    , devc_XYZ :: XYZ
-    , devc_X_ID :: String
-    , devc_Y_ID :: String
-    , devc_Z_ID :: String
+    , devc_XB :: Maybe XB
+    , devc_XYZ :: Maybe XYZ
+    , devc_X_ID :: Maybe String
+    , devc_Y_ID :: Maybe String
+    , devc_Z_ID :: Maybe String
+    , devc_XYZ_UNITS :: String
     }
     deriving (Show, Eq)
 
@@ -242,7 +297,7 @@ data Hole = Hole
     , hole_CTRL_ID :: String
     , hole_DEVC_ID :: String
     , hole_EVACUATION :: Bool
-    , hole_FYI :: String
+    , hole_FYI :: Maybe String
     , hole_ID :: String
     , hole_MESH_ID :: String
     , hole_MULT_ID :: String
@@ -253,7 +308,7 @@ data Hole = Hole
     deriving (Show, Eq)
 
 data Hvac = Hvac
-    { hvac_AIRCOIL_ID :: String
+    { hvac_AIRCOIL_ID :: Maybe String
     , hvac_AMBIENT :: Bool
     , hvac_AREA :: Double
     , hvac_CLEAN_LOSS :: Double
@@ -291,8 +346,8 @@ data Hvac = Hvac
     , hvac_TAU_FAN :: Double
     , hvac_TAU_VF :: Double
     , hvac_TYPE_ID :: String
-    , hvac_VENT_ID :: String
-    , hvac_VENT2_ID :: String
+    , hvac_VENT_ID :: Maybe String
+    , hvac_VENT2_ID :: Maybe String
     , hvac_VOLUME_FLOW :: Double
     , hvac_XYZ :: XYZ
     }
@@ -332,7 +387,7 @@ data Init = Init
     deriving (Show, Eq)
 
 data Isof = Isof
-    { isof_FYI :: String
+    { isof_FYI :: Maybe String
     , isof_QUANTITY :: String
     , isof_SPEC_ID :: String
     , isof_VALUE :: Double
@@ -351,7 +406,7 @@ data Matl = Matl
     , matl_DENSITY :: Double
     , matl_E :: [Double]
     , matl_EMISSIVITY :: Double
-    , matl_FYI :: String
+    , matl_FYI :: Maybe String
     , matl_HEATING_RATE :: [Double]
     , matl_HEAT_OF_COMBUSTION :: [Double]
     , matl_HEAT_OF_REACTION :: [Double]
@@ -398,21 +453,21 @@ data PyrolysisReac
 
 ----------------------------------------
 data Mesh = Mesh
-    { mesh_ID :: Text -- ^ID
+    { mesh_ID :: Maybe String -- ^ID
     , mesh_XB :: XB -- ^XB
     , mesh_IJK :: IJK -- ^IJK
-    , mesh_COLOR :: Text -- ^COLOR
+    , mesh_COLOR :: String -- ^COLOR
     , mesh_CYLINDRICAL :: Bool -- ^CYLINDRICAL
     , mesh_EVACUATION :: Bool -- ^EVACUATION
     , mesh_EVAC_HUMANS :: Bool
     , mesh_EVAC_Z_OFFSET :: Double
-    , mesh_FYI :: Text
+    , mesh_FYI :: Maybe String
     , mesh_LEVEL :: Int
-    , mesh_MPI_PROCESS :: Int
-    , mesh_MULT_ID :: Text
-    , mesh_RGB :: (Double, Double, Double)
-    , mesh_N_THREADS :: Int
-    , mesh_PERIODIC_MESH_IDS :: [Text]
+    , mesh_MPI_PROCESS :: Maybe Int
+    , mesh_MULT_ID :: Maybe String
+    , mesh_RGB :: RGB
+    , mesh_N_THREADS :: Maybe Int
+    -- , mesh_PERIODIC_MESH_IDS :: [Text]
     }
     deriving (Show, Eq)
 
@@ -465,7 +520,7 @@ data Misc = Misc
     , misc_FLUX_LIMITER :: Int
     , misc_FORCE_VECTOR :: [Double]
     , misc_FREEZE_VELOCITY :: Bool
-    , misc_FYI :: String
+    , misc_FYI :: Maybe String
     , misc_GAMMA :: Double
     , misc_GRAVITATIONAL_DEPOSITION :: Bool
     , misc_GRAVITATIONAL_SETTLING :: Bool
@@ -630,28 +685,28 @@ data Obst = Obst
 data Part = Part
     { part_AGE :: Double
     , part_BREAKUP :: Bool
-    , part_BREAKUP_CNF_RAMP_ID :: String
+    , part_BREAKUP_CNF_RAMP_ID :: Maybe String
     , part_BREAKUP_DISTRIBUTION :: String
     , part_BREAKUP_GAMMA_D :: Double
     , part_BREAKUP_RATIO :: Double
-    , part_BREAKUP_SIGMA_D :: Double
+    , part_BREAKUP_SIGMA_D :: Maybe Double
     , part_CHECK_DISTRIBUTION :: Bool
-    , part_CNF_RAMP_ID :: String
+    , part_CNF_RAMP_ID :: Maybe String
     , part_COLOR :: String
     , part_COMPLEX_REFRACTIVE_INDEX :: Double
-    , part_CTRL_ID :: String
+    , part_CTRL_ID :: Maybe String
     , part_DENSE_VOLUME_FRACTION :: Double
-    , part_DEVC_ID :: String
-    , part_DIAMETER :: Double
+    , part_DEVC_ID :: Maybe String
+    , part_DIAMETER :: Maybe Double
     , part_DISTRIBUTION :: String
     , part_DRAG_COEFFICIENT :: [Double]
     , part_DRAG_LAW :: String
-    , part_FREE_AREA_FRACTION :: Double
-    , part_FYI :: String
+    , part_FREE_AREA_FRACTION :: Maybe Double
+    , part_FYI :: Maybe String
     , part_GAMMA_D :: Double
-    , part_HEAT_OF_COMBUSTION :: Double
+    , part_HEAT_OF_COMBUSTION :: Maybe Double
     , part_HORIZONTAL_VELOCITY :: Double
-    , part_ID :: String
+    , part_ID :: Maybe String
     , part_INITIAL_TEMPERATURE :: Double
     , part_MASSLESS :: Bool
     , part_MAXIMUM_DIAMETER :: Double
@@ -660,23 +715,24 @@ data Part = Part
     , part_N_STRATA :: Int
     , part_ORIENTATION :: [Double]
     , part_PERMEABILITY :: [Double]
-    -- , part_PERIODIC_X :: String
-    -- , part_PERIODIC_Y :: String
-    -- , part_PERIODIC_Z :: String
-    , part_POROUS_VOLUME_FRACTION :: Double
-    , part_PROP_ID :: String
+    , part_PERIODIC_X :: Bool
+    , part_PERIODIC_Y :: Bool
+    , part_PERIODIC_Z :: Bool
+    , part_POROUS_VOLUME_FRACTION :: Maybe Double
+    , part_PROP_ID :: Maybe String
     , part_QUANTITIES :: [String]
     , part_QUANTITIES_SPEC_ID :: [String]
-    , part_RADIATIVE_PROPERTY_TABLE :: String
+    , part_RADIATIVE_PROPERTY_TABLE :: Maybe Double
     , part_REAL_REFRACTIVE_INDEX :: Double
-    , part_RGB :: RGB
+    , part_RGB :: Maybe RGB
+    , part_RUNNING_AVERAGE_FACTOR :: Double
     , part_SAMPLING_FACTOR :: Int
     , part_SECOND_ORDER_PARTICLE_TRANSPORT :: Bool
-    , part_SIGMA_D :: Double
-    , part_SPEC_ID :: String
+    , part_SIGMA_D :: Maybe Double
+    , part_SPEC_ID :: Maybe String
     , part_STATIC :: Bool
     , part_SURFACE_TENSION :: Double
-    , part_SURF_ID :: String
+    , part_SURF_ID :: Maybe String
     , part_TARGET_ONLY :: Bool
     , part_TURBULENT_DISPERSION :: Bool
     , part_VERTICAL_VELOCITY :: Double
@@ -736,7 +792,7 @@ data Prof = Prof
 
 data Prop = Prop
     { prop_ACTIVATION_OBSCURATION :: Double
-    , prop_ACTIVATION_TEMPERATURE :: [Double]
+    , prop_ACTIVATION_TEMPERATURE :: Double
     , prop_ALPHA_C :: Double
     , prop_ALPHA_E :: Double
     , prop_BEAD_DENSITY :: Double
@@ -756,10 +812,11 @@ data Prop = Prop
     , prop_FLOW_RAMP :: String
     , prop_FLOW_RATE :: Double
     , prop_FLOW_TAU :: Double
+    , prop_FYI :: Maybe String
     , prop_GAUGE_EMISSIVITY :: Double
     , prop_GAUGE_TEMPERATURE :: Double
     , prop_HEAT_TRANSFER_COEFFICIENT :: Double
-    , prop_ID :: String
+    , prop_ID :: Maybe String
     , prop_INITIAL_TEMPERATURE :: Double
     , prop_K_FACTOR :: Double
     , prop_LENGTH :: Double
@@ -785,7 +842,7 @@ data Prop = Prop
     , prop_PRESSURE_RAMP :: String
     -- , prop_PX :: String
     -- , prop_PXX :: String
-    , prop_QUANTITY :: String
+    , prop_QUANTITY :: Maybe String
     , prop_RTI :: Double
     , prop_SMOKEVIEW_ID :: [String]
     , prop_SMOKEVIEW_PARAMETERS :: [String]
@@ -825,18 +882,23 @@ data Radi = Radi
     deriving (Show, Eq)
 
 data Ramp = Ramp
-    { ramp_CTRL_ID :: String
-    , ramp_DEVC_ID :: String
-    , ramp_F :: Double
-    , ramp_FYI :: String
-    , ramp_ID :: String
-    , ramp_NUMBER_INTERPOLATION_POINTS :: Int
-    , ramp_T :: Double
-    , ramp_X :: Double
-    , ramp_Z :: Double
-    }
+    { ramp_ID :: String
+    , ramp_entries :: [RampEntry]
+    } deriving (Show, Eq)
+
+data RampEntry = RampEntry
+    { rampEntry_CTRL_ID :: String
+    , rampEntry_DEVC_ID :: String
+    , rampEntry_F :: Double
+    , rampEntry_FYI :: Maybe String
+    , rampEntry_NUMBER_INTERPOLATION_POINTS :: Int
+    , rampEntry_T :: Double
+    , rampEntry_X :: Double
+    , rampEntry_Z :: Double
+    } deriving (Show, Eq)
+
 data Reac = Reac
-    { reac_A :: Double
+    { reac_A :: Maybe Double
     -- , reac_ALT_REAC_ID :: String
     , reac_AUTO_IGNITION_TEMPERATURE :: Double
     , reac_C :: Double
@@ -855,10 +917,10 @@ data Reac = Reac
     , reac_FUEL :: String
     , reac_FUEL_RADCAL_ID :: String
     -- , reac_FWD_ID :: String
-    , reac_FYI :: String
+    , reac_FYI :: Maybe String
     , reac_H :: Double
     , reac_HEAT_OF_COMBUSTION :: Double
-    , reac_ID :: String
+    , reac_ID :: Maybe String
     , reac_IDEAL :: Bool
     , reac_N :: Double
     , reac_NU :: [Double]
@@ -885,7 +947,6 @@ data Reac = Reac
     -- , reac_Y_P_MIN_EDC :: String
     }
     deriving (Show, Eq)
--- ^ID FYI SOOT_YIELD N C H O OTHER MW_OTHER Y_CO Y_H2 HEAT_OF_COMBUSTION EPUMO2 HFRAC
 
 data Slcf = Slcf
     { slcf_AGL_SLICE :: String
@@ -893,23 +954,23 @@ data Slcf = Slcf
     , slcf_EVACUATION :: Bool
     -- , slcf_FACE_CENTERED :: String
     -- , slcf_FIRE_LINE :: String
-    , slcf_FYI :: String
-    , slcf_ID :: String
+    , slcf_FYI :: Maybe String
+    , slcf_ID :: Maybe String
     , slcf_IOR :: Int
     , slcf_LEVEL_SET_FIRE_LINE :: String
     , slcf_MAXIMUM_VALUE :: Double
     , slcf_MESH_NUMBER :: Int
     , slcf_MINIMUM_VALUE :: Double
     , slcf_PART_ID :: String
-    , slcf_PBX :: Double
-    , slcf_PBY :: Double
-    , slcf_PBZ :: Double
+    , slcf_PBX :: Maybe Double
+    , slcf_PBY :: Maybe Double
+    , slcf_PBZ :: Maybe Double
     -- , slcf_PROP_ID :: String
-    , slcf_QUANTITY :: String
-    , slcf_QUANTITY2 :: String
+    , slcf_QUANTITY :: Maybe String
+    , slcf_QUANTITY2 :: Maybe String
     , slcf_REAC_ID :: String
     -- , slcf_SLICETYPE :: String
-    , slcf_SPEC_ID :: String
+    , slcf_SPEC_ID :: Maybe String
     , slcf_VECTOR :: Bool
     , slcf_VELO_INDEX :: Int
     , slcf_XB :: XB
@@ -931,7 +992,7 @@ data Spec = Spec
     , spec_FIC_CONCENTRATION :: Double
     , spec_FLD_LETHAL_DOSE :: Double
     , spec_FORMULA :: String
-    , spec_FYI :: String
+    , spec_FYI :: Maybe String
     , spec_HEAT_OF_VAPORIZATION :: Double
     , spec_H_V_REFERENCE_TEMPERATURE :: Double
     , spec_ID :: String
@@ -968,7 +1029,7 @@ data Spec = Spec
 
 data Surf = Surf
     { surf_ADIABATIC :: Bool
-    -- , surf_AUTO_IGNITION_TEMPERATURE :: String
+    , surf_AUTO_IGNITION_TEMPERATURE :: Double
     , surf_BACKING :: String
     , surf_BURN_AWAY :: Bool
     , surf_CELL_SIZE_FACTOR :: Double
@@ -978,7 +1039,7 @@ data Surf = Surf
     , surf_C_FORCED_RE_EXP :: Double
     , surf_C_HORIZONTAL :: Double
     , surf_C_VERTICAL :: Double
-    , surf_COLOR :: String
+    , surf_COLOR :: Maybe String
     , surf_CONVECTION_LENGTH_SCALE :: Double
     , surf_CONVECTIVE_HEAT_FLUX :: Double
     , surf_CONVERT_VOLUME_TO_MASS :: Bool
@@ -991,30 +1052,30 @@ data Surf = Surf
     , surf_E_COEFFICIENT :: Double
     , surf_FIRELINE_MLR_MAX :: Double
     , surf_FREE_SLIP :: Bool
-    , surf_FYI :: String
+    , surf_FYI :: Maybe String
     , surf_GEOMETRY :: String
     , surf_HEAT_OF_VAPORIZATION :: Double
     , surf_HEAT_TRANSFER_COEFFICIENT :: Double
     , surf_HEAT_TRANSFER_COEFFICIENT_BACK :: Double
     , surf_HEAT_TRANSFER_MODEL :: String
-    , surf_HRRPUA :: Double
+    , surf_HRRPUA :: Maybe Double
     , surf_HT3D :: Bool
-    , surf_ID :: String
+    , surf_ID :: Maybe String
     , surf_IGNITION_TEMPERATURE :: Double
     , surf_INNER_RADIUS :: Double
     , surf_INTERNAL_HEAT_SOURCE :: [Double]
     , surf_LAYER_DIVIDE :: Double
     , surf_LEAK_PATH :: [Int]
     , surf_LENGTH :: Double
-    , surf_MASS_FLUX :: [Double]
-    , surf_MASS_FLUX_TOTAL :: Double
-    , surf_MASS_FLUX_VAR :: Double
+    , surf_MASS_FLUX :: Maybe [Double]
+    , surf_MASS_FLUX_TOTAL :: Maybe Double
+    , surf_MASS_FLUX_VAR :: Maybe Double
     , surf_MASS_FRACTION :: [Double]
     , surf_MASS_TRANSFER_COEFFICIENT :: Double
     , surf_MATL_ID :: [String]
     , surf_MATL_MASS_FRACTION :: [Double]
     , surf_MINIMUM_LAYER_THICKNESS :: Double
-    , surf_MLRPUA :: Double
+    , surf_MLRPUA :: Maybe Double
     -- , surf_N_CELLS_MAX :: String
     , surf_N_LAYER_CELLS_MAX :: [Int]
     , surf_NET_HEAT_FLUX :: Double
@@ -1028,13 +1089,13 @@ data Surf = Surf
     , surf_RAMP_EF :: String
     , surf_RAMP_MF :: [String]
     , surf_RAMP_PART :: String
-    , surf_RAMP_Q :: String
-    , surf_RAMP_T :: String
-    , surf_RAMP_T_I :: String
-    , surf_RAMP_V :: String
-    , surf_RAMP_V_X :: String
-    , surf_RAMP_V_Y :: String
-    , surf_RAMP_V_Z :: String
+    , surf_RAMP_Q :: Maybe String
+    , surf_RAMP_T :: Maybe String
+    , surf_RAMP_T_I :: Maybe String
+    , surf_RAMP_V :: Maybe String
+    , surf_RAMP_V_X :: Maybe String
+    , surf_RAMP_V_Y :: Maybe String
+    , surf_RAMP_V_Z :: Maybe String
     , surf_RGB :: RGB
     , surf_ROUGHNESS :: Double
     , surf_SPEC_ID :: String
@@ -1084,11 +1145,11 @@ data Surf = Surf
     , surf_VEG_LSET_ELLIPSE :: Double
     , surf_VEG_LSET_TAN2 :: Bool
     , surf_VEG_LSET_ELLIPSE_HEAD :: Double
-    , surf_VEL :: Double
+    , surf_VEL :: Maybe Double
     , surf_VEL_BULK :: Double
     , surf_VEL_GRAD :: Double
-    , surf_VEL_T :: [Double]
-    , surf_VOLUME_FLOW :: Double
+    , surf_VEL_T :: Maybe (Double, Double)
+    , surf_VOLUME_FLOW :: Maybe Double
     , surf_WIDTH :: Double
     , surf_XYZ :: XYZ
     , surf_Z0 :: Double
@@ -1130,17 +1191,17 @@ data SurfBurner = SurfBurner
     deriving (Show, Eq)
 
 data Tabl = Tabl
-    { tabl_FYI :: String
+    { tabl_FYI :: Maybe String
     , tabl_ID :: String
     , tabl_TABLE_DATA :: [Double]
     }
     deriving (Show, Eq)
 
 data Time = Time
-    { time_DT :: Double
+    { time_DT :: Maybe Double
     , time_EVAC_DT_FLOWFIELD :: Double
     , time_EVAC_DT_STEADY_STATE :: Double
-    , time_FYI :: Text
+    , time_FYI :: Maybe String
     , time_LIMITING_DT_RATIO :: Double
     , time_LOCK_TIME_STEP :: Bool
     , time_RESTRICT_TIME_STEP :: Bool
@@ -1156,7 +1217,7 @@ data Time = Time
 
 data Trnx = Trnx
     { trnx_CC :: Double
-    , trnx_FYI :: String
+    , trnx_FYI :: Maybe String
     , trnx_IDERIV :: Int
     , trnx_MESH_NUMBER :: Int
     , trnx_PC :: Double
@@ -1165,7 +1226,7 @@ data Trnx = Trnx
 
 data Trny = Trny
     { trny_CC :: Double
-    , trny_FYI :: String
+    , trny_FYI :: Maybe String
     , trny_IDERIV :: Int
     , trny_MESH_NUMBER :: Int
     , trny_PC :: Double
@@ -1174,7 +1235,7 @@ data Trny = Trny
 
 data Trnz = Trnz
     { trnz_CC :: Double
-    , trnz_FYI :: String
+    , trnz_FYI :: Maybe String
     , trnz_IDERIV :: Int
     , trnz_MESH_NUMBER :: Int
     , trnz_PC :: Double
@@ -1182,13 +1243,13 @@ data Trnz = Trnz
     deriving (Show, Eq)
 
 data Vent = Vent
-    { vent_COLOR :: String
+    { vent_COLOR :: Maybe String
     , vent_CTRL_ID :: String
     , vent_DEVC_ID :: String
     , vent_DYNAMIC_PRESSURE :: Double
     , vent_EVACUATION :: Bool
-    , vent_FYI :: String
-    , vent_ID :: String
+    , vent_FYI :: Maybe String
+    , vent_ID :: Maybe String
     , vent_IOR :: Int
     , vent_L_EDDY :: Double
     , vent_L_EDDY_IJ :: [Int]
@@ -1205,7 +1266,7 @@ data Vent = Vent
     , vent_REYNOLDS_STRESS :: [Double]
     , vent_RGB :: RGB
     , vent_SPREAD_RATE :: Double
-    , vent_SURF_ID :: String
+    , vent_SURF_ID :: Maybe String
     , vent_TEXTURE_ORIGIN :: [Double]
     , vent_TMP_EXTERIOR :: Double
     , vent_TMP_EXTERIOR_RAMP :: String
@@ -1213,7 +1274,7 @@ data Vent = Vent
     , vent_UVW :: [Double]
     , vent_VEL_RMS :: Double
     -- , vent_WIND :: String
-    , vent_XB :: XB
+    , vent_XB :: Maybe XB
     , vent_XYZ :: XYZ
     }
     deriving (Show, Eq)

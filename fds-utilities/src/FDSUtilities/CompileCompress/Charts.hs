@@ -11,7 +11,6 @@ import FDSUtilities.Simulation
 import FDSUtilities.Parsing.SimulationData
 import FDSUtilities.Types
 import FDSUtilities.Types.Monitor
--- import FDSUtilities.FDSFileFunctions
 import FDSUtilities.Monitor
 
 import System.Directory

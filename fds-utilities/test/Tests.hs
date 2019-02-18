@@ -77,13 +77,13 @@ tests =
     -- , testProperty "label" prop_propertyTest
     , testGroup "Verification Tests" $
         (hUnitTestToTests verificationTests)
+    , testGroup "Full Verification Tests" $
+        (hUnitTestToTests fullVerificationTests)
     ]
 
 outParseTests = TestLabel "Out File Parsing Tests" $ TestList
     [ test1
 --     , test2
-    , verificationTest
-    , verificationTest2
     , fullVerificationTest1
     , fullVerificationTest2
     , verificationCompilation
@@ -116,12 +116,24 @@ test1 = TestLabel "Some Test" $ TestCase $ do
 --         else error "wrong number of timesteps"
 --     return ()
 
+fullVerificationTests = TestList
+    [ verificationTest
+    , verificationTest2
+    -- , fullVerificationTest1
+    -- , fullVerificationTest2
+    -- , verificationCompilation
+    -- , inputSummary1
+    -- , inputSummary2
+    -- , inputSummary3
+    -- , charts1
+    ]
+
 verificationTest = TestLabel "verificationTest" $ TestCase $ do
-  Right res <- verifyInputFile "test-data/BunCentreCoarse/BunCentreCoarse.fds"
+  Right res <- verifyInputFile "test-data/IlonaRose_MD_R57_IlonaRose.fds"
   writeFile "test-out/verif.html" $ renderHtml $ H.toHtml res
 
 verificationTest2 = TestLabel "verificationTest2" $ TestCase $ do
-  Right res <- verifyInputFile "test-data/L140070_MZ1A_R7_CTCI.fds"
+  Right res <- verifyInputFile "test-data/BunCentreCoarse/BunCentreCoarse.fds"
   writeFile "test-out/verifCTCI.html" $ renderHtml $ H.toHtml res
 
 fullVerificationTest1 = TestLabel "verificationTest1" $ TestCase $ do

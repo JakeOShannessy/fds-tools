@@ -53,7 +53,10 @@ mkDataVectorPairFromLists (xName, xUnits, xs) (yName, yUnits, ys)
       (DataVector xName xUnits (V.fromList xs))
       (DataVector yName yUnits (V.fromList ys))
 
+interpolateVectorPairX :: Double -> DataVectorPair Double Double -> Maybe Double
 interpolateVectorPairX targX (DataVectorPair dv1 dv2) = interpolateVectors targX dv2 dv1
+
+interpolateVectorPairY :: Double -> DataVectorPair Double Double -> Maybe Double
 interpolateVectorPairY targY (DataVectorPair dv1 dv2) = interpolateVectors targY dv1 dv2
 
 interpolateVectors :: Double -> DataVector Double -> DataVector Double -> Maybe Double
@@ -72,6 +75,7 @@ interpolateVectors target2 (DataVector name1 units1 values1) (DataVector name2 u
                     | otherwise = Nothing
 
 -- |Test if x lies in the range [a,b].
+between :: Ord a => a -> a -> a -> Bool
 between x a b | x <= b && x >= a = True
               | x <= a && x >= b = True
               | otherwise = False
@@ -81,9 +85,13 @@ between x a b | x <= b && x >= a = True
         -- interpolate targ2 (v1a:v1b:v1s) (v2a:v2b:v2s) | targ2 < v2b && targ2 > v2a = Just $ interp targ2 v1a v1b v2a v2b
                                                       -- -- | targ2 < v2a && targ2 > v2b = Just $ interp targ2 v1a v1b v2a v2b
                                                       -- -- | otherwise = interpolate targ2 (v1b:v1s) (v2b:v2s)
+interp :: Fractional a => a -> a -> a -> a -> a -> a
 interp targetY x1 x2 y1 y2 = (targetY-y1)/(y2-y1)*(x2-x1)+x1
+
+interpIndex :: (Fractional a, V.Unbox a) => V.Vector a -> V.Vector a -> a -> Int -> Int -> a
 interpIndex vecI vecJ targetY i1 i2 = interp targetY (vecI V.! i1) (vecI V.! i2) (vecJ V.! i1) (vecJ V.! i2)
 
+vecLength :: (V.Unbox b, V.Unbox a) => DataVectorPair a b -> Int
 vecLength (DataVectorPair (DataVector name1 units1 values1) (DataVector name2 units2 values2)) = if length1 == length2 then length1 else error "DataVectorPair of inconsistent lengths"
     where
         length1 = V.length values1

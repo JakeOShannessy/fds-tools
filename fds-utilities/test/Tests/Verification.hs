@@ -6,12 +6,12 @@ import qualified Data.Array as A
 import Data.Default
 
 import FDSUtilities.Parsing
-import FDSUtilities.Verification.Tests
 import Text.Namelist
 import Test.HUnit
 import FDSUtilities.Types
 import FDSUtilities.Types.Assess
-import FDSUtilities.FDSFileFunctions
+import FDSUtilities.FDSFile
+import FDSUtilities.Verification.Tests
 
 import Text.Parsec (SourcePos)
 import Text.Parsec.Pos (initialPos)
@@ -46,7 +46,7 @@ testFlowDevc1 = TestLabel "Unmetered flow device" $
                     ]))
                 ])
                 (initialPos "Test Input")
-        fdsData = NamelistFile ""
+        fdsData = decodeNamelistFile $ NamelistFile ""
             [ ventNml
             , Namelist "SURF" "" (M.fromList
                 [ ("ID", ParString "Ex")
@@ -54,7 +54,7 @@ testFlowDevc1 = TestLabel "Unmetered flow device" $
                 ])
                 (initialPos "Test Input")
             ]
-    in hasFlowDevc fdsData ventNml ~?= False
+    in hasFlowDevc fdsData (head $ fdsFile_Vents fdsData) ~?= False
 
 testFlowDevc2 = TestLabel "Metered flow device" $
     let ventNml = Namelist "VENT" "" (M.fromList
@@ -80,7 +80,7 @@ testFlowDevc2 = TestLabel "Metered flow device" $
                 , ("QUANTITY", ParString "VOLUME FLOW")
                 ])
                 (initialPos "Test Input")
-        fdsData = NamelistFile ""
+        fdsData = decodeNamelistFile $ NamelistFile ""
             [ ventNml
             , flowDevcNml
             , Namelist "SURF" "" (M.fromList
@@ -89,7 +89,7 @@ testFlowDevc2 = TestLabel "Metered flow device" $
                 ])
                 (initialPos "Test Input")
             ]
-    in hasFlowDevc fdsData ventNml ~?= True
+    in hasFlowDevc fdsData (head $ fdsFile_Vents fdsData) ~?= True
 
 testFlowDevc3 = TestLabel "Incorrectly metered flow device (small device)" $
     let ventNml = Namelist "VENT" "" (M.fromList
@@ -115,7 +115,7 @@ testFlowDevc3 = TestLabel "Incorrectly metered flow device (small device)" $
                 , ("QUANTITY", ParString "VOLUME FLOW")
                 ])
                 (initialPos "Test Input")
-        fdsData = NamelistFile ""
+        fdsData = decodeNamelistFile $ NamelistFile ""
             [ ventNml
             , flowDevcNml
             , Namelist "SURF" "" (M.fromList
@@ -124,7 +124,7 @@ testFlowDevc3 = TestLabel "Incorrectly metered flow device (small device)" $
                 ])
                 (initialPos "Test Input")
             ]
-    in hasFlowDevc fdsData ventNml ~?= False
+    in hasFlowDevc fdsData (head $ fdsFile_Vents fdsData) ~?= False
 
 testFlowDevc4 = TestLabel "Incorrectly metered flow device (wrong QUANTITY)" $
     let ventNml = Namelist "VENT" "" (M.fromList
@@ -150,7 +150,7 @@ testFlowDevc4 = TestLabel "Incorrectly metered flow device (wrong QUANTITY)" $
                 , ("QUANTITY", ParString "TEMPERATURE")
                 ])
                 (initialPos "Test Input")
-        fdsData = NamelistFile ""
+        fdsData = decodeNamelistFile $ NamelistFile ""
             [ ventNml
             , flowDevcNml
             , Namelist "SURF" "" (M.fromList
@@ -159,11 +159,11 @@ testFlowDevc4 = TestLabel "Incorrectly metered flow device (wrong QUANTITY)" $
                 ])
                 (initialPos "Test Input")
             ]
-    in hasFlowDevc fdsData ventNml ~?= False
+    in hasFlowDevc fdsData (head $ fdsFile_Vents fdsData) ~?= False
 
 deviceWithinObstruction = TestLabel "Device correctly identified as being within obstruction" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-within-obstruction/detector-inside-block.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = devicesTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -173,7 +173,7 @@ deviceWithinObstruction = TestLabel "Device correctly identified as being within
 
 deviceNotWithinObstruction = TestLabel "Device correctly identified as not being within obstruction" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-within-obstruction/detector-not-inside-block.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = devicesTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -183,7 +183,7 @@ deviceNotWithinObstruction = TestLabel "Device correctly identified as not being
 
 deviceBelowObstruction = TestLabel "Device correctly identified as being beneath an obstruction" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-ceiling.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -193,7 +193,7 @@ deviceBelowObstruction = TestLabel "Device correctly identified as being beneath
 
 deviceBelowObstruction2 = TestLabel "Device correctly identified as being beneath an obstruction #2" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-ceiling2.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -203,7 +203,7 @@ deviceBelowObstruction2 = TestLabel "Device correctly identified as being beneat
 
 deviceNotBelowObstruction = TestLabel "Device correctly identified as not being beneath an obstruction" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-not-beneath-ceiling.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -213,7 +213,7 @@ deviceNotBelowObstruction = TestLabel "Device correctly identified as not being 
 
 deviceBelowSolidMeshBoundary = TestLabel "Device correctly identified as being beneath a solid mesh boundary" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-solid-mesh-boundary.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -223,7 +223,7 @@ deviceBelowSolidMeshBoundary = TestLabel "Device correctly identified as being b
 
 deviceBelowOpenMeshBoundary = TestLabel "Device correctly identified as being beneath an open mesh boundary" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-open-mesh-boundary.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -231,9 +231,9 @@ deviceBelowOpenMeshBoundary = TestLabel "Device correctly identified as being be
         Node (CompletedTest _ (Success _)) _ -> assertFailure "Verification test incorrectly succeeded"
         _ -> assertFailure "Incorrect result"
 
-deviceBelowSharedMeshBoundary = TestLabel "Device correctly identified as being beneath an shared mesh boundary" $ TestCase $ do
+deviceBelowSharedMeshBoundary = TestLabel "Device correctly identified as being beneath a shared mesh boundary" $ TestCase $ do
     file <- Paths_fds_utilities.getDataFileName "test-data/device-beneath-ceiling/sprinkler-beneath-shared-mesh-boundary.fds"
-    Right fdsData <- parseFDSFile file
+    Right fdsData <- (fmap decodeNamelistFile) <$> parseFDSFile file
     let tree = spkDetCeilingTest fdsData
     -- Tree should be a single test with a failure result
     case tree of
@@ -299,4 +299,4 @@ fdsData1 = TestLabel "Single Obst test" $
         decodedNamelistFile = (decodeNamelistFile fdsData) {
             fdsFile_unknownNamelists = []
         }
-    in decodedNamelistFile ~?= expectedFDSFile
+    in (fdsFile_Obsts decodedNamelistFile) ~?= [expectedObst]

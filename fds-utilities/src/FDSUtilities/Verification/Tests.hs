@@ -3,9 +3,9 @@ module FDSUtilities.Verification.Tests where
 
 import FDSUtilities.Simulation
 import FDSUtilities.Parsing
-import FDSUtilities.FDSFileFunctions
 import FDSUtilities.Types.Assess
 import FDSUtilities.Types
+import FDSUtilities.FDSFile
 import Data.List
 import System.Directory
 import System.FilePath
@@ -22,9 +22,8 @@ import Text.Parsec.Pos
 
 default (T.Text)
 
--- CONSIDER: There are multiple ways to get the slice files: smvFile or directory search
--- sliceFileFilePaths :: FDSSimulation -> [String]
--- sliceFileFilePaths simulation =
+-- CONSIDER: There are multiple ways to get the slice files: smvFile or
+-- directory search
 preSimulationSuite :: FDSSimulation -> IO Bool
 preSimulationSuite simulation = do
     fdsFileData <- parseSimulationFDSFile simulation
@@ -36,7 +35,9 @@ validateSimulation simulation = do
     relatedFiles <- gatherFilenames simulation
     smvListedFiles <- getSMVListedFiles simulation
     vp <- validateFilePresence relatedFiles smvListedFiles requiredFiles
-    if vp then putStrLn "Validation suite passed." else putStrLn "Validation suite failed."
+    if vp
+        then putStrLn "Validation suite passed."
+        else putStrLn "Validation suite failed."
     return vp
     where
         requiredFiles = map ((flip basicSuffix) simulation) requiredSuffixes
@@ -99,11 +100,9 @@ requiredSuffixes =
 
 --VERIFICATION PROPERTIES
 
-
-
 verificationAssessment = Assessment . verificationTests
 
-verificationTests :: NamelistFile -> Tree CompletedTest
+verificationTests :: FDSFile -> Tree CompletedTest
 verificationTests fdsData =
   let
     testName = "Verification Assessment"
@@ -125,156 +124,141 @@ flowCoverage fdsData =
     let
         testName = "Flow Coverage Test"
         -- it is also possible that other objects (such as OBST have flow)
-        vents = findNamelists fdsData "VENT"
-        obsts = findNamelists fdsData "OBST"
-        surfs = findNamelists fdsData "SURF"
+        vents = fdsFile_Vents fdsData
+        obsts = fdsFile_Obsts fdsData
+        surfs = fdsFile_Surfs fdsData
         -- vents which may have a flow
         ventsWithFlows = filter (ventHasFlow fdsData) vents
         -- obsts that have surfaces with flows
-        obstWithFlows = filter (\flowable -> maybe False id (surfHasFlow <$> getSurf surfs flowable)) vents
-        -- for each of the vents, ensure there is a flow device with the same dimensions
-        -- find those which do not
+        obstWithFlows = filter (obstHasFlow fdsData) vents
+        -- for each of the vents, ensure there is a flow device with the same
+        -- dimensions find those which do not
         notCovered =  filter (not . (hasFlowDevc fdsData)) ventsWithFlows
     in if null notCovered
-            then Node (CompletedTest testName $ Success $ "All flow devices have devcs.") []
-            else Node (CompletedTest testName $ Failure $ unlines $ map formatRes notCovered) []
+            then Node (CompletedTest testName $ Success
+                $ "All flow devices have devcs.") []
+            else Node (CompletedTest testName $ Failure $ unlines
+                $ map formatRes notCovered) []
     where
-        formatRes nml = "Flow object " ++ getIdString nml ++ " does not have a flow tracking devices.\n    " ++ T.unpack (pprint nml)
+        formatRes nml = "Flow object " <> getIdBound nml
+            <> " does not have a flow tracking devices.\n    "
+            -- ++ T.unpack (pprint nml)
 
 leakage fdsData =
     let
         testName = "Leakage Implementation Test"
-        parts = findNamelists fdsData "PART"
+        parts = fdsFile_Parts fdsData
         screenParts = filter isScreenPart parts
-        isScreenPart part = case getParameterMaybe part "DRAG_LAW" of
-            Nothing -> False
-            Just (ParString "SCREEN") -> True
-            Just _ -> False
-        hasInertOrDefaultSurf nml = case getParameterMaybe nml "SURF_ID" of
+        isScreenPart part = case part_DRAG_LAW part of
+            "SCREEN" -> True
+            _ -> False
+        hasInertOrDefaultSurf nml = case part_SURF_ID nml of
             Nothing -> True
-            Just (ParString "INERT") -> True
+            Just "INERT" -> True
             _ -> False
     in if all (not . hasInertOrDefaultSurf) screenParts
-            then Node (CompletedTest testName $ Success $ "No inert screens.") []
-            else Node (CompletedTest testName $ Failure $ "PART uses the SCREEN drag law, but uses an INERT surface.") []
+            then Node (CompletedTest testName $ Success
+                $ "No inert screens.")
+                []
+            else Node (CompletedTest testName $ Failure
+                $ "PART uses the SCREEN drag law, but uses an INERT surface.")
+                []
 
 -- |Ensure that no devices are stuck in solids.
-devicesTest :: NamelistFile -> Tree CompletedTest
+devicesTest :: FDSFile -> Tree CompletedTest
 devicesTest fdsData =
     let
         testName = "Devices Stuck in Solids Test"
-        stuckDevices = filter (fromMaybe False . stuckInSolid fdsData) $ getDevices fdsData
+        stuckDevices = filter (fromMaybe False . stuckInSolid fdsData)
+            $ fdsFile_Devcs fdsData
     in if null stuckDevices
         then Node (CompletedTest testName $ Success $ "No stuck devices.") []
-        else Node (CompletedTest testName $ Failure $ unlines $ map formatRes stuckDevices) []
+        else Node (CompletedTest testName $ Failure $ unlines
+            $ map formatRes stuckDevices) []
     where
-        formatRes nml = "Device " ++ getIdString nml ++ " is placed within a solid obstruction.\n    " ++ T.unpack (pprint nml)
+        formatRes nml = "Device " <> getIdBound nml
+            <> " is placed within a solid obstruction.\n    "
+            -- <> T.unpack (pprint nml)
 
 -- |Ensure that sprinklers and smoke detectors are beneath a ceiling.
-spkDetCeilingTest :: NamelistFile -> Tree CompletedTest
+spkDetCeilingTest :: FDSFile -> Tree CompletedTest
 spkDetCeilingTest fdsData =
     let
         testName = "Sprinklers and detectors below ceiling"
-        nonBeneathCeiling = filter (not . fromMaybe False . beneathCeiling fdsData) $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x) $ getDevices fdsData
+        nonBeneathCeiling = filter
+            (not . fromMaybe False . beneathCeiling fdsData)
+            $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x)
+            $ fdsFile_Devcs fdsData
     in if null nonBeneathCeiling
         then Node (CompletedTest testName $ Success $ "No distant devices.") []
-        else Node (CompletedTest testName $ Failure $ unlines $ map formatRes nonBeneathCeiling) []
+        else Node (CompletedTest testName $ Failure $ unlines
+            $ map formatRes nonBeneathCeiling) []
     where
-        formatRes nml = "Device " ++ getIdString nml ++ " is not directly beneath the ceiling.\n    " ++ T.unpack (pprint nml)
-
-ventHasFlow :: NamelistFile -> Namelist -> Bool
-ventHasFlow fdsData vent =
-    let
-        hvacs = findNamelists fdsData "HVAC"
-        linkedHVACs :: [Namelist]
-        linkedHVACs = filter (\nml-> (maybe False id ((==) <$> getParameterMaybe nml "VENT_ID" <*> getParameterMaybe vent "ID")) || (maybe False id ((==) <$> getParameterMaybe nml "VENT2_ID" <*> getParameterMaybe vent "ID"))) hvacs
-        isHVAC :: Bool
-        isHVAC = (not . null) linkedHVACs
-    in isHVAC || (maybe False id (surfHasFlow <$> getSurf (findNamelists fdsData "SURF") vent))
+        formatRes nml = "Device " <> getIdBound nml
+            <> " is not directly beneath the ceiling.\n    "
+            -- <> T.unpack (pprint nml)
 
 -- |Take the xb dimensions of a vent and see if there is a flow vent with the
 -- matching dimensions, or a device that references it as a duct node.
-hasFlowDevc :: NamelistFile -> Namelist ->  Bool
+hasFlowDevc :: FDSFile -> Vent -> Bool
 hasFlowDevc fdsData namelist =
     let
-        devcs = filter (\nml->getParameterMaybe nml "QUANTITY" == (Just (ParString "VOLUME FLOW"))) (findNamelists fdsData "DEVC")
+        devcs = filter
+            (\nml->devc_QUANTITY nml == (Just "VOLUME FLOW"))
+            (fdsFile_Devcs fdsData)
         trackingFlowMatchingXB = any (matchXBs namelist) devcs
         -- get all the devices
-        allDevcs = findNamelists fdsData "DEVC"
+        allDevcs = fdsFile_Devcs fdsData
         -- take only the devices which have a "DUCT_ID" parameter
-        ductIDDevices = filter (\nml->isJust $ getParameterMaybe nml "DUCT_ID") allDevcs
-        -- take only the devices where the "DUCT_ID" matches the flowing namelist
+        ductIDDevices = filter (isJust . devc_DUCT_ID) allDevcs
+        -- take only the devices where the "DUCT_ID" matches the flowing
+        -- namelist
         relevantDuctIDDevices = filter (\nml-> (Just True) == (do
-            ductId <- getParameterMaybe nml "DUCT_ID"
-            flowId <- getParameterMaybe namelist "ID"
+            ductId <- devc_DUCT_ID nml
+            flowId <- getId nml
             pure (ductId == flowId))) ductIDDevices
         -- take only the devices that measure "DUCT VOLUME FLOW", and check that
         -- the list is not null
-        trackingFlowViaDuctID = not $ null $ filter (\nml->getParameterMaybe nml "QUANTITY" == (Just (ParString "DUCT VOLUME FLOW"))) allDevcs
+        trackingFlowViaDuctID = not $ null $ filter
+            (\nml->devc_QUANTITY nml == (Just "DUCT VOLUME FLOW")) allDevcs
     in trackingFlowMatchingXB || trackingFlowViaDuctID
-    -- where
-    --     matchingDuctId namelist devc =
-    --         let res = do
-    --             ductId <- getParameterMaybe devc "DUCT_ID"
-    --             flowId <- getParameterMaybe namelist "ID"
-    --             pure (ductId == flowId)
-    --         in res == (Just True)
-    --     isDuctFlowTrackingDevc devc = all
-    --         -- Check that the flow device has a "DUCT_ID" matching our flowing
-    --         -- object.
-    --         [ matchingDuctId namelist devc
-    --         -- Check that the device is measuring "DUCT VOLUME FLOW"
-    --         , getParameterMaybe nml "QUANTITY" == (Just (ParString "DUCT VOLUME FLOW"))
-    --         ]
 
--- Check one obstruction and determine if it intersects any other namelists.
-obstIntersectsWithOthers :: NamelistFile -> Namelist -> [Namelist]
+-- |Check one obstruction and determine if it intersects any other namelists.
+obstIntersectsWithOthers :: HasXB a => FDSFile -> a -> [Obst]
 obstIntersectsWithOthers fdsData namelist =
     let
-        obsts = (findNamelists fdsData "OBST")
+        obsts :: [Obst]
+        obsts = fdsFile_Obsts fdsData
     in filter (nmlIntersect namelist) obsts
 
-matchXBs :: Namelist -> Namelist -> Bool
-matchXBs nmlA nmlB = maybe False id
-    ((==)
-        <$> getParameterMaybe nmlA "XB"
-        <*> getParameterMaybe nmlB "XB")
-
-getSurf :: [Namelist] -> Namelist -> Maybe Namelist
-getSurf surfs nml = do
-    surfId <- getParameterMaybe nml "SURF_ID"
-    let ss = filter (\surf->(getParameterMaybe surf "ID") == (Just surfId)) surfs
-    case ss of
-        [s] -> pure s
-        [] -> Nothing
-        _ -> error ("Multiple matching surfs: " ++ show surfId)
-
-surfHasFlow :: Namelist -> Bool
-surfHasFlow surf = any isJust
-    [ getParameterMaybe surf "MLRPUA"
-    , getParameterMaybe surf "MASS_FLUX"
-    , getParameterMaybe surf "MASS_FLUX_TOTAL"
-    , getParameterMaybe surf "MASS_FLUX_VAR"
-    , getParameterMaybe surf "HRRPUA"
-    , getParameterMaybe surf "VEL"
-    , getParameterMaybe surf "VEL_T"
-    , getParameterMaybe surf "VOLUME_FLOW"
-    ]
+-- |Check if two objects have the same XB. If either does not have an XB, simply
+-- return False.
+matchXBs :: (MightHaveXB a, MightHaveXB b) => a -> b -> Bool
+matchXBs nmlA nmlB = case (tryGetXB nmlA, tryGetXB nmlB) of
+    (Just a, Just b) -> a == b
+    _ -> False
 
 meshOverlapTests fdsData =
     let
         testName = "Mesh Overlap Test"
-        meshes = getMeshes fdsData
-        combinations :: [(Namelist, Namelist)]
+        meshes = fdsFile_Meshes fdsData
+        combinations :: [(Mesh, Mesh)]
         combinations = combinationPairs meshes
         testPair (m1,m2) = nmlIntersect m1 m2
-        results :: [(Namelist, Namelist)]
-        results = foldl' (\failed (m1,m2) -> if nmlIntersect m1 m2 then (m1,m2):failed else failed) [] combinations
+        results :: [(Mesh, Mesh)]
+        results = foldl' (\failed (m1,m2) ->
+            if nmlIntersect m1 m2
+                then (m1,m2):failed
+                else failed) [] combinations
     in if null results
-            then Node (CompletedTest testName $ Success $ "No meshes overlap.") []
-            else Node (CompletedTest testName $ Failure $ unlines $ map formatRes results) []
+            then Node (CompletedTest testName $ Success
+                $ "No meshes overlap.") []
+            else Node (CompletedTest testName $ Failure $ unlines
+                $ map formatRes results) []
     where
-        formatRes (m1,m2) = "Meshes " ++ getIdString m1 ++ " and " ++ getIdString m2 ++ " overlap.\n    " ++ show (getXB m1) ++ "\n    " ++ show (getXB m2)
+        formatRes (m1,m2) = "Meshes " <> (show $ getId m1) <> " and "
+            <> (show $ getId m2) <> " overlap.\n    " <> show (getXB m1)
+            <> "\n    " <> show (getXB m2)
 
 combinationPairs :: [a]  -> [(a,a)]
 combinationPairs [] = []
@@ -307,7 +291,7 @@ reactionTests fdsData =
         l@(Node (CompletedTest _ r@(Failure _)) _) -> (r, [])
         l@(Node (CompletedTest _ (Success _)) _) ->
           let
-              [reac] = findNamelists fdsData "REAC"
+              [reac] = fdsFile_Reacs fdsData
               testResults :: [Tree CompletedTest]
               testResults = pam (pam tests reac) fdsData
               summaryResults :: TestResult
@@ -315,46 +299,48 @@ reactionTests fdsData =
           in (summaryResults, testResults) :: (TestResult, [Tree CompletedTest])
   in Node (CompletedTest testName summaryResults) testResults
   where
-      specified :: NamelistFile -> Tree CompletedTest
+      specified :: FDSFile -> Tree CompletedTest
       specified fdsData =
           let
               testName = "Specified"
-          in case findNamelists fdsData "REAC" of
-            []  -> Node (CompletedTest testName $ Failure "No REAC namelist specified.") []
-            [x] -> Node (CompletedTest testName $ Success "REAC namelist specified.") []
-            _   -> Node (CompletedTest testName $ Failure "Multiple REAC namelists specified.") []
+          in case fdsFile_Reacs fdsData of
+            []  -> Node (CompletedTest testName
+                $ Failure "No REAC namelist specified.") []
+            [x] -> Node (CompletedTest testName
+                $ Success "REAC namelist specified.") []
+            _   -> Node (CompletedTest testName
+                $ Failure "Multiple REAC namelists specified.") []
 
-      sootYield :: Namelist -> NamelistFile -> Tree CompletedTest
+      sootYield :: Reac -> FDSFile -> Tree CompletedTest
       sootYield reac fdsData =
           let
               propName = "Soot Yield"
               testName = "Soot Yield"
               possibleValues = [0.07, 0.1] :: [Double]
-              nValueMaybe = getParameterMaybe reac "SOOT_YIELD"
-          in case nValueMaybe of
-            Nothing -> Node (CompletedTest testName $ Failure $ propName ++ " value not specified.") []
-            Just (ParDouble nValue) -> if nValue `elem` possibleValues
-              then Node (CompletedTest testName $ Success $ propName ++ " is " ++ show nValue ++ ".") []
-              else Node (CompletedTest testName $ Failure $ propName ++ " is " ++ show nValue ++ " not one of " ++ show possibleValues ++ ".") []
-            Just _ -> Node (CompletedTest testName $ Failure $ propName ++ " is not a number.") []
+              nValue = reac_SOOT_YIELD reac
+          in if nValue `elem` possibleValues
+              then Node (CompletedTest testName $ Success
+                $ propName <> " is " <> show nValue <> ".") []
+              else Node (CompletedTest testName $ Failure
+                $ propName <> " is " <> show nValue <> " not one of "
+                <> show possibleValues <> ".") []
 
       coYield reac fdsData =
         let
             propName = "CO Yield"
             testName = "CO Yield"
             val = 0.05 :: Double
-            nValueMaybe = getParameterMaybe reac "CO_YIELD"
-        in case nValueMaybe of
-          Nothing -> Node (CompletedTest testName $ Failure $ propName ++ " value not specified.") []
-          Just (ParDouble nValue) -> if nValue == val
-            then Node (CompletedTest testName $ Success $ propName ++ " is " ++ show val ++ ".") []
-            else Node (CompletedTest testName $ Failure $ propName ++ " is " ++ show nValue ++ " not " ++ show val ++ ".") []
-          Just _ -> Node (CompletedTest testName $ Failure $ propName ++ " is not a number.") []
+            nValue = reac_CO_YIELD reac
+        in if nValue == val
+            then Node (CompletedTest testName $ Success $ propName ++ " is "
+                ++ show val ++ ".") []
+            else Node (CompletedTest testName $ Failure $ propName ++ " is "
+                ++ show nValue ++ " not " ++ show val ++ ".") []
 
 
 
 -- |Test that the MISC properties are reasonable.
-miscTests :: NamelistFile -> Tree CompletedTest
+miscTests :: FDSFile -> Tree CompletedTest
 miscTests fdsData =
     let
       testName = "MISC Properties"
@@ -366,7 +352,7 @@ miscTests fdsData =
         l@(Node (CompletedTest _ r@(Failure _)) _) -> (r, [])
         l@(Node (CompletedTest _ (Success _)) _) ->
           let
-              [misc] = findNamelists fdsData "MISC"
+              Just misc = fdsFile_Misc fdsData
               testResults :: [Tree CompletedTest]
               testResults = pam (pam tests misc) fdsData
               summaryResults :: TestResult
@@ -374,43 +360,42 @@ miscTests fdsData =
           in (summaryResults, testResults) :: (TestResult, [Tree CompletedTest])
   in Node (CompletedTest testName summaryResults) testResults
   where
-      specified :: NamelistFile -> Tree CompletedTest
+      specified :: FDSFile -> Tree CompletedTest
       specified fdsData =
           let
               testName = "Specified"
-          in case findNamelists fdsData "MISC" of
-            []  -> Node (CompletedTest testName $ Failure "No MISC namelist specified.") []
-            [x] -> Node (CompletedTest testName $ Success "MISC namelist specified.") []
-            _   -> Node (CompletedTest testName $ Failure "Multiple MISC namelists specified.") []
+          in case fdsFile_Misc fdsData of
+            Nothing -> Node (CompletedTest testName
+                $ Failure "No MISC namelist specified.") []
+            Just x  -> Node (CompletedTest testName
+                $ Success "MISC namelist specified.") []
 
-      visibilityFactor :: Namelist -> NamelistFile -> Tree CompletedTest
+      visibilityFactor :: Misc -> FDSFile -> Tree CompletedTest
       visibilityFactor misc fdsData =
           let
               testName = "Visiblity Factor"
-              nValueMaybe = getParameterMaybe misc "VISIBILITY_FACTOR"
-          in case nValueMaybe of
-            Nothing -> Node (CompletedTest testName $ Failure $ "Value not specified.") []
-            Just nValue -> case getDouble nValue of
-              3 -> Node (CompletedTest testName $ Success $ "Value: " ++ show nValue ++ ".") []
-              8 -> Node (CompletedTest testName $ Success $ "Value: " ++ show nValue ++ ".") []
-              _ -> Node (CompletedTest testName $ Failure $ "Value of " ++ show nValue ++ " not validated.") []
-            -- TODO: consider not a number Just _ -> Node (CompletedTest testName $ Failure $ "Value is not a number.") []
+              nValue = misc_VISIBILITY_FACTOR misc
+          in case nValue of
+              3 -> Node (CompletedTest testName $ Success
+                $ "Value: " ++ show nValue ++ ".") []
+              8 -> Node (CompletedTest testName $ Success
+                $ "Value: " ++ show nValue ++ ".") []
+              _ -> Node (CompletedTest testName $ Failure
+                $ "Value of " ++ show nValue ++ " not validated.") []
 
-      maximumVisibility :: Namelist -> NamelistFile -> Tree CompletedTest
+      maximumVisibility :: Misc -> FDSFile -> Tree CompletedTest
       maximumVisibility misc fdsData =
           let
               testName = "Maximum Visibility"
-              nValueMaybe = getParameterMaybe misc "MAXIMUM_VISIBILITY"
-          in case nValueMaybe of
-            Nothing -> Node (CompletedTest testName $ Failure $ "Value not specified.") []
-            Just (ParDouble nValue) -> if nValue <= 100
-              then Node (CompletedTest testName $ Success $ "Value: " ++ show nValue ++ ".") []
-              else Node (CompletedTest testName $ Success $ "Value of " ++ show nValue ++ " may result in clipped output.") []
-            Just _ -> Node (CompletedTest testName $ Failure $ "Value is not a number.") []
-
+              nValue = misc_MAXIMUM_VISIBILITY misc
+          in if nValue <= 100
+              then Node (CompletedTest testName $ Success $ "Value: "
+                ++ show nValue ++ ".") []
+              else Node (CompletedTest testName $ Success $ "Value of "
+                ++ show nValue ++ " may result in clipped output.") []
 
 -- |Test that the DUMP properties are reasonable.
-dumpTests :: NamelistFile -> Tree CompletedTest
+dumpTests :: FDSFile -> Tree CompletedTest
 dumpTests fdsData =
     let
       testName = "DUMP Properties"
@@ -422,7 +407,7 @@ dumpTests fdsData =
         l@(Node (CompletedTest _ r@(Failure _)) _) -> (r, [])
         l@(Node (CompletedTest _ (Success _)) _) ->
           let
-              [dump] = findNamelists fdsData "DUMP"
+              Just dump = fdsFile_Dump fdsData
               testResults :: [Tree CompletedTest]
               testResults = pam (pam tests dump) fdsData
               summaryResults :: TestResult
@@ -430,45 +415,44 @@ dumpTests fdsData =
           in (summaryResults, testResults) :: (TestResult, [Tree CompletedTest])
   in Node (CompletedTest testName summaryResults) testResults
   where
---       simEndTime = getSimEndTime fdsData
-      --TODO: actually get the simulation end time
       (tStart, tEnd) = getSimTimes fdsData
       simInterval = tEnd - tStart
 
-      specified :: NamelistFile -> Tree CompletedTest
+      specified :: FDSFile -> Tree CompletedTest
       specified fdsData =
           let
               testName = "Specified"
-          in case findNamelists fdsData "DUMP" of
-            []  -> Node (CompletedTest testName $ Failure "No DUMP namelist specified.") []
-            [x] -> Node (CompletedTest testName $ Success "DUMP namelist specified.") []
-            _   -> Node (CompletedTest testName $ Failure "Multiple DUMP namelists specified.") []
+          in case fdsFile_Dump fdsData of
+            Nothing  -> Node (CompletedTest testName
+                $ Failure "No DUMP namelist specified.") []
+            Just x -> Node (CompletedTest testName
+                $ Success "DUMP namelist specified.") []
 
-      dt_restart :: Namelist -> NamelistFile -> Tree CompletedTest
+      dt_restart :: Dump -> FDSFile -> Tree CompletedTest
       dt_restart dump fdsData =
           let
               testName = "Restart Interval"
-              nValueMaybe = getParameterMaybe dump "DT_RESTART"
-          in case nValueMaybe of
-            Nothing -> Node (CompletedTest testName $ Failure $ "Value not specified.") []
-            Just (ParDouble nValue) ->  Node (CompletedTest testName $ Success $ "Value: " ++ show nValue ++ ".") []
-            Just (ParInt nValue) ->  Node (CompletedTest testName $ Success $ "Value: " ++ show nValue ++ ".") []
-            Just x -> Node (CompletedTest testName $ Failure $ "Value (" ++ show x ++ ") is not a number.") []
+              nValue = dump_DT_RESTART dump
+          in Node (CompletedTest testName $ Success
+            $ "Value: " ++ show nValue ++ ".") []
 
-      nframes :: Namelist -> NamelistFile -> Tree CompletedTest
+      nframes :: Dump -> FDSFile -> Tree CompletedTest
       nframes dump fdsData =
           let
               testName = "Number of Frames"
-              nValueMaybe = getParameterMaybe dump "NFRAMES"
-          in case nValueMaybe of
-            Nothing -> Node (CompletedTest testName $ Failure $ "Value not specified.") []
-            Just (ParInt nValue) -> if (mod (round simInterval :: Int) nValue)  == 0 -- TODO: check that simTime is whole number
-              then Node (CompletedTest testName $ Success $ "Value: " ++ show nValue ++ ".") []
-              else Node (CompletedTest testName $ Success $ "Value of " ++ show nValue ++ " may result in clipped output.") []
-            Just _ -> Node (CompletedTest testName $ Failure $ "Value is not a number.") []
+              nValue = dump_NFRAMES dump
+          in if (mod (round simInterval :: Int) nValue)  == 0
+                -- TODO: check that simTime is whole number
+              then Node (CompletedTest testName $ Success
+                $ "Value: " ++ show nValue ++ ".") []
+              else Node (CompletedTest testName $ Success
+                $ "Value of " ++ show nValue
+                ++ " may result in clipped output.") []
 
 worstN :: [Tree CompletedTest] -> TestResult
-worstN ts = stripString $ worst $ map (\(Node (CompletedTest _ res) _) -> res) ts
+worstN ts = stripString $ worst
+    $ map (\(Node (CompletedTest _ res) _) -> res) ts
+
 worst :: [TestResult] -> TestResult
 worst [] = error "No results to summarise."
 worst results = last $ sort results
@@ -479,18 +463,19 @@ stripString res = case res of
             (Failure _) -> Failure ""
 
 
-burnerTestsGroup :: NamelistFile -> Tree CompletedTest
+burnerTestsGroup :: FDSFile -> Tree CompletedTest
 burnerTestsGroup = \fdsData ->
   let
     testName = "Burners"
     burners = getBurners fdsData
     completedTests = map (burnerTestsIndividual fdsData) burners
   in case completedTests of
-    [] -> Node (CompletedTest testName (Warning "No burners present.")) completedTests
+    [] -> Node (CompletedTest testName (Warning "No burners present."))
+        completedTests
     _  -> Node (CompletedTest testName (worstN completedTests)) completedTests
 
 -- |Tests to apply to the various burners found in a model.
-burnerTestsIndividual :: NamelistFile -> Namelist -> Tree CompletedTest
+burnerTestsIndividual :: FDSFile -> Burner -> Tree CompletedTest
 burnerTestsIndividual fdsData burner =
   let
       testName = "Burner Tests for " ++ burnerName
@@ -499,102 +484,120 @@ burnerTestsIndividual fdsData burner =
       summaryResults = worstN testResults
   in Node (CompletedTest testName summaryResults) testResults
   where
-    tests' :: [(Namelist -> NamelistFile -> Tree CompletedTest)]
+    tests' :: [(Burner -> FDSFile -> Tree CompletedTest)]
     tests' =
       [ sourceFroudeTest
       , nonDimTest
       , growthRateTest
       , intersectionTest
       ]
-    burnerName = getIDBound burner
+    burnerName = getIdBound burner
 
-    sourceFroudeTest :: Namelist -> NamelistFile -> Tree CompletedTest
+    sourceFroudeTest :: Burner -> FDSFile -> Tree CompletedTest
     sourceFroudeTest burner fdsData =
       let
         testName = "Source Froude Number"
-        q = maxBurnerHRR fdsData burner
+        q = getBurnerMaxHRR fdsData burner
         sF = sourceFroude q fuelArea
       in if sF <= maxThreshold
-        then Node (CompletedTest testName $ Success $ "Conforms. " ++ show sF ++ " <= " ++ show maxThreshold) []
+        then Node (CompletedTest testName $ Success $ "Conforms. " ++ show sF
+            ++ " <= " ++ show maxThreshold) []
         else Node (CompletedTest testName $ Failure $ "Does not conform.") []
       where
         fuelArea = burnerArea fdsData burner
         maxThreshold = 2.5
 
-
     -- |Test the non-dimensionalised ratio of the mesh surrounding a burner.
-    nonDimTest :: Namelist -> NamelistFile -> Tree CompletedTest
+    nonDimTest :: Burner -> FDSFile -> Tree CompletedTest
     nonDimTest burner fdsData =
       let
           testName = "Non-Dimensionalised Ratio"
-          q = maxBurnerHRR fdsData burner
-          resolutions = getObstResolutions fdsData burner
+          q = getBurnerMaxHRR fdsData burner
+          resolutions = getBurnerResolution fdsData burner
           nominalCellSizes = map getMaxCellSize resolutions
           nominalCellSize = case nominalCellSizes of
             [] -> error "no cell dimensions for burner"
             xs -> maximum xs
           getMaxCellSize (x,y,z) = maximum [x,y,z]
-          charFireDiameter = (q / (ambientDensity*ambientSpecificHeat*ambientTemperature*(sqrt g)))**(2/5)
+          charFireDiameter = (q / (ambientDensity*ambientSpecificHeat
+            *ambientTemperature*(sqrt g)))**(2/5)
           ndr = charFireDiameter/nominalCellSize
           calcs =
               [ "Min. Mesh Resolution: " ++ show nominalCellSize ++ " m"
               , "Non-Dimensionalised Ratio: " ++ show ndr
               ]
           in if ndr >= 4
-            then Node (CompletedTest testName $ Success $ unlines $ calcs ++ ["Conforms (4 <= NDR)."]) []
-            else Node (CompletedTest testName $ Failure $ unlines $ calcs ++ ["Does not conform (4 <= NDR)."]) []
+            then Node (CompletedTest testName $ Success $ unlines
+                $ calcs ++ ["Conforms (4 <= NDR)."]) []
+            else Node (CompletedTest testName $ Failure $ unlines
+                $ calcs ++ ["Does not conform (4 <= NDR)."]) []
           where
               ambientDensity = 1.205
               ambientSpecificHeat = 1.005
               ambientTemperature = 293.15
               g = 9.81
 
-    -- |Test the growth rate of a burner. A test result of Error TestResult is returned if it does not match a standard growth rate.
-    growthRateTest :: Namelist -> NamelistFile -> Tree CompletedTest
+    -- |Test the growth rate of a burner. A test result of Error TestResult is
+    -- returned if it does not match a standard growth rate.
+    growthRateTest :: Burner -> FDSFile -> Tree CompletedTest
     growthRateTest burner fdsData =
       let
           testName = "Growth Rate"
-          surf = getBurnerSurf fdsData burner
-          calcs =
-              [ "SURF: " ++ (getIDBound surf)
-              ]
-      in  if hasParameter surf "TAU_Q"
-              then case checkGrowthRate fdsData burner of
+          surfs = getBurnerSurf fdsData burner
+      in case surfs of
+        [] -> Node (CompletedTest testName
+            $ Failure "burner does not have burner surf") []
+        [surf] ->
+            let calcs =
+                    [ "SURF: " ++ (getIdBound surf)
+                    ]
+            in case checkGrowthRate fdsData burner of
                   Right (growthRate, diff) ->
                       let error = diff/(growthRateToAlpha growthRate)
                           sign = if diff >=0 then "+" else ""
-                      in Node (CompletedTest testName $ Success $ unlines $ calcs ++
+                      in Node (CompletedTest testName $ Success $ unlines
+                        $ calcs ++
                           [ show growthRate
                           , "Difference: " ++ sign ++ show diff
                           , "Error: " ++ sign ++ show (error*100) ++ "%"
                           , "Conforms to standard fire."
                           ]) []
-                  Left alpha -> Node (CompletedTest testName $ Failure $ unlines $ calcs ++
+                  Left alpha -> Node (CompletedTest testName $ Failure
+                    $ unlines $ calcs ++
                       [ "alpha: " ++ show alpha
                       , "Does not conform to standard fire."
                       ]) []
-              else Node (CompletedTest testName $ Warning $ "Not defined using TAU_Q, max. HRR is " ++ show (maxBurnerHRR fdsData burner) ++ " kW" ) []
+        _ -> Node (CompletedTest testName
+            $ Failure "burner has multiple different burner surf types") []
 
     -- |Test that teh burner does not intersect with any other obstructions.
-    intersectionTest :: Namelist -> NamelistFile -> Tree CompletedTest
-    intersectionTest burner fdsData = case getIdStringMaybe burner of
+    intersectionTest :: Burner -> FDSFile -> Tree CompletedTest
+    intersectionTest burner fdsData = case getBurnerId burner of
         -- TODO: we should be able to uniquely identify each OBST
-        Nothing -> Node (CompletedTest testName $ Failure $ "Cannot test burner intersection as burner does not have a name.") []
+        Nothing -> Node (CompletedTest testName $ Failure
+            $ "Cannot test burner intersection as burner does not have a name.")
+            []
         Just burnerId ->
             let
-                isBurner nml = case getIdStringMaybe nml of
+                isBurner nml = case getId nml of
                     Nothing -> False
                     Just x -> x == burnerId
-                intersectsWith = filter (not . isBurner) $ obstIntersectsWithOthers fdsData burner
+                intersectsWith = filter (not . isBurner)
+                    $ obstIntersectsWithOthers fdsData burner
             in if null intersectsWith
-                then Node (CompletedTest testName $ Success $ "Burner does not intersect with other obstructions.") []
+                then Node (CompletedTest testName $ Success
+                    $ "Burner does not intersect with other obstructions.") []
                 else Node (CompletedTest testName $ Failure
                     $ "Burner intersects wth the following obstructions: \n"
-                        ++ unlines (map (\nml-> indent $ (fromMaybe "(unknown)" $ getIdStringMaybe nml) ++ " at " ++ showSourcePose nml) intersectsWith)) []
+                        ++ unlines (map (\nml-> indent $ (fromMaybe "(unknown)"
+                        $ getId nml)
+                        {- ++ " at " ++ showSourcePose nml -}) intersectsWith))
+                        []
         where
             testName = "Intersection"
 
-showSourcePose nml = "Line " <> show (sourceLine pos) <> ", Column " <> show (sourceColumn pos) <> " of input file"
+showSourcePose nml = "Line " <> show (sourceLine pos) <> ", Column "
+    <> show (sourceColumn pos) <> " of input file"
     where pos = nml_location nml
 
 indent string = "--" ++ string
@@ -640,11 +643,11 @@ indent string = "--" ++ string
 
 ----GUIDELINES
 --
-outputDataCoverage :: NamelistFile -> Tree CompletedTest
+outputDataCoverage :: FDSFile -> Tree CompletedTest
 outputDataCoverage fdsData =
     let
         testName = "Output Data Coverage"
-        outputSlices = findNamelists fdsData "SLCF"
+        outputSlices = fdsFile_Slcfs fdsData
         tests =
             [ coDataCoverage
             , tempDataCoverage
@@ -674,8 +677,8 @@ coDataCoverage slices fdsData =
         testName = "CO Data Coverage"
         coSlices = filter
             (\slice
-            -> hasParameterValue "SPEC_ID" ("CARBON MONOXIDE" :: T.Text) slice
-            && hasParameterValue "QUANTITY" ("VOLUME FRACTION" :: T.Text) slice
+            -> slcf_SPEC_ID slice == Just "CARBON MONOXIDE"
+            && slcf_QUANTITY slice == Just "VOLUME FRACTION"
             ) slices
         tests =
             [ xAxisCoverage
@@ -692,7 +695,7 @@ tempDataCoverage slices fdsData =
         testName = "Temperature Data Coverage"
         coSlices = filter
             (\slice
-            -> hasParameterValue "QUANTITY" ("TEMPERATURE" :: T.Text) slice
+            -> slcf_QUANTITY slice == Just "TEMPERATURE"
             ) slices
         tests =
             [ xAxisCoverage
@@ -709,7 +712,7 @@ visDataCoverage slices fdsData =
         testName = "Soot Visibiltity Data Coverage"
         coSlices = filter
             (\slice
-            -> hasParameterValue "QUANTITY" ("VISIBILITY" :: T.Text) slice
+            -> slcf_QUANTITY slice == Just ("VISIBILITY" :: String)
             ) slices
         tests =
             [ xAxisCoverage
@@ -724,20 +727,26 @@ visDataCoverage slices fdsData =
 xAxisCoverage slices fdsData =
     let
         testName = "X Axis Coverage"
-    in if not $ null $ filter (\slice -> hasParameter slice ("PBX" :: T.Text)) slices
-      then Node (CompletedTest testName $ Success $ "Full X axis coverage of this value is present.") []
-      else Node (CompletedTest testName $ Warning $ "Full X axis coverage of this value is not present.") []
+    in if not $ null $ filter (isJust . slcf_PBX) slices
+      then Node (CompletedTest testName $ Success
+        $ "Full X axis coverage of this value is present.") []
+      else Node (CompletedTest testName $ Warning
+        $ "Full X axis coverage of this value is not present.") []
 
 yAxisCoverage slices fdsData =
     let
         testName = "Y Axis Coverage"
-    in if not $ null $ filter (\slice -> hasParameter slice ("PBY" :: T.Text)) slices
-      then Node (CompletedTest testName $ Success $ "Full Y axis coverage of this value is present.") []
-      else Node (CompletedTest testName $ Warning $ "Full Y axis coverage of this value is not present.") []
+    in if not $ null $ filter (isJust . slcf_PBY) slices
+      then Node (CompletedTest testName $ Success
+        $ "Full Y axis coverage of this value is present.") []
+      else Node (CompletedTest testName $ Warning
+        $ "Full Y axis coverage of this value is not present.") []
 
 zAxisCoverage slices fdsData =
     let
         testName = "Z Axis Coverage"
-    in if not $ null $ filter (\slice -> hasParameter slice ("PBZ" :: T.Text)) slices
-      then Node (CompletedTest testName $ Success $ "Full Z axis coverage of this value is present.") []
-      else Node (CompletedTest testName $ Warning $ "Full Z axis coverage of this value is not present.") []
+    in if not $ null $ filter (isJust . slcf_PBZ) slices
+      then Node (CompletedTest testName $ Success
+        $ "Full Z axis coverage of this value is present.") []
+      else Node (CompletedTest testName $ Warning
+        $ "Full Z axis coverage of this value is not present.") []

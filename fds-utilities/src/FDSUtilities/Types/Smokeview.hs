@@ -1465,6 +1465,8 @@ printBound :: Maybe Double -> String
 printBound bndVal = case bndVal of
                 Just val -> "1 " ++ printIniVal val
                 Nothing -> "0 0.00000"
+
+printlineContourProps :: SliceLineContours -> String
 printlineContourProps sliceContProps = printIniVal (sliceContProps ^. sliceLineContoursMin) ++ " " ++ printIniVal (sliceContProps ^. sliceLineContoursMax) ++ " " ++ show (sliceContProps ^. sliceLineContoursN)
 
 -- printViewPoint :: ViewPoint -> String

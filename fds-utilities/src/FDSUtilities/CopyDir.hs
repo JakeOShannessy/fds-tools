@@ -10,8 +10,8 @@ copyDir ::  FilePath -> FilePath -> IO ()
 copyDir src dst = do
   whenM (not <$> doesDirectoryExist src) $
     throw (userError "source does not exist")
-  -- whenM (doesFileOrDirectoryExist dst) $
-    -- throw (userError "destination already exists")
+  whenM (doesFileOrDirectoryExist dst) $
+    throw (userError "destination already exists")
 
   createDirectoryIfMissing False dst
   content <- getDirectoryContents src

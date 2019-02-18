@@ -1,4 +1,9 @@
-{-# LANGUAGE RankNTypes, TemplateHaskell, OverloadedStrings, FunctionalDependencies, MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 module FDSUtilities.Class where
 
 import qualified Data.Map as M
@@ -26,4 +31,3 @@ instance Ord k => Mapping k v (M.Map k v) where
     empty = M.empty
     insert = M.insert
     delete = M.delete
-    

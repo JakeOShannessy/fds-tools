@@ -3,27 +3,27 @@ module FDSUtilities.Histogram where
 import qualified Data.Vector as V
 
 data Histogram = Histogram
-    (Double, Double)    
+    (Double, Double)
     (Int, Int)
     [Bin] -- ^Upper and lower bounds - No. of out of bound values (upper, lower) - Bins
-    deriving (Show) 
+    deriving (Show)
 data Bin = Bin
     Double
     Double
     Int -- ^Lower limit inclusive - Upper limit exclusive - Number of samples
-    deriving Show 
-    
+    deriving Show
+
 data HistogramNormalised = HistogramNormalised
-    (Double, Double)    
+    (Double, Double)
     (Int, Int)
     [BinNormalised] -- ^Upper and lower bounds - No. of out of bound values (upper, lower) - Bins
-    deriving (Show) 
+    deriving (Show)
 data BinNormalised = BinNormalised
     Double
     Double
     Double -- ^Lower limit inclusive - Upper limit exclusive - Number of samples
-    deriving Show 
-    
+    deriving Show
+
 updateHist :: Histogram -> Double -> Histogram
 updateHist (Histogram (lowRange, highRange) (tooLow, tooHigh) bins) value
     | value < lowRange = Histogram (lowRange, highRange) (tooLow+1, tooHigh) bins
@@ -33,11 +33,12 @@ updateHist (Histogram (lowRange, highRange) (tooLow, tooHigh) bins) value
         inBin :: Bin -> Double -> Bool
         inBin (Bin lo hi n) val = val >= lo && val < hi
         updateHist' :: [Bin] -> [Bin] -> Double -> [Bin]
+        updateHist' checked [] x = error "Exceeds bounds of histogram, this should have been checked earlier"
         updateHist' checked (b:bins) x | inBin b x = checked ++ ((Bin lo hi (n+1)):bins)
                                        | otherwise = updateHist' (checked ++ [b]) bins x
             where
                 (Bin lo hi n) = b
-                
+
 emptyHist :: Int -> (Double, Double) -> Histogram
 emptyHist n (rangeLow, rangeHigh) = Histogram (minX, maxX) (0,0) bins
     where   -- TODO: Find a more thorough way of determining an appropriate range, removing outliers etc
@@ -51,14 +52,16 @@ emptyHist n (rangeLow, rangeHigh) = Histogram (minX, maxX) (0,0) bins
         minX = rangeLow
         maxX = rangeHigh
         range = maxX - minX
-        
+
         binSize = range/(fromIntegral n)   -- make sure all of this works well with floating point arithmetic
         -- bins = [minX,minX+binSize..maxX] -- it doesn't at the moment
         bins = mkBins [Bin (maxX-binSize) maxX 0]
             where
-                mkBins ((Bin lo hi n):ps) | lo > minX = mkBins $  (Bin (lo-binSize) (hi-binSize) 0):(Bin lo hi n):ps
-                                          | otherwise = ((Bin lo hi 0):ps)
-                
+                mkBins [] = error "Cannot form bins from empty list"
+                mkBins ((Bin lo hi n):ps)
+                    | lo > minX = mkBins $ (Bin (lo-binSize) (hi-binSize) 0):(Bin lo hi n):ps
+                    | otherwise = ((Bin lo hi 0):ps)
+
 histogram :: Int -> Maybe Double -> Maybe Double -> V.Vector Double -> Histogram --[(Double,(Double,Double))]
 histogram n rangeLow rangeHigh sample = V.foldl' updateHist initHist sample
     where
@@ -70,4 +73,3 @@ histogram n rangeLow rangeHigh sample = V.foldl' updateHist initHist sample
             Nothing   -> 1.5 * (V.maximum sample)
         range = maxX - minX
         initHist = emptyHist n (minX, maxX)
-        

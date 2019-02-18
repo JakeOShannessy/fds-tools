@@ -8,18 +8,6 @@ import Control.Applicative as A
 import Control.Concurrent (threadDelay)
 import Control.Monad
 -- import Control.Exception
-import FDSUtilities.Parsing (parseSimulationOutFile)
-import FDSUtilities.Parsing.FDSFile
-import FDSUtilities.Parsing.OutFile
-import FDSUtilities.FDSFileFunctions
-import FDSUtilities.RenameCase (renameSimulation)
-import FDSUtilities.Plot
-import FDSUtilities.Simulation
-import FDSUtilities.Parsing.SimulationData
-import FDSUtilities.Types
-import FDSUtilities.Verification
-import FDSUtilities.CompileCompress
-import FDSUtilities.Verification.Display
 
 import qualified Data.Aeson as Aeson
 import Data.Aeson (ToJSON(..), FromJSON(..), Object(..), (.:), encode, object)
@@ -31,14 +19,25 @@ import qualified Data.Text.IO as T
 import Data.Time
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
+import Data.Maybe
 import qualified Data.Vector.Unboxed as V
 
 
+import FDSUtilities.Parsing (parseSimulationOutFile)
+import FDSUtilities.Parsing.FDSFile
+import FDSUtilities.Parsing.OutFile
+import FDSUtilities.FDSFile
+import FDSUtilities.RenameCase (renameSimulation)
+import FDSUtilities.Plot
+import FDSUtilities.Simulation
+import FDSUtilities.Parsing.SimulationData
+import FDSUtilities.Types
+import FDSUtilities.Verification
+import FDSUtilities.CompileCompress
+import FDSUtilities.Verification.Display
+
+
 import Formattable
-
-import Data.Monoid ((<>))
--- import Data.Decimal
-
 
 import System.Directory
 import System.Environment
@@ -60,16 +59,16 @@ import Web.Browser (openBrowser)
 -- |Output the total number of cells simply as an integer (with newline). This
 -- is to make it trivially parseable.
 countCellsMachine1 path = do
-    Right inData <- parseFDSFile path
-    let meshes = getMeshes inData
+    Right inData <- (fmap decodeNamelistFile) <$> parseFDSFile path
+    let meshes = fdsFile_Meshes inData
         nCells = sum $ map getNCells meshes
     putStrLn (show nCells)
 
 -- |Output the number of cells for each mesh as a human readable table. This is
 -- not machine readable.
 countCells path = do
-    Right inData <- parseFDSFile path
-    let meshes = getMeshes inData
+    Right inData <- (fmap decodeNamelistFile) <$> parseFDSFile path
+    let meshes = fdsFile_Meshes inData
         fmt = formatNum intFmt
     let tab = Table
             (Group SingleLine
@@ -80,7 +79,7 @@ countCells path = do
                 [ Group SingleLine [Header ("Mesh Id" :: T.Text), Header ("# Cells" :: T.Text)]
                 --, Group SingleLine [Header "time test 1", Header "time test 2"]
                 ])
-            (map (\mesh->[T.pack (getIdString mesh), (fmt $ getNCells mesh)]) meshes ++ [["",fmt (sum $ map getNCells meshes)]])
+            (map (\mesh->[T.pack (getIdBound mesh), (fmt $ getNCells mesh)]) meshes ++ [["",fmt (sum $ map getNCells meshes)]])
             --[
             --, [printf "%.2g kW" ((sum $ map simout_maxHRR $ setout_simOuts outA)/(fromIntegral (setout_nSims outA))), printf "%.2g kW" ((sum $ map simout_maxHRR $ setout_simOuts outB)/(fromIntegral (setout_nSims outB)))]
             --]
@@ -94,7 +93,7 @@ meshPermutations :: [a] -> [(a,a)]
 meshPermutations [_] = []
 meshPermutations (m:meshes) = (map (\n->(m,n)) meshes) ++ (meshPermutations meshes)
 
-isOverlappingNmlList :: [(Int, Namelist)] -> IO ()
+isOverlappingNmlList :: [(Int, Mesh)] -> IO ()
 isOverlappingNmlList [_] = pure ()
 isOverlappingNmlList meshes = do
     let ms = meshPermutations meshes
@@ -105,9 +104,9 @@ isOverlappingNmlList meshes = do
             then (pair:acc)
             else acc
 
-printOverlapError :: ((Int, Namelist),(Int, Namelist)) -> IO ()
+printOverlapError :: ((Int, Mesh),(Int, Mesh)) -> IO ()
 printOverlapError ((iA, meshA), (iB, meshB))
-    = printf "Mesh[%d]: %s overlaps with Mesh[%d]: %s\n" iA (getIdString meshA) iB (getIdString meshB)
+    = printf "Mesh[%d]: %s overlaps with Mesh[%d]: %s\n" iA (getIdBound meshA) iB (getIdBound meshB)
 
 isOverlappingNml nmlA nmlB = isOverlappingXB (getXB nmlA) (getXB nmlB)
 
@@ -123,11 +122,11 @@ isOverlappingRange (x1A,x2A) (x1B, x2B) = x2A > x1B && x1A < x2B
 
 -- |Output mesh details as a human readable table. This is not machine readable.
 meshDetails path = do
-    inDataRaw <- parseFDSFile path
+    inDataRaw <- (fmap decodeNamelistFile) <$> parseFDSFile path
     let inData = case inDataRaw of
             Left e -> error (show e)
             Right x -> x
-    let meshes = getMeshes inData
+    let meshes = fdsFile_Meshes inData
         -- check for overlapping meshes.
         fmt = formatNum intFmt
     isOverlappingNmlList (zip [1..] meshes)
@@ -139,7 +138,7 @@ meshDetails path = do
             (Group DoubleLine
                 [ Group SingleLine [Header ("Mesh Id" :: T.Text), Header ("# Cells" :: T.Text), Header ("I-J-K" :: T.Text), Header ("dX-dY-dZ" :: T.Text), Header ("Aspect Ratio" :: T.Text)]
                 ])
-            (map (\mesh->[T.pack (getIdString mesh), (fmt $ getNCells mesh), ((\(i,j,k)->fmt i <> "-" <> fmt j <> "-" <> fmt k) $ getMeshIJK mesh), ((\(dx,dy,dz)->T.pack (printf "%.2f m" dx) <> "-" <> T.pack (printf "%.2f m" dy) <> "-" <> T.pack (printf "%.2f m" dz)) $ getMeshResolution mesh), T.pack (printf "%.2g" (getMeshSkew mesh))]) meshes ++ [["",fmt (sum $ map getNCells meshes)]])
+            (map (\mesh->[T.pack (getIdBound mesh), (fmt $ getNCells mesh), ((\(i,j,k)->fmt i <> "-" <> fmt j <> "-" <> fmt k) $ getMeshIJK mesh), ((\(dx,dy,dz)->T.pack (printf "%.2f m" dx) <> "-" <> T.pack (printf "%.2f m" dy) <> "-" <> T.pack (printf "%.2f m" dz)) $ getMeshResolution mesh), T.pack (printf "%.2g" (getMeshSkew mesh))]) meshes ++ [["",fmt (sum $ map getNCells meshes)]])
     let
         s :: String
         s = Text.Tabular.AsciiArt.render T.unpack T.unpack T.unpack tab
@@ -160,12 +159,12 @@ showHRR path = do
 
 peakHRR :: FilePath -> IO ()
 peakHRR path = do
-    fdsRaw <- parseFDSFile path
+    fdsRaw <- (fmap decodeNamelistFile) <$> parseFDSFile path
     let
         fdsData = case fdsRaw of
             Right x -> x
             Left e -> error $ show e
-        chid = take 40 (getCHID fdsData)
+        chid = take 40 (fromJust $ getCHID fdsData)
         simulation = FDSSimulation
             { simDir = takeDirectory path
             , simCHID = chid
@@ -182,12 +181,12 @@ plotHRR path = createHRRPlots path >> return ()
 
 createHRRPlots :: FilePath -> IO [FilePath]
 createHRRPlots path = do
-    fdsRaw <- parseFDSFile path
+    fdsRaw <- (fmap decodeNamelistFile) <$> parseFDSFile path
     let
         fdsData = case fdsRaw of
             Right x -> x
             Left e -> error $ show e
-        chid = take 40 (getCHID fdsData)
+        chid = take 40 (fromJust $ getCHID fdsData)
         simulation = FDSSimulation
             { simDir = takeDirectory path
             , simCHID = chid
