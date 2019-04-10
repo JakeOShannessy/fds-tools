@@ -1,13 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 module FDSUtilities.Smokeview
-    ( 
+    (
     -- makeIni
     -- , makeSSF
     -- , makeSSFInd
     -- -- , mkRenderName  -- TODO: does not belong here
     -- ,
     module FDSUtilities.Smokeview
-    ) 
+    )
     where
 
 import FDSUtilities.Smokeview.IniConfig
@@ -70,6 +70,7 @@ data ViewDirection = ViewDirection
     , viewDirection_elevation :: Double
     }
 
+viewDirectionToTuple :: ViewDirection -> (Double, Double)
 viewDirectionToTuple ViewDirection{..} = (viewDirection_azimuth, viewDirection_elevation)
 -- |Specifies what data is to be loaded and how.
 data SmokeviewDataLoad = SmokeviewDataLoad
@@ -77,6 +78,7 @@ data SmokeviewDataLoad = SmokeviewDataLoad
 -- |Specifies scales contours and the like.
 data SmokeviewDataConfig = SmokeviewDataConfig
 
+slicePropertiesT :: SlicePropertiesDict
 slicePropertiesT
     = modifySliceKey "temp" (sliceColourBounds . dBoundMax .~ (Just 200))
     $ modifySliceKey "VIS_Soot" (sliceColourBounds . dBoundMax .~ (Just 20))
@@ -87,10 +89,10 @@ slicePropertiesT
 
 viewConfigToIniConfig :: SmokeviewViewConfig -> IniConfig
 viewConfigToIniConfig SmokeviewViewConfig{..}
-    = 
+    =
     -- iniConfigFDSFilename .~ "ignore"
     -- $ iniConfigSliceProperties .~ slicePropertiesT
-    -- $ 
+    -- $
     iniConfig_VIEWPOINT5s .~ [viewpoint5]
     -- $ iniConfigLabelStartupView .~ Just vpName
     -- -- $ iniConfigXYZClip .~ xyzClip
@@ -98,7 +100,7 @@ viewConfigToIniConfig SmokeviewViewConfig{..}
     $ def
     where
         (wx,wy) = smokeviewConfig_windowSize
-        -- xyzClip = xyzClipOnOff .~ 0 
+        -- xyzClip = xyzClipOnOff .~ 0
         --         $ def
         vpName = "theViewPoint"
         toDataBounds (minV, maxV) = DataBounds

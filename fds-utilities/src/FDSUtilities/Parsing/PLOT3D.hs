@@ -29,7 +29,6 @@ import Data.Attoparsec.ByteString as A
 import Data.Attoparsec.Binary
 import Data.Char (isSpace)
 import Data.List as L
-import Debug.Trace
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector as VB
 
@@ -43,11 +42,19 @@ import Data.Binary.IEEE754
 
 import qualified Data.Array.Repa as R
 
+n :: Int
 n = 5
+
+intSize :: Int
 intSize = 4 -- integer size is 32 bits or 4 bytes
+
+floatSize :: Int
 floatSize = 4 -- float size is 32 bits or 4 bytes
+
 -- TODO: implement fseek to skip unnecessary data.
+parseInteger :: Parser Int
 parseInteger = fromIntegral <$> anyWord32le
+
 parsePLOT3D :: Parser (VB.Vector (R.Array R.U R.DIM3 Float))
 parsePLOT3D = do
     (i,j,k) <- parseRecordOfLength (intSize*3)
@@ -317,8 +324,6 @@ getPL3DFrameTime dfentry = do
     print filename
     VB.mapM_ (\(arr)->((R.deepSeqArray arr) `seq` (print $ R.extent arr))) vals
     (pure (VB.map (PLOT3DTimeFrame (realToFrac time)) vals))
-
--- same (l:ls) = all (== l) ls
 
 combineTimeFrames :: [DataFileEntry] -> [[DataFileEntry]]
 combineTimeFrames = L.groupBy (\a b->pl3dTime a == pl3dTime b)

@@ -140,6 +140,7 @@ getMechId :: Mech -> Maybe String
 getMechId (MechObst obst) = getId obst
 getMechId (MechVent vent) = getId vent
 
+getIdBound :: FDSElement a => a -> String
 getIdBound nml = case getId nml of
     Just x -> x
     Nothing -> "Unnamed " ++ getNMLName nml
@@ -310,6 +311,7 @@ moveInMesh :: FDSFile -> (Int,(Int,Int,Int)) -> Direction
 moveInMesh fdsData currentCell dir = undefined
 
 findPointInLine :: [Double] -> Double -> Maybe Int
+findPointInLine [] _ = Nothing
 findPointInLine (x:xs) p = if (p < x) then Nothing
     else findPointInLine' 0 xs p
 
@@ -646,16 +648,19 @@ getMeshLines fdsData mesh = (xs, ys, zs)
                 (fdsFile_Trnxs fdsData) of
             [] -> Nothing
             [x] -> Just x
+            _ -> error "multiple TRNs found"
         trny = case filter
                 (\p-> (trny_MESH_NUMBER p) == (meshIndex+1))
                 (fdsFile_Trnys fdsData) of
             [] -> Nothing
             [x] -> Just x
+            _ -> error "multiple TRNs found"
         trnz = case filter
-                (\p-> (trnz_MESH_NUMBER p) == (meshIndex+1))
+            (\p-> (trnz_MESH_NUMBER p) == (meshIndex+1))
                 (fdsFile_Trnzs fdsData) of
             [] -> Nothing
             [x] -> Just x
+            _ -> error "multiple TRNs found"
 
 getMeshSkew :: Mesh -> Double
 getMeshSkew nml =
@@ -739,6 +744,7 @@ sortXB (XB x1' x2' y1' y2' z1' z2') = (XB x1 x2 y1 y2 z1 z2)
         z2 = max z1' z2'
 
 -- |Test if the XBs of the two namelists overlap
+isOverlap :: (HasXB a1, HasXB a2) => a2 -> a1 -> Bool
 isOverlap nmlA nmlB = not $ any id [cond1, cond2, cond3, cond4, cond5, cond6]
     where
         cond1 = x2A < x1B
@@ -880,6 +886,7 @@ getHoC fdsData = v_o2*w_o2*epumo2/(v_F*w_F)
         v_n2 = v/2
         w_S = soot_h_fraction*w_h + (1-soot_h_fraction)*w_c
 
+getSmokeDetectors :: FDSFile -> [Devc]
 getSmokeDetectors fdsData =
     filter (isSmokeDetector fdsData) $ fdsFile_Devcs fdsData
 
@@ -1037,6 +1044,7 @@ getSixSurfs fdsData nml
             (sideSurf, sideSurf, sideSurf, sideSurf, bottomSurf, topSurf)
         SixSurf surf1 surf2 surf3 surf4 surf5 surf6 ->
             (surf1, surf2, surf3, surf4, surf5, surf6)
+    | otherwise = error "this object does not have surfaces"
     where
         surfs = fdsFile_Surfs fdsData
         find surfId =
@@ -1155,9 +1163,12 @@ maxHRR :: HRR -> Double
 maxHRR (HRRTauQ m t) = m
 maxHRR (HRRRamp es) = maximum $ snd $ unzip es
 maxHRR (HRRStatic hrr) = hrr
+maxHRR (HRRCombined []) = 0
 maxHRR (HRRCombined [x]) = maxHRR x
+maxHRR (HRRCombined xs) = maxHRR (mconcat xs)
 maxHRR NoHRR = 0
 
+getRampData :: Ramp -> [(Double, Double)]
 getRampData ramp =
     fmap (\re->(rampEntry_T re, rampEntry_F re)) (ramp_entries ramp)
 
@@ -1278,9 +1289,11 @@ evalGrowthRate alpha
         eps = 0.001 :: Double
         eq = aEq eps
 
+growthRateDiff :: Double -> GrowthRate -> (Double, GrowthRate)
 growthRateDiff alpha growthRate =
     (abs $ (growthRateToAlpha growthRate) - alpha, growthRate)
 
+growthRates :: [GrowthRate]
 growthRates =
     [ NFPASlow
     , NFPAFast
@@ -1293,6 +1306,7 @@ growthRates =
     ]
 
 -- convertToProper :: ParameterValue
+aEq :: (Ord a, Num a) => a -> a -> a -> Bool
 aEq eps a b = a < (b+eps) && a > (b-eps)
 
 -- findNamelists (FDSFile comments namelists) nameTarget =

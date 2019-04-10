@@ -25,6 +25,7 @@ data ScriptInstruction
     deriving Show
 
 
+addIndent :: [Char] -> String -> [Char]
 addIndent indent string = intercalate "\n" $ map (indent ++) $ lines string
 
 -- TODO: the inifile needs to be represented here completely.
@@ -1063,11 +1064,13 @@ data DataBounds = DataBounds
     , _dBoundMax :: Maybe Double
     } deriving Show
 
+defaultTimeBounds :: DataBounds
 defaultTimeBounds = DataBounds
     { _dBoundMin = Nothing
     , _dBoundMax = Nothing
     }
 
+noBounds :: DataBounds
 noBounds = DataBounds
     { _dBoundMin = Nothing
     , _dBoundMax = Nothing
@@ -1075,6 +1078,7 @@ noBounds = DataBounds
 
 data ClippingType = None | BlockagesAndData | Blockages | Data
 
+clippingTypeToInt :: Num p => ClippingType -> p
 clippingTypeToInt t = case t of
     None -> 0
     BlockagesAndData -> 1
@@ -1262,7 +1266,14 @@ instance Default XYZClip where
             }
 
 newtype SlicePropertiesDict = SlicePropertiesDict (M.Map String SliceProperties) deriving (Show)
+
+dictToMap :: SlicePropertiesDict -> M.Map String SliceProperties
 dictToMap (SlicePropertiesDict m) = m
+
+modifySliceKey :: String
+                    -> (SliceProperties -> SliceProperties)
+                    -> SlicePropertiesDict
+                    -> SlicePropertiesDict
 modifySliceKey k transform' (SlicePropertiesDict m)
     = SlicePropertiesDict $ M.alter transform k m
     where
@@ -1301,6 +1312,7 @@ instance Default SliceProperties where
         , _sliceLineContours = def
         }
 
+defaultSliceProperties :: [SliceProperties]
 defaultSliceProperties =
     [ temperatureDefaults
     , sootVisibilityDefaults
@@ -1311,6 +1323,8 @@ defaultSliceProperties =
     , vVelDefaults
     , wVelDefaults
     ]
+
+temperatureDefaults :: SliceProperties
 temperatureDefaults = SliceProperties
     { _sliceName = "TEMPERATURE"
     , _sliceAbbrev = "temp"
@@ -1324,6 +1338,7 @@ temperatureDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+sootVisibilityDefaults :: SliceProperties
 sootVisibilityDefaults = SliceProperties
     { _sliceName = "SOOT VISIBILITY"
     , _sliceAbbrev = "VIS_Soot"
@@ -1337,6 +1352,7 @@ sootVisibilityDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+coVolumeFractionDefaults :: SliceProperties
 coVolumeFractionDefaults = SliceProperties
     { _sliceName = "CARBON MONOXIDE VOLUME FRACTION"
     , _sliceAbbrev = "X_CO"
@@ -1350,6 +1366,7 @@ coVolumeFractionDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+coDensityDefaults :: SliceProperties
 coDensityDefaults = SliceProperties
     { _sliceName = "CARBON MONOXIDE DENSITY"
     , _sliceAbbrev = "rho_CO"
@@ -1363,6 +1380,7 @@ coDensityDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+velDefaults :: SliceProperties
 velDefaults = SliceProperties
     { _sliceName = "VELOCITY"
     , _sliceAbbrev = "vel"
@@ -1373,6 +1391,7 @@ velDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+uVelDefaults :: SliceProperties
 uVelDefaults = SliceProperties
     { _sliceName = "U-VELOCITY"
     , _sliceAbbrev = "U-VEL"
@@ -1383,6 +1402,7 @@ uVelDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+vVelDefaults :: SliceProperties
 vVelDefaults = SliceProperties
     { _sliceName = "V-VELOCITY"
     , _sliceAbbrev = "V-VEL"
@@ -1393,6 +1413,7 @@ vVelDefaults = SliceProperties
     , _sliceLineContours = def
     }
 
+wVelDefaults :: SliceProperties
 wVelDefaults = SliceProperties
     { _sliceName = "W-VELOCITY"
     , _sliceAbbrev = "W-VEL"
@@ -1459,6 +1480,7 @@ printSlicePropertiesVSlice sliceProps = "V_SLICE\n " ++ printBounds (sliceProps 
 printSlicePropertiesCSlice :: SliceProperties -> String
 printSlicePropertiesCSlice sliceProps = "C_SLICE\n " ++ printBounds (sliceProps ^. sliceClipBounds) ++ " " ++ (sliceProps ^. sliceAbbrev) ++ "\n"
 
+printBounds :: DataBounds -> String
 printBounds dBound = printBound (dBound ^. dBoundMin ) ++ " " ++ printBound (dBound ^. dBoundMax)
 
 printBound :: Maybe Double -> String

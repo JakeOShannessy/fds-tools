@@ -763,6 +763,7 @@ meshDimensions = do
     eol
     return $ MeshDimensions xCells yCells zCells xDim yDim zDim
 
+clearLine :: Parser String
 clearLine = do
     manyTill anyChar eol
 

@@ -123,7 +123,6 @@ runTimeBlockParser tZone =
         (try (string "Run Time Diagnostics" <* spaces))
         (parseTimeStep tZone <* spaces)
 
--- colonPairKeyString :: Parser String
 colonPairKeyString =
     many1 (oneOf "0123456789qwertyuiopasdfghjklzxcvbnm@.+%-;, _QWERTYUIOPASDFGHJKLZXCVBNM/^()")
     <?> "Key"

@@ -43,7 +43,9 @@ import Tests.Verification
 import qualified Tests.Parsing.SliceFile
 import qualified Tests.Parsing.PLOT3D
 
-main = defaultMain tests
+main = do
+    putStrLn "Running tests..."
+    mainWithOpts
 
 mainWithOpts = do
     -- Test options can also be specified in the code. The TestOptions
@@ -54,7 +56,7 @@ mainWithOpts = do
     -- We update the empty TestOptions with our desired values.
     let my_test_opts = empty_test_opts
             { topt_maximum_generated_tests = Just 1000
-            , topt_timeout = Just $ Just (4000::Int)
+            , topt_timeout = Just $ Just (40000000::Int)
             }
 
     -- Now we create an empty RunnerOptions in the same way, and add

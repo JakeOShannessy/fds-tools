@@ -898,13 +898,19 @@ getXBMaybe nml@(Namelist _ _ parameters _) = case getArrayToList "XB" nml of
 parToDouble :: ParameterValue -> Double
 parToDouble (ParInt x) = fromIntegral x
 parToDouble (ParDouble x) = x
+parToDouble x = error $ show x <> " is not a number"
 
+parToInt :: ParameterValue -> Int
 parToInt (ParInt x) = x
+parToInt x = error $ show x <> " is not an int"
 
 parToString :: ParameterValue -> String
 parToString (ParString x) = T.unpack x
+parToString x = error $ show x <> " is not a string"
 
+parToBool :: ParameterValue -> Bool
 parToBool (ParBool x) = x
+parToBool x = error $ show x <> " is not a bool"
 
 -- checkGrowthRate fdsData burner = evalGrowthRate hrrAlpha
 --     where
@@ -1121,6 +1127,7 @@ getParameterMaybe nml parameterName =
 --         Just x -> x == (toParameterValue parValue)
 
 
+getArrayToList :: T.Text -> Namelist -> Maybe [ParameterValue]
 getArrayToList parName nml = case M.lookup parName (nml_params nml) of
     Just (ParArray arr) -> Just $ M.elems arr
     _ -> Nothing
@@ -1153,5 +1160,6 @@ getArrayToList parName nml = case M.lookup parName (nml_params nml) of
 -- convertToProper :: ParameterValue
 -- aEq eps a b = a < (b+eps) && a > (b-eps)
 
+findNamelists :: NamelistFile -> T.Text -> [Namelist]
 findNamelists (NamelistFile comments namelists) nameTarget =
     filter (\(Namelist name _ _ _) -> name == nameTarget) namelists

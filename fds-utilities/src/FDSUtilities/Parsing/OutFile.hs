@@ -44,16 +44,17 @@ parseOutFile filePath = do
     let parsedObjects = mapMaybe (parseObject tZone) parsedForest
     return $ Right $ parsedObjectsToOutData parsedObjects
 
+headParser :: Parser ()
 headParser = do
     onlySpaces >> eol
     onlySpaces >> string "Fire Dynamics Simulator" >> eol
     onlySpaces >> eol
 
-    currentDateParser
-    versionParser
-    revisionParser
-    revisionDateParser
-    compilationDateParser
+    _ <- currentDateParser
+    _ <- versionParser
+    _ <- revisionParser
+    _ <- revisionDateParser
+    _ <- compilationDateParser
 
     emptyLines
 
@@ -70,67 +71,70 @@ headParser = do
     -- jobTitleParser
     -- jobIdParser
 
-emptyLines = many eol
+emptyLines :: Parser ()
+emptyLines = many eol >> pure ()
 
 currentDateParser :: Parser String
 currentDateParser = do
-    onlySpaces
-    string "Current Date"
-    onlySpaces
-    char ':'
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Current Date"
+    _ <- onlySpaces
+    _ <- char ':'
+    _ <- onlySpaces
     dateString <- many1 (noneOf "\r\n")
     eol
     return dateString
     <?> "Current Date"
 
+versionParser :: Parser Version
 versionParser = do
-    onlySpaces
-    string "Version"
-    onlySpaces
-    string ":"
-    onlySpaces
-    optional $ string "FDS"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Version"
+    _ <- onlySpaces
+    _ <- string ":"
+    _ <- onlySpaces
+    _ <- optional $ string "FDS"
+    _ <- onlySpaces
     version <- parseVersion
-    onlySpaces
+    _ <- onlySpaces
     serialOrPar <- many anyChar
     return version
     <?> "FDS Version"
 
 revisionParser :: Parser String
 revisionParser = do
-    onlySpaces
-    string "Revision"
-    onlySpaces
-    string ":"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Revision"
+    _ <- onlySpaces
+    _ <- string ":"
+    _ <- onlySpaces
     revisionString <- manyTill anyChar eol
     return revisionString
     <?> "FDS Revision"
 
 revisionDateParser :: Parser String
 revisionDateParser = do
-    onlySpaces
-    string "Revision Date"
-    onlySpaces
-    char ':'
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Revision Date"
+    _ <- onlySpaces
+    _ <- char ':'
+    _ <- onlySpaces
     dateString <- manyTill anyChar eol
     return dateString
     <?> "Revision Date"
 
 compilationDateParser :: Parser String
 compilationDateParser = do
-    onlySpaces
-    string "Compilation Date"
-    onlySpaces
-    char ':'
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Compilation Date"
+    _ <- onlySpaces
+    _ <- char ':'
+    _ <- onlySpaces
     dateString <- manyTill anyChar eol
     return dateString
     <?> "Compilation Date"
 
+parsedObjectsToOutData :: [ParsedObject] -> OutData
 parsedObjectsToOutData parsedObjects =
     let
         ParsedVersion version = headErr "parsedObjectsToOutData" $ filter isParsedVersion parsedObjects
@@ -145,11 +149,13 @@ parsedObjectsToOutData parsedObjects =
                      $ filter isParsedTimesteps parsedObjects
 
         deviceActivation = case filter isParsedDeviceActivation parsedObjects of
-            [ParsedDeviceActivation d] -> Just d
             [] -> Nothing
+            [ParsedDeviceActivation d] -> Just d
+            _ -> error "too many activations"
         outStatusRes = case filter isParsedOutStatus parsedObjects of
-            [ParsedOutStatus d] -> d
             [] -> Incomplete
+            [ParsedOutStatus d] -> d
+            _ -> error "too many outres"
 
         meshDims = combineDims gridDim physDim
 
@@ -200,66 +206,71 @@ combineDims gridDim physDim  = map (buildMatch gridDim physDim) [1..(length grid
                 else error "Mesh numbers do not match"
 
 
--- meshDimensions' :: Parser MeshDimensions
+meshGridDimensions' :: Tree String -> Either ParseError MeshGridDimensions
 meshGridDimensions' (Node val [(Node entries [])]) = do
     meshNum <- parse headerParser "" val
     (xCells, yCells, zCells) <- parse entriesParser "" entries
     return $ MeshGridDimensions meshNum xCells yCells zCells
     where
         headerParser = do
-            string "Grid Dimensions, Mesh"
-            spaces
+            _ <- string "Grid Dimensions, Mesh"
+            _ <- spaces
             meshNum <- intNum
             return meshNum
         entriesParser = do
-            string "Cells in the X Direction"
+            _ <- string "Cells in the X Direction"
             spaces
             xCells <- intNum
             eol
-            string "Cells in the Y Direction"
+            _ <- string "Cells in the Y Direction"
             spaces
             yCells <- intNum
             eol
-            string "Cells in the Z Direction"
+            _ <- string "Cells in the Z Direction"
             spaces
             zCells <- intNum
             eol
             return (xCells, yCells, zCells)
 meshGridDimensions' x = error $ drawTree x
 
+meshPhysicalDimensions' :: Tree String -> Either ParseError MeshPhysicalDimensions
 meshPhysicalDimensions' (Node val [(Node entries [])]) = do
     meshNum <- parse headerParser "" val
     (xDim, yDim, zDim) <- parse entriesParser "" entries
     return $ MeshPhysicalDimensions meshNum xDim yDim zDim
     where
         headerParser = do
-            string "Physical Dimensions, Mesh"
+            _ <- string "Physical Dimensions, Mesh"
             spaces
             meshNum <- intNum
             return meshNum
         entriesParser = do
-            string "Length (m)"
+            _ <- string "Length (m)"
             spaces
             xDim <- floatNum
             eol
-            string "Width  (m)"
+            _ <- string "Width  (m)"
             spaces
             yDim <- floatNum
             eol
-            string "Height (m)"
+            _ <- string "Height (m)"
             spaces
             zDim <- floatNum
             eol
-            string "Initial Time Step (s)"
+            _ <- string "Initial Time Step (s)"
             spaces
             initTimeStep <- floatNum
             eol
             return (xDim,yDim,zDim)
+meshPhysicalDimensions' (Node val _) = error "invalid number of node entries"
 
+runTimeParser' :: TimeZone -> Tree String -> Either ParseError [TimeStep]
 runTimeParser' tZone (Node val [(Node entries [])]) = parse entriesParser "" entries
     where
         entriesParser = many $ parseTimeStep tZone
+runTimeParser' _ (Node val _) = error "invalid number of node entries"
 
+runTimeParserRestart' :: TimeZone -> Tree String -> Maybe ParsedObject
 runTimeParserRestart' tZone (Node val []) = Nothing
 runTimeParserRestart' tZone (Node val [(Node entries [])])
     = Just
@@ -268,30 +279,35 @@ runTimeParserRestart' tZone (Node val [(Node entries [])])
     $ parse entriesParser "" entries
     where
         entriesParser = many $ parseTimeStep tZone
+runTimeParserRestart' _ (Node val _) = error "invalid number of node entries"
 
+titleParser :: Parser ()
 titleParser = do
-    onlySpaces
+    _ <- onlySpaces
     eol
-    onlySpaces
-    string "Fire Dynamics Simulator"
+    _ <- onlySpaces
+    _ <- string "Fire Dynamics Simulator"
     eol
 
 
+fdsVersionParser' :: Tree String -> Either ParseError Version
 fdsVersionParser' (Node val []) = parse versionParser "" val
     where
         versionParser = do
-            string "Version"
-            onlySpaces
-            string ":"
-            onlySpaces
-            optional $ string "FDS"
-            onlySpaces
+            _ <- string "Version"
+            _ <- onlySpaces
+            _ <- string ":"
+            _ <- onlySpaces
+            _ <- optional $ string "FDS"
+            _ <- onlySpaces
             version <- parseVersion
-            onlySpaces
+            _ <- onlySpaces
             serialOrPar <- many anyChar
             return version
             <?> "FDS version"
+fdsVersionParser' (Node val _) = error "invalid number of node entries"
 
+outStatusParser' :: Tree [Char] -> Either ParseError OutStatus
 outStatusParser' (Node val []) = parse theParser "" val
     where
         theParser = choice [parseStoppedByUser, parseCompleted, parseNumericalInstability]
@@ -302,7 +318,9 @@ outStatusParser' (Node val []) = parse theParser "" val
                 -- parseNumericalInstability = try (string "STOP: FDS was improperly set-up") >> return NumericalInstability
                 -- parseNumericalInstability = try (string "STOP: Set-up only") >> return NumericalInstability
                 -- parseNumericalInstability = try (string "STOP: FDS was stopped by KILL control function") >> return NumericalInstability
+outStatusParser' (Node val _) = error "invalid number of node entries"
 
+parseObject :: TimeZone -> Tree [Char] -> Maybe ParsedObject
 parseObject tZone node@(Node val subNodes)
     | (take 5 val) == "Versi" = Just
                 $ ParsedVersion
@@ -330,16 +348,18 @@ parseObject tZone node@(Node val subNodes)
     | otherwise = Nothing
 
 -- devcActTimes' :: Parser [(Int, String, DevcActivation)]
+devcActTimes' :: Tree [Char]
+    -> Either ParseError [(Int, String, DevcActivation)]
 devcActTimes' (Node val [(Node entries [])]) = parse entriesParser "" entries
     where
         entriesParser = do
             acts <- many (try devActTime)
             return acts
-
+devcActTimes' (Node val _) = error "invalid number of node entries"
 
 devcActTimes :: Parser [(Int, String, DevcActivation)]
 devcActTimes = do
-    string " DEVICE Activation Times"
+    _ <- string " DEVICE Activation Times"
     eol
     eol
     acts <- many (try devActTime)
@@ -349,9 +369,9 @@ devcActTimes = do
 
 devActTime :: Parser (Int, String, DevcActivation)
 devActTime = do
-    onlySpaces
+    _ <- onlySpaces
     number <- intNum
-    onlySpaces
+    _ <- onlySpaces
     -- name <- basicString
     -- onlySpaces
     name <- manyTill (oneOf "0123456789qwertyuiopasdfghjklzxcvbnm_. -QWERTYUIOPASDFGHJKLZXCVBNM") (lookAhead devcActivationValue)
@@ -385,77 +405,85 @@ data ParsedObject
     | ParsedOutStatus OutStatus
     deriving (Show)
 
+isParsedVersion :: ParsedObject -> Bool
 isParsedVersion (ParsedVersion _) = True
 isParsedVersion _ = False
 
+isParsedMeshGridDim :: ParsedObject -> Bool
 isParsedMeshGridDim (ParsedMeshGridDim _) = True
 isParsedMeshGridDim _ = False
 
+isParsedMeshPhysicalDim :: ParsedObject -> Bool
 isParsedMeshPhysicalDim (ParsedMeshPhysicalDim _) = True
 isParsedMeshPhysicalDim _ = False
 
+isParsedMiscParameters :: ParsedObject -> Bool
 isParsedMiscParameters (ParsedMiscParameters _) = True
 isParsedMiscParameters _ = False
 
+isParsedTimesteps :: ParsedObject -> Bool
 isParsedTimesteps (ParsedTimesteps _) = True
 isParsedTimesteps _ = False
 
+isParsedDeviceActivation :: ParsedObject -> Bool
 isParsedDeviceActivation (ParsedDeviceActivation _) = True
 isParsedDeviceActivation _ = False
 
+isParsedOutStatus :: ParsedObject -> Bool
 isParsedOutStatus (ParsedOutStatus _) = True
 isParsedOutStatus _ = False
-
-
 
 outFileParserSetUp :: Parser OutData
 outFileParserSetUp = do
     eol
-    string "Stop FDS, Set-up only"
+    _ <- string "Stop FDS, Set-up only"
     eol
     fail "Set-up only"
 
--- miscParameters' :: Parser MiscParameters
+miscParameters' :: Tree String -> Either ParseError MiscParameters
 miscParameters' (Node val [(Node entries [])]) = parse theParser "" entries
     where
         theParser = do
-            string "Simulation Start Time (s)"
-            spaces
+            _ <- string "Simulation Start Time (s)"
+            _ <- spaces
             simStartTime <- floatNum
             eol
-            spaces
-            string "Simulation End Time (s)"
-            spaces
+            _ <- spaces
+            _ <- string "Simulation End Time (s)"
+            _ <- spaces
             simEndTime <- floatNum
             eol
-            spaces
-            string "LES Calculation"
+            _ <- spaces
+            _ <- string "LES Calculation"
             eol
-            choice [try smagorinskyConstant, try deardorffModel, (try $ do
+            _ <- choice [try smagorinskyConstant, try deardorffModel, (try $ do
                 string "Eddy Viscosity:           Deardorff Model (C_DEARDORFF)                          0.10" >> eol
                 string "Near-wall Eddy Viscosity: Smagorinsky with Van Driest damping (C_SMAGORINSKY)    0.20" >> eol
                 pure ())
                 ]
 
-            spaces
-            string "Turbulent Prandtl Number"
-            spaces
+            _ <- spaces
+            _ <- string "Turbulent Prandtl Number"
+            _ <- spaces
             turbPrandtl <- floatNum
             eol
-            spaces
-            optionMaybe $ (do
-                string "Turbulent Schmidt Number"
-                spaces
-                floatNum
-                spaces
+            _ <- spaces
+            _ <- optionMaybe $ (do
+                _ <- string "Turbulent Schmidt Number"
+                _ <- spaces
+                _ <- floatNum
+                _ <- spaces
+                pure ()
                 )
-            string "Ambient Temperature (C)"
-            spaces
+            _ <- string "Ambient Temperature (C)"
+            _ <- spaces
             ambTemp <- floatNum
             eol
 
             return $ MiscParameters simStartTime simEndTime
+miscParameters' (Node val _) = error "invalid number of node entries"
 
+supportedVersions :: [Version]
 supportedVersions =
     [ Version 5 5 3
     , Version 5 5 0
@@ -505,10 +533,12 @@ evacOutFileParser = do
         , evacExitAgentProps = []
         }
 
+initLineParser :: Parser String
 initLineParser = do
-    string " INIT:"
+    _ <- string " INIT:"
     clearLine
 
+completionStatusParser :: Parser OutStatus
 completionStatusParser = do --this is shoddy, redo completely
     -- val <- try (string "STOP: FDS stopped by user") <|> try (string "STOP: FDS completed successfully") <|> try (string "STOP: FDS completed successfully")
     -- return $ case var of
@@ -525,136 +555,139 @@ completionStatusParser = do --this is shoddy, redo completely
         -- parseNumericalInstability = try (string "STOP: Set-up only") >> return NumericalInstability
         -- parseNumericalInstability = try (string "STOP: FDS was stopped by KILL control function") >> return NumericalInstability
 
+evacInitialAgentsParser :: Parser [InitialAgentProps]
 evacInitialAgentsParser = do
     -- string " EVAC: Initial positions of the agents"
     -- eol
-    onlySpaces
-    string "Agent"
-    onlySpaces
-    string "X"
-    onlySpaces
-    string "Y"
-    onlySpaces
-    string "Z"
-    onlySpaces
-    string "Tpre"
-    onlySpaces
-    string "Tdet"
-    onlySpaces
-    string "Dia"
-    onlySpaces
-    string "V0"
-    onlySpaces
-    string "Tau"
-    onlySpaces
-    string "I_gr"
-    onlySpaces
-    string "I_ff"
+    _ <- onlySpaces
+    _ <- string "Agent"
+    _ <- onlySpaces
+    _ <- string "X"
+    _ <- onlySpaces
+    _ <- string "Y"
+    _ <- onlySpaces
+    _ <- string "Z"
+    _ <- onlySpaces
+    _ <- string "Tpre"
+    _ <- onlySpaces
+    _ <- string "Tdet"
+    _ <- onlySpaces
+    _ <- string "Dia"
+    _ <- onlySpaces
+    _ <- string "V0"
+    _ <- onlySpaces
+    _ <- string "Tau"
+    _ <- onlySpaces
+    _ <- string "I_gr"
+    _ <- onlySpaces
+    _ <- string "I_ff"
     eol
     initialAgentProps <- many (try evacInitialSingleAgentPropParser)
     return initialAgentProps
 
-evacAgentExitParser = do
-    many evacAgentExitSingleParser
+evacAgentExitParser :: Parser [AgentExitProps]
+evacAgentExitParser = many evacAgentExitSingleParser
 
+evacAgentExitSingleParser :: Parser AgentExitProps
 evacAgentExitSingleParser = do
-    onlySpaces
-    string "Agent"
-    onlySpaces
-    string "n:o"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Agent"
+    _ <- onlySpaces
+    _ <- string "n:o"
+    _ <- onlySpaces
     agentNumber <- intNum
-    onlySpaces
+    _ <- onlySpaces
     action <- (try (string "counted at")) <|> (try (string "out at"))   <?> "agent action"
-    onlySpaces
+    _ <- onlySpaces
     exitTime <- floatNum
-    onlySpaces
-    string "s, exit "
+    _ <- onlySpaces
+    _ <- string "s, exit "
     exitName <- basicString
-    string ", FED="
-    onlySpaces
+    _ <- string ", FED="
+    _ <- onlySpaces
     fed <- floatNum
-    string ","
-    onlySpaces
-    string "Color_i="
-    onlySpaces
+    _ <- string ","
+    _ <- onlySpaces
+    _ <- string "Color_i="
+    _ <- onlySpaces
     colorA <- intNum    -- TODO: work out what these are
-    onlySpaces
+    _ <- onlySpaces
     colorB <- intNum
-    onlySpaces
+    _ <- onlySpaces
     colorC <- intNum
     eol
     return $ AgentExitProps agentNumber exitTime exitName
 
+evacInitialSingleAgentPropParser :: Parser InitialAgentProps
 evacInitialSingleAgentPropParser = do
-    onlySpaces
+    _ <- onlySpaces
     agentNumber <- intNum
-    onlySpaces
+    _ <- onlySpaces
     xPos <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     yPos <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     zPos <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     tPre <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     tDet <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     dia <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     v0 <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     tau <- floatNum
-    onlySpaces
+    _ <- onlySpaces
     i_gr <- intNum
-    onlySpaces
+    _ <- onlySpaces
     i_ff <- intNum
-    onlySpaces
-    intNum
+    _ <- onlySpaces
+    _ <- intNum
     eol
     return $ InitialAgentProps agentNumber (xPos, yPos, zPos) tPre tDet dia v0 tau i_gr i_ff
 
-
-
+cpuUsageParser :: Parser ()
 cpuUsageParser = do
-    string " CPU Time Usage, Mesh"
-    onlySpaces
+    _ <- string " CPU Time Usage, Mesh"
+    _ <- onlySpaces
     meshNum <- intNum
     eol
     eol
-    onlySpaces
-    string "CPU "
-    string "(s)" <|> string "s"
-    onlySpaces
-    string "%"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "CPU "
+    _ <- string "(s)" <|> string "s"
+    _ <- onlySpaces
+    _ <- string "%"
+    _ <- onlySpaces
     eol
-    string "       ------------------------"
+    _ <- string "       ------------------------"
     optional $ string "----"
     eol
-    routineParser "MAIN"
-    routineParser "DIVG"
-    routineParser "MASS"
-    routineParser "VELO"
-    routineParser "PRES"
-    routineParser "WALL"
-    routineParser "DUMP"
-    routineParser "PART"
-    routineParser "RADI"
-    routineParser "FIRE"
-    routineParser "COMM"
-    optionMaybe (try (do
-        routineParser "EVAC"
-        routineParser "FOR"
-        routineParser "P2P"
-        routineParser "MOV"
+    _ <- routineParser "MAIN"
+    _ <- routineParser "DIVG"
+    _ <- routineParser "MASS"
+    _ <- routineParser "VELO"
+    _ <- routineParser "PRES"
+    _ <- routineParser "WALL"
+    _ <- routineParser "DUMP"
+    _ <- routineParser "PART"
+    _ <- routineParser "RADI"
+    _ <- routineParser "FIRE"
+    _ <- routineParser "COMM"
+    _ <- optionMaybe (try (do
+        _ <- routineParser "EVAC"
+        _ <- routineParser "FOR"
+        _ <- routineParser "P2P"
+        _ <- routineParser "MOV"
+        pure ()
         ))
-    optionMaybe $ try (do
-        onlySpaces
-        string "SubTot"
-        onlySpaces
+    _ <- optionMaybe $ try (do
+        _ <- onlySpaces
+        _ <- string "SubTot"
+        _ <- onlySpaces
         cpuSeconds <- floatNum
-        onlySpaces
+        _ <- onlySpaces
         cpuPercentage <- floatNum
         eol
         )
@@ -663,86 +696,95 @@ cpuUsageParser = do
     eol
     where
         routineParser routine = do
-            onlySpaces
-            string routine
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string routine
+            _ <- onlySpaces
             cpuSeconds <- floatNum
-            onlySpaces
+            _ <- onlySpaces
             cpuPercentage <- floatNum
             eol
             return (routine, cpuSeconds, cpuPercentage)
 
+compilationDateParserEvac :: Parser String
 compilationDateParserEvac = do
-    string " FDS+Evac Compilation Date"
-    spaces
-    string ":"
-    spaces
+    _ <- string " FDS+Evac Compilation Date"
+    _ <- spaces
+    _ <- string ":"
+    _ <- spaces
     compilationDateString <- manyTill anyChar eol
     return compilationDateString
 
+fdsVersionParser :: Parser Version
 fdsVersionParser = do
-    string " Version"
-    onlySpaces
-    string ":"
-    onlySpaces
-    optional $ string "FDS"
-    onlySpaces
+    _ <- string " Version"
+    _ <- onlySpaces
+    _ <- string ":"
+    _ <- onlySpaces
+    _ <- optional $ string "FDS"
+    _ <- onlySpaces
     version <- parseVersion
-    onlySpaces
+    _ <- onlySpaces
     serialOrPar <- manyTill anyChar eol
     return version
     <?> "FDS version"
 
+fdsVersionParserEvac :: Parser String
 fdsVersionParserEvac = do
-    string " FDS+Evac Version"
-    spaces
-    string ":"
-    spaces
+    _ <- string " FDS+Evac Version"
+    _ <- spaces
+    _ <- string ":"
+    _ <- spaces
     fdsVersionString <- manyTill anyChar eol
     return fdsVersionString
 
+openMPStatusParser :: Parser String
 openMPStatusParser = do
-    string " OpenMP"
-    spaces
+    _ <- string " OpenMP"
+    _ <- spaces
     openMPStatusString <- manyTill anyChar eol
     return openMPStatusString
 
+openThreadNParser :: Parser Int
 openThreadNParser = do
-    string " Number of OpenMP threads:"
-    onlySpaces
+    _ <- string " Number of OpenMP threads:"
+    _ <- onlySpaces
     n <- intNum
     eol
     return n
 
+svnRevisionNoParser :: Parser String
 svnRevisionNoParser = do
-    string " SVN Revision No."
-    spaces
-    string ":"
-    spaces
+    _ <- string " SVN Revision No."
+    _ <- spaces
+    _ <- string ":"
+    _ <- spaces
     svnRevisionNoString <- manyTill anyChar eol
     return svnRevisionNoString
 
+svnRevisionNoParserEvac :: Parser String
 svnRevisionNoParserEvac = do
-    string " FDS+Evac SVN Revision No."
-    spaces
-    string ":"
-    spaces
+    _ <- string " FDS+Evac SVN Revision No."
+    _ <- spaces
+    _ <- string ":"
+    _ <- spaces
     svnRevisionNoString <- manyTill anyChar eol
     return svnRevisionNoString
 
+jobTitleParser :: Parser String
 jobTitleParser = do
-    string " Job TITLE"
-    spaces
-    string ":"
-    onlySpaces
+    _ <- string " Job TITLE"
+    _ <- spaces
+    _ <- string ":"
+    _ <- onlySpaces
     jobTitle <- manyTill anyChar eol
     return jobTitle
 
+jobCHIDParser :: Parser String
 jobCHIDParser = do
-    string " Job ID string"
-    spaces
-    string ":"
-    spaces
+    _ <- string " Job ID string"
+    _ <- spaces
+    _ <- string ":"
+    _ <- spaces
     jobCHID <- manyTill anyChar eol
     return jobCHID
 
@@ -753,111 +795,114 @@ jobCHIDParser = do
 
 devcActivationValue :: Parser DevcActivation
 devcActivationValue = do
-    try (do {string "No Activation"; return NoActivation;})
-    <|> try (do {d <- floatNum; space; string "s"; return (DevcActivationTime d)})
-
-
+    try (do {_ <- string "No Activation"; pure NoActivation;})
+    <|> try (do {d <- floatNum; _ <- space; _ <- string "s";pure (DevcActivationTime d)})
 
 miscParameters :: Parser MiscParameters
 miscParameters = do
-    string " Miscellaneous Parameters"
+    _ <- string " Miscellaneous Parameters"
     eol
     spaces
-    string "Simulation Start Time (s)"
+    _ <- string "Simulation Start Time (s)"
     spaces
     simStartTime <- floatNum
     eol
     spaces
-    string "Simulation End Time (s)"
+    _ <- string "Simulation End Time (s)"
     spaces
     simEndTime <- floatNum
     eol
     spaces
-    string "LES Calculation"
+    _ <- string "LES Calculation"
     eol
     choice [try smagorinskyConstant, try deardorffModel]
 
 
     spaces
-    string "Turbulent Prandtl Number"
+    _ <- string "Turbulent Prandtl Number"
     spaces
     turbPrandtl <- floatNum
     eol
     spaces
-    optionMaybe $ (do
-        string "Turbulent Schmidt Number"
-        spaces
-        floatNum
-        spaces
+    _ <- optionMaybe $ (do
+        _ <- string "Turbulent Schmidt Number"
+        _ <- spaces
+        _ <- floatNum
+        _ <- spaces
+        pure ()
         )
-    string "Ambient Temperature (C)"
+    _ <- string "Ambient Temperature (C)"
     spaces
     ambTemp <- floatNum
     eol
 
     return $ MiscParameters simStartTime simEndTime
 
+smagorinskyConstant :: Parser ()
 smagorinskyConstant = do
     spaces
-    string "Smagorinsky Constant"
+    _ <- string "Smagorinsky Constant"
     spaces
     smagConst <- floatNum
     eol
+
+deardorffModel :: Parser ()
 deardorffModel = do
-    onlySpaces
-    string "Deardorff Model"
+    _ <- onlySpaces
+    _ <- string "Deardorff Model"
     _ <- optionMaybe (do
-        string " (C_DEARDORFF)"
-        onlySpaces
+        _ <- string " (C_DEARDORFF)"
+        _ <- onlySpaces
         v <- floatNum
         return v)
     eol
 
 meshDimensions :: Parser MeshDimensions
 meshDimensions = do
-    string " Grid Dimensions, Mesh"
+    _ <- string " Grid Dimensions, Mesh"
     spaces
     meshNum <- intNum
     eol
     eol
-    string "   Cells in the X Direction"
+    _ <- string "   Cells in the X Direction"
     spaces
     xCells <- intNum
     eol
-    string "   Cells in the Y Direction"
+    _ <- string "   Cells in the Y Direction"
     spaces
     yCells <- intNum
     eol
-    string "   Cells in the Z Direction"
+    _ <- string "   Cells in the Z Direction"
     spaces
     zCells <- intNum
     eol
     eol
     eol
-    string " Physical Dimensions, Mesh"
+    _ <- string " Physical Dimensions, Mesh"
     spaces
     meshNumAgain <- intNum
     eol
     eol
-    string "   Length (m)"
+    _ <- string "   Length (m)"
     spaces
     xDim <- floatNum
     eol
-    string "   Width  (m)"
+    _ <- string "   Width  (m)"
     spaces
     yDim <- floatNum
     eol
-    string "   Height (m)"
+    _ <- string "   Height (m)"
     spaces
     zDim <- floatNum
     eol
-    string "   Initial Time Step (s)"
+    _ <- string "   Initial Time Step (s)"
     spaces
     initTimeStep <- floatNum
     eol
     eol
     return $ MeshDimensions xCells yCells zCells xDim yDim zDim
 
+clearLine :: Parser String
 clearLine = do
     manyTill anyChar eol
 
@@ -878,14 +923,15 @@ clearLine = do
 --     let stepTime = localTimeToUTC tZone (parseTimeOrError True defaultTimeLocale "%B %e, %Y  %T" timeString)
 --     return $ TimeStep (read stepNumber) stepTime meshes
 
+meshLine :: Parser (Int, Int)
 meshLine = do
-    try (do { spaces; string "Mesh";})
+    _ <- try (do { spaces; string "Mesh";})
     spaces
     number <- intNum
     cycleNumMaybe <- optionMaybe $ do
-        char ','
+        _ <- char ','
         spaces
-        string "Cycle"
+        _ <- string "Cycle"
         spaces
         intNum
     eol
@@ -922,29 +968,30 @@ data RestartInfo = RestartInfo
 
 parseStepProp :: Parser [StepProp]
 parseStepProp = do
-    onlySpaces
+    _ <- onlySpaces
     a <- optionMaybe $ lookAhead $ try (string "Time Step")
     case a of
         Just x -> unexpected "not step prop"
         _ -> do
             firstProp <- parseSingleProp
             secondPropMaybe <- optionMaybe $ try $ do
-                onlySpaces
-                char ','
-                onlySpaces
+                _ <- onlySpaces
+                _ <- char ','
+                _ <- onlySpaces
                 parseSingleProp
-            onlySpaces
+            _ <- onlySpaces
             eol
             pure $ case secondPropMaybe of
                 Nothing ->  [firstProp]
                 Just secondProp -> [firstProp, secondProp]
 
+parseSingleProp :: Parser StepProp
 parseSingleProp = do
     key <- many1 (noneOf "-\r\n:,")
-    char ':'
-    onlySpaces
+    _ <- char ':'
+    _ <- onlySpaces
     value <- parseValue
-    onlySpaces
+    _ <- onlySpaces
     units <- optionMaybe $ try $ do
         a <- optionMaybe $ lookAhead $ string "at"
         b <- optionMaybe $ lookAhead $ string "on"
@@ -952,19 +999,19 @@ parseSingleProp = do
             (Just "at", _) -> unexpected "not units"
             (_, Just "on") -> unexpected "not units"
             _ -> parseUnits
-    onlySpaces
+    _ <- onlySpaces
     location <- optionMaybe $ try $ do
         meshNum <- optionMaybe $ try (do
-            string "on"
-            onlySpaces
-            string "Mesh"
-            onlySpaces
+            _ <- string "on"
+            _ <- onlySpaces
+            _ <- string "Mesh"
+            _ <- onlySpaces
             n <- intNum
-            onlySpaces
+            _ <- onlySpaces
             return n
             <?> "Mesh Number")
-        string "at"
-        onlySpaces
+        _ <- string "at"
+        _ <- onlySpaces
         coords <- intCoords
         return $ Location
             { locationMesh = meshNum
@@ -977,45 +1024,48 @@ parseSingleProp = do
         , stepPropLocation = location
         }
 
-
-
 -- TODO: currently, parsing an Int will never succeed
+parseValue :: Parser Value
 parseValue = choice [try parseValueDouble, try parseValueInt]
 
+parseValueInt :: Parser Value
 parseValueInt = do
     int <- intNum
     return $ ValueInt int
     <?> "ValueInt"
 
+parseValueDouble :: Parser Value
 parseValueDouble = do
     double <- floatNum
     return $ ValueDouble double
     <?> "ValueDouble"
 
+parseUnits :: Parser String
 parseUnits = many1 (satisfy (\c->
     isAscii c
     && not (isControl c)
     && not (isSpace c)
     && not (c == ',')))
 
+intCoords :: Parser (Int, Int, Int)
 intCoords = P.between (char '(')  (char ')') (do
-    onlySpaces
+    _ <- onlySpaces
     i <- intNum
-    onlySpaces >> optional (char ',') >> onlySpaces
+    _ <- onlySpaces >> optional (char ',') >> onlySpaces
     j <- intNum
-    onlySpaces >> optional (char ',') >> onlySpaces
+    _ <- onlySpaces >> optional (char ',') >> onlySpaces
     k <- intNum
-    onlySpaces
+    _ <- onlySpaces
     return (i, j, k)
     <?> "Location")
 
 parseTimeStep :: TimeZone -> Parser TimeStep
 parseTimeStep tZone = do
-    onlySpaces
-    string "Time Step"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Time Step"
+    _ <- onlySpaces
     stepNumber <- intNum
-    onlySpaces
+    _ <- onlySpaces
     timeString <- manyTill anyChar eol
 
     timeInfo <- optionMaybe $ try $ parseTimeInfo
@@ -1053,37 +1103,38 @@ parseTimeStep tZone = do
         , timeStepMeshes' = meshes
         }
 
+parseTimeInfo :: Parser (Double, Double)
 parseTimeInfo =  do
-    onlySpaces
-    string "Step Size:"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "Step Size:"
+    _ <- onlySpaces
     stepSize <- floatNum
-    onlySpaces
-    char 's'
-    char ','
-    onlySpaces
-    string "Total Time:"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- char 's'
+    _ <- char ','
+    _ <- onlySpaces
+    _ <- string "Total Time:"
+    _ <- onlySpaces
     totalTime <- floatNum
-    onlySpaces
-    char 's'
+    _ <- onlySpaces
+    _ <- char 's'
     eol
     pure (stepSize, totalTime)
 
 parseMeshStep :: Parser MeshStep
 parseMeshStep = do
     meshL <- optionMaybe $ try $ do
-        string "Mesh"
-        onlySpaces
+        _ <- string "Mesh"
+        _ <- onlySpaces
         n <- intNum
-        onlySpaces
+        _ <- onlySpaces
         _ <- optionMaybe $ try $ do
-            char ','
-            onlySpaces
-            string "Cycle"
-            onlySpaces
+            _ <- char ','
+            _ <- onlySpaces
+            _ <- string "Cycle"
+            _ <- onlySpaces
             cycle <- intNum
-            onlySpaces
+            _ <- onlySpaces
             pure cycle
         eol
         pure n
@@ -1093,59 +1144,66 @@ parseMeshStep = do
     properties <- concat <$> many1 (try parseStepProp)
     return $ MeshStep meshNumber properties
 
+totalHRR :: Parser Double
 totalHRR = do
-    try (do { spaces; string "Total Heat Release Rate:";})
-    spaces
+    _ <- try (do { spaces; string "Total Heat Release Rate:";})
+    _ <- spaces
     hrr <- floatNum
-    string " kW"
+    _ <- string " kW"
     eol
     return hrr
 
+poisPert :: Parser Double
 poisPert = do
-    try (do { spaces; string "Poisson Pert. :";})
-    onlySpaces
+    _ <- try (do { spaces; string "Poisson Pert. :";})
+    _ <- onlySpaces
     pp <- floatNum
     eol
     return pp
 
+maxVNNumber :: Parser ()
 maxVNNumber = do
-    try (do { spaces; string "Max VN"; onlySpaces; string "number:";})
-    onlySpaces
+    _ <- try (do { spaces; _ <- string "Max VN"; _ <- onlySpaces; string "number:";})
+    _ <- onlySpaces
     minDivVal <- floatNum
-    string " at "
+    _ <- string " at "
     minDivCoord <- coords
     eol
 
+maxDivError :: Parser Double
 maxDivError = do
-    try (do { spaces; string "Max div. error:";})
-    spaces
+    _ <- try (do { spaces; string "Max div. error:";})
+    _ <- spaces
     minDivVal <- floatNum
-    string " at "
+    _ <- string " at "
     minDivCoord <- coords
     eol
     return minDivVal
 
+numberOfParticles :: Parser Double
 numberOfParticles = do
-    try (do { spaces; string "No. of Lagrangian Particles:";})
-    spaces
+    _ <- try (do { spaces; string "No. of Lagrangian Particles:";})
+    _ <- spaces
     nParts <- floatNum
     eol
     return nParts
 
+maxHRRPUV :: Parser Double
 maxHRRPUV = do
-    try (do { spaces; string "Max HRRPUV:";})
-    onlySpaces
+    _ <- try (do { spaces; string "Max HRRPUV:";})
+    _ <- onlySpaces
     nParts <- floatNum
-    onlySpaces
-    string "kW/m^3"
+    _ <- onlySpaces
+    _ <- string "kW/m^3"
     eol
     return nParts
 
+parseRLTB :: Parser Double
 parseRLTB = do -- radiation loss to boundaries
-    try (do { spaces; string "Radiation Loss to Boundaries:";})
+    _ <- try (do { spaces; string "Radiation Loss to Boundaries:";})
     spaces
     rltb <- floatNum
-    string " kW"
+    _ <- string " kW"
     eol
     return rltb
 
@@ -1173,19 +1231,17 @@ basicStringCommaSpaces = do
 
 coords :: Parser (Int,Int,Int)
 coords = do
-    char '('
+    _ <- char '('
     spaces
     x <- intNum
-    char ','
+    _ <- char ','
     spaces
     y <- intNum
-    char ','
+    _ <- char ','
     spaces
     z <- intNum
-    char ')'
+    _ <- char ')'
     return (x, y, x)
-
-
 
 eolString :: Parser String
 eolString = do
@@ -1195,58 +1251,59 @@ eolString = do
 
 caseCHID :: Parser String
 caseCHID = do
-    string " Job ID String       : "
+    _ <- string " Job ID String       : "
     many anyChar
 
 caseTitle :: Parser String
 caseTitle = do
-    string " Job TITLE        : "
+    _ <- string " Job TITLE        : "
     many anyChar
 
-
+parseSpeciesInformation :: Parser ()
 parseSpeciesInformation = do
-    onlySpaces
-    string "Primitive Species Information"
+    _ <- onlySpaces
+    _ <- string "Primitive Species Information"
     eol
     eol
     specs <- many (try parseSpecies)
     eol
     where
         parseSpecies = do
-            onlySpaces
+            _ <- onlySpaces
             name <- basicStringSpaces
-            onlySpaces
+            _ <- onlySpaces
             eol
             species <- try parseGasSpecies <|> try parseMixtureFractionVariable
 
-            onlySpaces
-            string "Initial Mass Fraction"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Initial Mass Fraction"
+            _ <- onlySpaces
             initMassFrac <- floatNum
             eol
             eol
             return (species, initMassFrac)
 
         parseGasSpecies = do
-            onlySpaces
-            string "Gas Species"
+            _ <- onlySpaces
+            _ <- string "Gas Species"
             eol
-            optional $ try (do; onlySpaces; string "Background Species"; eol)
-            onlySpaces
-            string "Molecular Weight (g/mol)"
-            onlySpaces
+            optional $ try (do; _ <- onlySpaces; _ <- string "Background Species"; eol)
+            _ <- onlySpaces
+            _ <- string "Molecular Weight (g/mol)"
+            _ <- onlySpaces
             molWeight <- floatNum
             eol
         parseMixtureFractionVariable = do
-            onlySpaces
-            string "Mixture Fraction Variable"
+            _ <- onlySpaces
+            _ <- string "Mixture Fraction Variable"
             eol
 
 
 
+parseGasPhaseReactionInformation :: Parser [()]
 parseGasPhaseReactionInformation = do
-    onlySpaces
-    string "Gas Phase Reaction Information"
+    _ <- onlySpaces
+    _ <- string "Gas Phase Reaction Information"
     eol
     eol
     gPhaseReacs <- many (try parseGasPhaseReaction)
@@ -1254,83 +1311,82 @@ parseGasPhaseReactionInformation = do
     return gPhaseReacs
     where
         parseGasPhaseReaction = do
-            onlySpaces
+            _ <- onlySpaces
             reacName <- basicStringSpaces
             eol
-            onlySpaces
-            string "Mixture Fraction Reaction"  -- TODO: there are other reaction models to be parsed
+            _ <- onlySpaces
+            _ <- string "Mixture Fraction Reaction"  -- TODO: there are other reaction models to be parsed
             eol
 
             -- onlySpaces
             -- fyi <- basicStringCommaSpaces
             -- eol
             let parseMolWeight = do
-                    onlySpaces
-                    string "Molecular Weight, Fuel (g/mol)"
-                    onlySpaces
+                    _ <- onlySpaces
+                    _ <- string "Molecular Weight, Fuel (g/mol)"
+                    _ <- onlySpaces
                     molWeight <- floatNum
                     eol
 
-            try parseMolWeight <|> (do; clearLine; parseMolWeight)
+            try parseMolWeight <|> (do; _ <- clearLine; parseMolWeight)
 
-            onlySpaces
-            string "Heat of Combustion (kJ/kg)"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Heat of Combustion (kJ/kg)"
+            _ <- onlySpaces
             hoc <- floatNum
             eol
 
-            onlySpaces
-            string "Stoich. Coeff., O_2"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Stoich. Coeff., O_2"
+            _ <- onlySpaces
             vO2 <- floatNum
             eol
 
-            onlySpaces
-            string "Stoich. Coeff., CO_2"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Stoich. Coeff., CO_2"
+            _ <- onlySpaces
             vCO2 <- floatNum
             eol
 
-            onlySpaces
-            string "Stoich. Coeff., H2O"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Stoich. Coeff., H2O"
+            _ <- onlySpaces
             vH2O <- floatNum
             eol
 
-            onlySpaces
-            string "Stoich. Coeff., Soot"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Stoich. Coeff., Soot"
+            _ <- onlySpaces
             vSoot <- floatNum
             eol
 
             vCO <- optionMaybe (try (do
-                        onlySpaces
-                        string "Stoich. Coeff., CO"
-                        onlySpaces
+                        _ <- onlySpaces
+                        _ <- string "Stoich. Coeff., CO"
+                        _ <- onlySpaces
                         vCO <- floatNum
                         eol
                         return vCO
                         ))
 
-            onlySpaces
-            string "Stoich. Coeff., N_2"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Stoich. Coeff., N_2"
+            _ <- onlySpaces
             vN2 <- floatNum
             eol
 
             vOther <- optionMaybe (try (do
-                        onlySpaces
-                        string "Stoich. Coeff., Other"
-                        onlySpaces
+                        _ <- onlySpaces
+                        _ <- string "Stoich. Coeff., Other"
+                        _ <- onlySpaces
                         vCO <- floatNum
                         eol
                         return vCO
                         ))
 
-            onlySpaces
-            string "Stoichiometric Value of Z"
-            onlySpaces
+            _ <- onlySpaces
+            _ <- string "Stoichiometric Value of Z"
+            _ <- onlySpaces
             vZ <- floatNum
             eol
-
             eol

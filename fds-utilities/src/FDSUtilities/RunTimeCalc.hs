@@ -24,11 +24,12 @@ import System.Process
 toHoursString :: Double -> String
 toHoursString time = show hours ++ ":" ++ show minutes ++ ":" ++ show seconds
     where
-        time' = floor time
-        seconds = time' `rem` 60
-        minutes = (time' `quot` 60) `rem` 60
-        hours   = (time' `quot` 60) `quot` 60
+        time' = floor time :: Int
+        seconds = time' `rem` 60 :: Int
+        minutes = (time' `quot` 60) `rem` 60 :: Int
+        hours   = (time' `quot` 60) `quot` 60 :: Int
 
+getTimeLeft :: OutData -> Double
 getTimeLeft outFile = timeRemain (endTime-startTime) ultStep penUltStep
     where
         steps = timesteps outFile
@@ -37,8 +38,10 @@ getTimeLeft outFile = timeRemain (endTime-startTime) ultStep penUltStep
         startTime = simStart mPars
         endTime = simEnd mPars
 
--- timeLeft :: Double -> TimeStep -> TimeStep -> Double
+timeRemain :: Double -> TimeStep -> TimeStep -> Double
 timeRemain = timeLeft
+
+timeLeft :: Double -> TimeStep -> TimeStep -> Double
 timeLeft simLength ultStep penUltStep =
     (dCalcTime / dSimTime) * (simLength - (simTime ultStep))
     where
@@ -46,8 +49,6 @@ timeLeft simLength ultStep penUltStep =
         dSimTime = (simTime ultStep) - (simTime penUltStep)
 
 
-
--- getRun
 getRunData :: OutData -> [(UTCTime, Double)]
 getRunData outFile = dPoints --map convertToDVPair dPoints
     where
@@ -62,6 +63,7 @@ getRunData outFile = dPoints --map convertToDVPair dPoints
         (startUTC, _) = getRunTimeDataPoint firstStep
         dPoints = map getRunTimeDataPoint steps
 
+getRelativeRunData :: OutData -> DataVectorPair Double Double
 getRelativeRunData outFile = convertToDVPair $ convertDLList ([],[]) $ map (subStartUTC startUTC) dPoints
     where
         mPars = miscellaneous outFile
@@ -73,11 +75,15 @@ getRelativeRunData outFile = convertToDVPair $ convertDLList ([],[]) $ map (subS
         dPoints = map getRunTimeDataPoint steps
 
 
+subStartUTC :: UTCTime -> (UTCTime, Double) -> (Double, Double)
 subStartUTC startUTC (utcTime, simTime) = ((fromRational . toRational) (diffUTCTime utcTime startUTC), simTime) :: (Double, Double)
+
 convertDLList :: ([Double],[Double]) -> [(Double,Double)] -> ([Double],[Double])
 convertDLList acc [] = acc
 convertDLList acc@(accT, accSt) ((t,st):ps) = convertDLList ((t:accT), (st:accSt)) ps
 
+convertToDVPair :: (V.Unbox a, V.Unbox b) =>
+                     ([a], [b]) -> DataVectorPair a b
 convertToDVPair (t, st) = DataVectorPair (DataVector "Clock Time" "s" (V.fromList t)) (DataVector "Simulation Time" "s" (V.fromList st))
 
 -- runVec = do
@@ -113,7 +119,7 @@ predEndTime simEndTime dPoints = predTime simEndTime penUltStep ultStep
                 then drop (length dPoints - 2) dPoints
                 else error "Insufficient data points."
 
--- predTime ::
+predTime :: Double -> (UTCTime, Double) -> (UTCTime, Double) -> UTCTime
 predTime simEndTime (penUltStepClock,penUltStepSim) (ultStepClock, ultStepSim) = addUTCTime (fromIntegral timeLeft) ultStepClock
     where
         timeLeft :: Int
@@ -121,5 +127,3 @@ predTime simEndTime (penUltStepClock,penUltStepSim) (ultStepClock, ultStepSim) =
             where
                 dCalcTime = realToFrac (diffUTCTime ultStepClock penUltStepClock) :: Double
                 dSimTime = ultStepSim - penUltStepSim
-
--- predEndTimeHistory simEndTime dPoints =

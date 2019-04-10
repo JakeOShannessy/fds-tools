@@ -25,6 +25,7 @@ import FDSUtilities.Types.Smokeview
 import FDSUtilities.Types.Monitor
 import FDSUtilities.Types.CompileCompress
 
+headErr :: String -> [p] -> p
 headErr err var = case var of
     [] -> error err
     (x:_) -> x

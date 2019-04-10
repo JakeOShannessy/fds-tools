@@ -26,7 +26,10 @@ import Data.Binary.IEEE754
 
 -- TODO: implement fseek to skip unnecessary data.
 
+timelength :: Int
 timelength = 12
+
+headerlength :: Int
 headerlength = 4
 
 -- |Parse a slice file.
@@ -176,6 +179,7 @@ parseSliceFileParserFrame frame = do
     parsedData <- parseDataSetsFrame frame i j k
     pure $ SliceDataSet header parsedData
 
+parseDataSetsFrame :: Int -> Int -> Int -> Int -> Parser [Snapshot]
 parseDataSetsFrame frame i j k = do
     let toTake = (timelength+headerlength+i*j*k*4+headerlength)*frame
     A.take toTake

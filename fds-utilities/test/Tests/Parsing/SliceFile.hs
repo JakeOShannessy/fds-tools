@@ -8,14 +8,15 @@ assertRight :: Show a => Either a b -> IO b
 assertRight (Left s) = assertFailure (show s) >> fail "assertion failed"
 assertRight (Right a) = return a
 
+tests :: Test
 tests = TestList
     [ test1
     -- , test2
     ]
 
+test1 :: Test
 test1 = TestLabel "parse a slice file" $ TestCase $ do
     res <- parseSliceFile testPath
-    print res
     assertRight res *> pure ()
     where
         testPath = "test-data/test_slice.sf"

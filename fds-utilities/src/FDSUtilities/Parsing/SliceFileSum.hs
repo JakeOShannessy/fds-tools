@@ -1,8 +1,4 @@
-module FDSUtilities.Parsing.SliceFileSum
-    -- ( parseSliceFile
-    -- ,
-    -- )
-    where
+module FDSUtilities.Parsing.SliceFileSum where
 
 import FDSUtilities.Types
 import FDSUtilities.Parsing.SliceFile
@@ -45,9 +41,10 @@ parseDataSum i j k = do    -- TODO: the headers and tails are the length of the
 -- record. Take advantage of this.
     recLength <- parseRecordLength
     theData <- replicateM k $ replicateM j $ replicateM i parseDatumSum
-    parseSetRecordLength recLength
+    _ <- parseSetRecordLength recLength
     return theData
 
+parseDataSetSum :: Int -> Int -> Int -> Parser (Float, Float)
 parseDataSetSum i j k = do
     time <- parseTime
     parsedData <- parseDataSum i j k
@@ -55,17 +52,22 @@ parseDataSetSum i j k = do
     -- let res = ((wordToFloat time), maximum $ map maximum (map (map maximum) parsedData))
     return $ deepseq res res
 
+parseDataSetArea :: (Float -> Bool) -> Int -> Int -> Int
+    -> Parser (Float, [Float])
 parseDataSetArea threshold i j k = do
     time <- parseTime
     parsedData <- parseData i j k
     let res = (time, filter threshold $ R.toList parsedData)
     return $ deepseq res res
 
+parseDataSetsSum :: Int -> Int -> Int -> Parser [(Float, Float)]
 parseDataSetsSum i j k = do
     parsedData <- many' $ try $ parseDataSetSum i j k
     endOfInput
     return parsedData
 
+parseDataSetsArea :: (Float -> Bool) -> Int -> Int -> Int
+    -> Parser [(Float, [Float])]
 parseDataSetsArea threshold i j k = do
     parsedData <- many' $ try $ parseDataSetArea threshold i j k
     endOfInput

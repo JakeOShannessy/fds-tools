@@ -38,6 +38,7 @@ parseSimulationFDSFile :: FDSSimulation -> IO (Either ParseError NamelistFile)
 parseSimulationFDSFile simulation = parseFDSFile (fdsFilePath simulation)
 
 {-# DEPRECATED getSMVData "Use parseSimulationSMVFile instead" #-}
+getSMVData :: FDSSimulation -> IO (Either ParseError SMVFile)
 getSMVData = parseSimulationSMVFile
 
 sliceFilenames :: SMVFile -> [String]
@@ -45,11 +46,13 @@ sliceFilenames smvData = map slcfFilename sliceFileEntries
     where
         sliceFileEntries = filter isSliceEntry $ smvDataFiles smvData
 
+isSliceEntry :: DataFileEntry -> Bool
 isSliceEntry x = case x of
         SLCFDataFile {} -> True
         _ -> False
 
--- getSliceHeadersSpecific :: FDSSimulation
+getSliceHeadersSpecific :: FDSSimulation
+                             -> [DataFileEntry] -> IO [SliceDataHeader]
 getSliceHeadersSpecific simulation sliceEntries = do
     let fileNames = map slcfFilename sliceEntries
         filePaths = map (\x-> joinPath [simDir simulation, x]) fileNames
@@ -57,6 +60,7 @@ getSliceHeadersSpecific simulation sliceEntries = do
     return headers
 
 
+getHeaders :: [FilePath] -> IO [SliceDataHeader]
 getHeaders filePaths = do
     let getHeaderBytes filepath = do
             fileHndl <- openFile filepath ReadMode

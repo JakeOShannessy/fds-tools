@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-missing-fields #-}
 module FDSUtilities.FDSFile.Decode where
 
 import qualified Data.Array as A
@@ -25,6 +26,7 @@ import           Text.Parsec.Pos (initialPos)
 import qualified System.IO.Strict as StrictIO
 import           System.Directory
 
+simpleSurf :: T.Text -> Namelist
 simpleSurf surfId = Namelist "SURF" "" (M.fromList
     [("ID", ParString surfId)
     ])
@@ -82,9 +84,11 @@ decodeNamelist fdsData nml = case nml_name nml of
     "HEAD" -> decodeHead fdsData nml
     _ -> decodeUnknown fdsData nml
 
+decodeUnknown :: FDSFile -> Namelist -> FDSFile
 decodeUnknown fdsData nml =
     fdsData { fdsFile_unknownNamelists = nml:(fdsFile_unknownNamelists fdsData)}
 
+decodeObst :: FDSFile -> Namelist -> FDSFile
 decodeObst fdsData nml =
     let obst = Obst
             { obst_ALLOW_VENT = fromMaybe True $ parToBool <$> getParameterMaybe nml "ALLOW_VENT"
@@ -121,6 +125,7 @@ decodeObst fdsData nml =
 
 
 
+decodeVent :: FDSFile -> Namelist -> FDSFile
 decodeVent fdsData nml =
     let vent = Vent
             { vent_COLOR = parToString <$> getParameterMaybe nml "COLOR"
@@ -159,40 +164,58 @@ decodeVent fdsData nml =
             }
     in fdsData { fdsFile_Vents = vent:(fdsFile_Vents fdsData)}
 
+parToList :: (ParameterValue -> b) -> ParameterValue -> [b]
 parToList tranform (ParArray arr) = fmap tranform $ M.elems arr
+parToList _ xs = error $ show xs <> " is not an array"
 
-parToRGB (ParArray arr) =
-    let [a,b,c] = M.elems arr
-    in RGB (parToInt a) (parToInt b) (parToInt c)
+parToRGB :: ParameterValue -> RGB
+parToRGB (ParArray arr) = case M.elems arr of
+    [a, b, c] -> RGB (parToInt a) (parToInt b) (parToInt c)
+    xs -> error $ show xs <> " is an invalid RGB array"
+parToRGB xs = error $ show xs <> " is not an array"
 
+parToXYZ :: ParameterValue -> XYZ
 parToXYZ par =
     let (x,y,z) = parTo3 parToDouble par
     in XYZ x y z
 
+parToIJK :: ParameterValue -> IJK
 parToIJK par =
     let (i,j,k) = parTo3 parToInt par
     in IJK i j k
 
+parToXB :: ParameterValue -> XB
 parToXB par =
     let (x1,x2,y1,y2,z1,z2) = parTo6 parToDouble par
     in XB x1 x2 y1 y2 z1 z2
 
+parTo3String :: ParameterValue -> (String, String, String)
 parTo3String (ParArray arr) =
     let [a,b,c] = M.elems arr
     in (parToString a, parToString b, parToString c)
+parTo3String xs = error $ show xs <> " is not an array"
 
+parTo2 :: (ParameterValue -> b) -> ParameterValue -> (b, b)
 parTo2 tranform (ParArray arr) =
     let [a, b] = fmap tranform $ M.elems arr
     in (a, b)
+parTo2 _ xs = error $ show xs <> " is not an array"
 
+parTo3 :: (ParameterValue -> c) -> ParameterValue -> (c, c, c)
 parTo3 tranform (ParArray arr) =
     let [a, b, c] = fmap tranform $ M.elems arr
     in (a, b, c)
+parTo3 _ xs = error $ show xs <> " is not an array"
 
-parTo6 tranform (ParArray arr) =
-    let [a,b,c,d,e,f] = fmap tranform $ M.elems arr
-    in (a, b, c, d, e, f)
+parTo6 :: (ParameterValue -> f)
+            -> ParameterValue -> (f, f, f, f, f, f)
+parTo6 tranform (ParArray arr) = case fmap tranform $ M.elems arr of
+    [a,b,c,d,e,f] -> (a, b, c, d, e, f)
+    xs -> error $ "incorrect number of elements in array"
+parTo6 _ xs = error $ show xs <> " is not an array"
 
+parTo6String :: ParameterValue
+    -> (String, String, String, String, String, String)
 parTo6String = parTo6 parToString
 
 
@@ -341,10 +364,12 @@ decodePart fdsData nml =
             }
     in fdsData { fdsFile_Parts = part:(fdsFile_Parts fdsData)}
 
+decodeSurfInto :: FDSFile -> Namelist -> FDSFile
 decodeSurfInto fdsData nml =
     let surf = decodeSurf nml
     in fdsData { fdsFile_Surfs = surf:(fdsFile_Surfs fdsData)}
 
+decodeSurf :: Namelist -> Surf
 decodeSurf nml = Surf
             { surf_ADIABATIC = fromMaybe False $ parToBool <$> getParameterMaybe nml "ADIABATIC"
             , surf_AUTO_IGNITION_TEMPERATURE = fromMaybe (-273) $ parToDouble <$> getParameterMaybe nml "AUTO_IGNITION_TEMPERATURE"
@@ -472,6 +497,7 @@ decodeSurf nml = Surf
             -- , surf_Z0 :: Double
             }
 
+decodeProp :: FDSFile -> Namelist -> FDSFile
 decodeProp fdsData nml =
     let
         prop = Prop
@@ -541,6 +567,7 @@ decodeProp fdsData nml =
             }
     in fdsData { fdsFile_Props = prop:(fdsFile_Props fdsData)}
 
+decodeSlcf :: FDSFile -> Namelist -> FDSFile
 decodeSlcf fdsData nml =
     let
         slcf = Slcf
@@ -571,6 +598,7 @@ decodeSlcf fdsData nml =
             }
     in fdsData { fdsFile_Slcfs = slcf:(fdsFile_Slcfs fdsData)}
 
+decodeHvac :: FDSFile -> Namelist -> FDSFile
 decodeHvac fdsData nml =
     let
         hvac = Hvac
@@ -619,6 +647,7 @@ decodeHvac fdsData nml =
             }
     in fdsData { fdsFile_Hvacs = hvac:(fdsFile_Hvacs fdsData)}
 
+decodeReac :: FDSFile -> Namelist -> FDSFile
 decodeReac fdsData nml =
     let
         reac = Reac
@@ -672,6 +701,7 @@ decodeReac fdsData nml =
             }
     in fdsData { fdsFile_Reacs = reac:(fdsFile_Reacs fdsData)}
 
+decodeMisc :: FDSFile -> Namelist -> FDSFile
 decodeMisc fdsData nml =
     let
         misc = Misc
@@ -829,6 +859,7 @@ decodeMisc fdsData nml =
             }
     in fdsData { fdsFile_Misc = (Just misc)}
 
+decodeTime :: FDSFile -> Namelist -> FDSFile
 decodeTime fdsData nml =
     let
         time = Time
@@ -849,6 +880,7 @@ decodeTime fdsData nml =
             }
     in fdsData { fdsFile_Time = (Just time)}
 
+decodeHead :: FDSFile -> Namelist -> FDSFile
 decodeHead fdsData nml =
     let
         head = Head
@@ -858,6 +890,7 @@ decodeHead fdsData nml =
             }
     in fdsData { fdsFile_Head = (Just head)}
 
+decodeDump :: FDSFile -> Namelist -> FDSFile
 decodeDump fdsData nml =
     let
         dump = Dump
@@ -907,6 +940,7 @@ decodeDump fdsData nml =
             }
     in fdsData { fdsFile_Dump = (Just dump)}
 
+addRestartToFile :: FilePath -> IO ()
 addRestartToFile path = do
     exists <- doesFileExist path
     if exists
@@ -916,6 +950,7 @@ addRestartToFile path = do
             writeFile path newInputScript
         else error $ "addRestartToFile: " ++ path ++ " does not exist."
 
+addRestart :: String -> String
 addRestart inputScript =
     let
         restartExists = matchRegex
@@ -939,6 +974,7 @@ addRestart inputScript =
                     inputScript
                     "&MISC RESTART=.TRUE. /\n\n&MESH "
 
+addRestartDTToFile :: Show a => a -> FilePath -> IO ()
 addRestartDTToFile dt path = do
     exists <- doesFileExist path
     if exists
@@ -949,6 +985,7 @@ addRestartDTToFile dt path = do
         else error $ "addRestartDTToFile: " ++ path ++ " does not exist."
 
 -- TODO: this belongs in FDSUtilities
+addRestartDT :: Show a => a -> String -> String
 addRestartDT dt inputScript =
     let
         restartDTExists = matchRegex

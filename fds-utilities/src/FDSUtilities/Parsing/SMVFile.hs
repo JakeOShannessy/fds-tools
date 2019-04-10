@@ -49,35 +49,35 @@ supportedVersions =
 
 smvParser :: Parser SMVFile
 smvParser = do
-    string "TITLE" *> eol *> char ' '
+    _ <- string "TITLE" *> eol *> char ' '
     title <- optionMaybe titleString
     eol
 
-    (string "VERSION" <|> string "FDSVERSION") *> eol
+    _ <- (string "VERSION" <|> string "FDSVERSION") *> eol
     fdsVersion <- string "FDS" *> char ' ' *> parseVersion <* eol
     fdsGitVersion <- basicString <* eol
     eol
 
-    string "ENDF" *> eol
+    _ <- string "ENDF" *> eol
     endf <- char ' ' *> fullString <* eol
     eol
 
-    string "INPF" *> eol
+    _ <- string "INPF" *> eol
     inpf <- char ' ' *> fullString <* eol
     eol
 
     string "REVISION" *> eol
     revision <- onlySpaces *> basicString
-    onlySpaces <* eol
+    _ <- onlySpaces <* eol
     eol
 
-    string "CHID" *> eol
+    _ <- string "CHID" *> eol
     chid <- char ' ' *> fullString <* eol
     eol
 
     csvEntries <- if fdsVersion >= (Version 6 0 0)
         then many (do
-            string "CSVF"
+            _ <- string "CSVF"
             eol
             csvFile <- parseCSVEntry
             eol
@@ -95,7 +95,7 @@ smvParser = do
     eol
 
     geomModel <- optionMaybe (do
-        string "CADGEOM" <* eol
+        _ <- string "CADGEOM" <* eol
 
         geomModel <- onlySpaces *> basicStringExtra <* eol
         eol
@@ -114,14 +114,14 @@ smvParser = do
         )
 
     string "GVEC" *> eol
-    onlySpaces *> floatNum
-    onlySpaces *> floatNum
-    onlySpaces *> floatNum <* eol
+    _ <- onlySpaces *> floatNum
+    _ <- onlySpaces *> floatNum
+    _ <- onlySpaces *> floatNum <* eol
     eol
 
     string "SURFDEF" *> eol
     surfDef <- onlySpaces *> basicString
-    onlySpaces <* eol
+    _ <- onlySpaces <* eol
     eol
 
     surfs <- many parseSurface
@@ -139,7 +139,7 @@ smvParser = do
 
     string "HRRPUVCUT" *> eol
     h <- onlySpaces *> intNum <* eol
-    j <- many (do; onlySpaces; i <- floatNum; eol; return i;)
+    j <- many (do; _ <- onlySpaces; i <- floatNum; eol; return i;)
     eol
 
     string "RAMP" *> eol
@@ -208,18 +208,19 @@ data SMVFile = SMVFile
     , obstVis       :: [ObstVisEntry]
     } deriving Show
 
+parseGeom :: Parser ()
 parseGeom = do
-    string "GEOM"
-    onlySpaces
+    _ <- string "GEOM"
+    _ <- onlySpaces
     n <- intNum
     eol
-    onlySpaces
+    _ <- onlySpaces
     geom <- manyTill anyChar eol
     eol
 
 parseRamp :: Parser [(Double, Double)]
 parseRamp = do
-    string " RAMP: "
+    _ <- string " RAMP: "
     name <- basicStringSpaces <* eol
     nPoints <- onlySpaces *> intNum <* eol
     points <- count nPoints parsePoint
@@ -234,7 +235,7 @@ parseSurface :: Parser SMVSurf
 parseSurface = do
     string "SURFACE" *> eol
     surfName <- onlySpaces *> basicStringSpaces -- TODO: does not allow names with spaces
-    onlySpaces
+    _ <- onlySpaces
     eol
 
     a <- onlySpaces *> floatNum
@@ -255,6 +256,7 @@ parseSurface = do
 
 data SMVSurf = SMVSurf String Double Double Int Double Double Double Double Double Double String deriving Show
 
+parseMaterial :: Parser SMVMatl
 parseMaterial = do
     string "MATERIAL" *> eol
     matlName <- onlySpaces *> basicStringSpaces <* onlySpaces <* eol -- TODO: does not allow names with spaces
@@ -268,10 +270,11 @@ parseMaterial = do
 
 data SMVMatl = SMVMatl String Double Double Double deriving Show
 
+parseClassOfParticles :: Parser SMVPClass
 parseClassOfParticles = do
-    string "CLASS_OF_PARTICLES" *> eol
+    _ <- string "CLASS_OF_PARTICLES" *> eol
     c <- onlySpaces *> basicStringSpaces
-    onlySpaces
+    _ <- onlySpaces
     eol
     d <- onlySpaces *> floatNum
     e <- onlySpaces *> floatNum
@@ -279,7 +282,7 @@ parseClassOfParticles = do
     eol
     g <- onlySpaces *> intNum
     eol
-    optionMaybe parseDropletDiameter
+    _ <- optionMaybe parseDropletDiameter
     eol
     return $ SMVPClass c d e f g
 
@@ -327,27 +330,29 @@ parseClassOfParticles = do
 --     return () -- (SMVPClass name d e f g)
 
 
+parseDropletDiameter :: Parser ()
 parseDropletDiameter = do
-    onlySpaces
-    string "DROPLET DIAMETER"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "DROPLET DIAMETER"
+    _ <- onlySpaces
     eol
-    onlySpaces
-    string "diam"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "diam"
+    _ <- onlySpaces
     eol
-    onlySpaces
-    string "mu-m"
-    onlySpaces
+    _ <- onlySpaces
+    _ <- string "mu-m"
+    _ <- onlySpaces
     eol
 
 
 data SMVPClass = SMVPClass String Double Double Double Int deriving Show
 
+
 parseOutline = do
-    string "OUTLINE"
+    _ <- string "OUTLINE"
     eol
-    onlySpaces
+    _ <- onlySpaces
     a <- intNum
     eol
     entries <- many parseOutlineEntry
@@ -380,12 +385,12 @@ parseProp = do
 data SMVProp = SMVProp String Int String Int deriving Show
 
 parseDevice = do
-    string "DEVICE"
+    _ <- string "DEVICE"
     eol
-    onlySpaces
+    _ <- onlySpaces
     name <- fullString
     -- TODO: this part skips unkown info
-    manyTill anyChar eol
+    _ <- manyTill anyChar eol
     -- eol
     a <- onlySpaces *> floatNum
     b <- onlySpaces *> floatNum
@@ -395,7 +400,7 @@ parseDevice = do
     f <- onlySpaces *> floatNum
     g <- onlySpaces *> intNum
     h <- onlySpaces *> intNum
-    clearLine
+    _ <- clearLine
     eol
 
     return $ SMVDevice name a b c d e f g h
@@ -403,7 +408,7 @@ parseDevice = do
 data SMVDevice = SMVDevice String Double Double Double Double Double Double Int Int deriving Show
 
 parseMesh version = do
-    string "OFFSET"
+    _ <- string "OFFSET"
     eol
     offset1 <- onlySpaces *> floatNum
     offset2 <- onlySpaces *> floatNum
@@ -411,8 +416,8 @@ parseMesh version = do
     eol
     eol
 
-    string "GRID"
-    onlySpaces
+    _ <- string "GRID"
+    _ <- onlySpaces
     name <- basicStringSpaces
     eol
     nXCells <- onlySpaces *> intNum
@@ -431,9 +436,9 @@ parseMesh version = do
 
     if version >= (Version 6 0 0)
         then do
-            string "CVENT"
+            _ <- string "CVENT"
             eol
-            onlySpaces
+            _ <- onlySpaces
             nCVents <- intNum
             eol
             -- cvents <- count nCVents parseCVent
@@ -940,19 +945,21 @@ data ObstVisEntry
     deriving Show
 takeJust (Just x) = x
 
+parsePL3DEntry :: Parser PL3DEntry
 parsePL3DEntry = do
     -- onlySpaces
-    char ' '
+    _ <- char ' '
     longName <- basicStringSpacesExtra
     eol
-    onlySpaces
+    _ <- onlySpaces
     shortName <- basicStringExtra
     eol
-    onlySpaces
+    _ <- onlySpaces
     units <- basicStringExtra
     eol
     return $ PL3DEntry longName shortName units
 
+clearLine :: Parser String
 clearLine = do
     manyTill anyChar eol
 

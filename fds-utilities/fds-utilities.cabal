@@ -127,6 +127,7 @@ library
         -Wno-unused-local-binds
         -Wno-name-shadowing
         -Wno-unused-matches
+        -Wno-unused-top-binds
 
 test-suite TestSuite
     build-depends: base -any
@@ -177,7 +178,6 @@ test-suite TestSuite
        , Tests.Parsing.SliceFile
        , Tests.Parsing.PLOT3D
        , Paths_fds_utilities
-
    hs-source-dirs: test
 
 benchmark bench

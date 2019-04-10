@@ -85,13 +85,20 @@ instance FC.Mapping String Monitor MonitorDict where
     insert x y (MonitorDict map) = MonitorDict (M.insert x y map)
     delete x (MonitorDict map) = MonitorDict (M.delete x map)
 
+monitorDictToList :: MonitorDict -> [Monitor]
 monitorDictToList x = map snd (M.toList $ monitorDictToMap x)
+
+monitorDictToMap :: MonitorDict -> M.Map String Monitor
 monitorDictToMap (MonitorDict m) = m
+
+modifyMonitorKey :: String
+                      -> (Monitor -> Monitor) -> MonitorDict -> MonitorDict
 modifyMonitorKey k transform' (MonitorDict m)
     = MonitorDict $ M.update transform k m
     where
         transform x = Just $ transform' x
 
+addMonitorKey :: FC.Mapping k v m => k -> v -> m -> m
 addMonitorKey k val monitorDict
     = FC.insert k val monitorDict
 
@@ -143,4 +150,3 @@ makeLenses ''ChartConfig
 makeLenses ''MonitorFile
 makeLenses ''WatchCase
 makeLenses ''Monitor
-

@@ -30,6 +30,7 @@ import FDSUtilities.Types
 import System.Directory
 import System.FilePath
 
+getDataList :: FDSSimulation -> [String] -> IO [DataVectorPair Double Double]
 getDataList sim names' = do
     dataList <- E.catch (readCaseCSVFiles sim) handler
     return $ createTimeVectorPairs (singleVecs dataList)
@@ -43,7 +44,7 @@ getDataList sim names' = do
         handler :: SomeException -> IO [DataVector Double]
         handler e = do
             print e
-            getLine
+            _ <- getLine
             return []
 
 getDataListAll :: FDSSimulation -> IO [DataVectorPair Double Double]
@@ -73,8 +74,10 @@ createTimeVectorPairs vectors = tVectorList
                                 else acc
 
 -- |Remove any empties from CSV
+cleanCSV :: [[String]] -> [[String]]
 cleanCSV csv = delete [""] csv
 
+findDVectorByName :: [DataVector a] -> String -> Maybe (DataVector a)
 findDVectorByName (v:vectors) searchName = if name == searchName then Just v else findDVectorByName vectors searchName
     where
         (DataVector name units datVals) = v
@@ -108,7 +111,7 @@ findDVectorPairByYNameMaybe [] _ = Nothing
 --                 props = map ((\(NumAndCoord prop coord) -> prop) . f) meshSteps
 
 getOutLocProp :: String -> OutData -> [DataVectorPair Double Double] -- output a DataVectorPair for each mesh
-getOutLocProp propName outData = map (\(n, (t, prop)) -> DataVectorPair (DataVector "Time" "s" (V.fromList t)) (DataVector ("Mesh " ++ show n) "" (V.fromList prop))) tt
+getOutLocProp propName outData = map (\(n, (t, prop)) -> DataVectorPair (DataVector "Time" "s" (V.fromList t)) (DataVector ("Mesh " ++ show (n :: Int)) "" (V.fromList prop))) tt
     where
         tSteps = timesteps outData
         ff = map unzip $ transpose $ map worker tSteps
@@ -127,7 +130,7 @@ getOutLocPropSingle propName meshStep =
     in d
 
 getOutProp :: (MeshStep -> Double) -> OutData -> [DataVectorPair Double Double] -- output a DataVectorPair for each mesh
-getOutProp f outData = map (\(n, (t, prop)) -> DataVectorPair (DataVector "Time" "s" (V.fromList t)) (DataVector ("Mesh " ++ show n) "" (V.fromList prop))) tt
+getOutProp f outData = map (\(n, (t, prop)) -> DataVectorPair (DataVector "Time" "s" (V.fromList t)) (DataVector ("Mesh " ++ show (n :: Int)) "" (V.fromList prop))) tt
     where
         tSteps = timesteps outData
         ff = map unzip $ transpose $ map worker tSteps
