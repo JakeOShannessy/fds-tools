@@ -1,0 +1,173 @@
+name: fute-core
+version: 0.0.46.0
+cabal-version: >=1.8
+build-type: Simple
+license: MPL-2.0
+synopsis: Utilities to use with Fire Dynamics Simulator.
+Data-Files: data/CompileCompress.css
+    , test-data/test_pl3d.q
+    , test-data/test_slice.sf
+    , test-data/device-within-obstruction/detector-inside-block.fds
+    , test-data/device-within-obstruction/detector-not-inside-block.fds
+    , test-data/device-beneath-ceiling/sprinkler-beneath-ceiling.fds
+    , test-data/device-beneath-ceiling/sprinkler-beneath-ceiling2.fds
+    , test-data/device-beneath-ceiling/sprinkler-not-beneath-ceiling.fds
+    , test-data/device-beneath-ceiling/sprinkler-beneath-solid-mesh-boundary.fds
+    , test-data/device-beneath-ceiling/sprinkler-beneath-open-mesh-boundary.fds
+    , test-data/device-beneath-ceiling/sprinkler-beneath-shared-mesh-boundary.fds
+
+library
+    build-depends:  base -any
+                    , array -any
+                    , aeson -any
+                    , attoparsec -any
+                    , attoparsec-binary -any
+                    , blaze-html -any
+                    , bytestring -any
+                    , cassava -any
+                    , colour -any
+                    , containers -any
+                    , data-binary-ieee754 -any
+                    , data-default -any
+                    , directory -any
+                    , deepseq -any
+                    , file-embed -any
+                    , filepath -any
+                    , Glob >= 0.9.0
+                    , hxt
+                    , indents -any
+                    , lens -any
+                    , MissingH -any
+                    , mtl -any
+                    , namelist-parser >=0.2.1
+                    , fds-input-parser >= 0.1.0.2
+                    , parsec -any
+                    , process -any
+                    , regex-compat
+                    , repa -any
+                    , split -any
+                    , statistics -any
+                    , strict
+                    , temporary -any
+                    , text -any
+                    , time -any
+                    , unbounded-delays -any
+                    , vector -any
+
+    exposed-modules:
+                    FDSUtilities.CopyDir
+                    , FDSUtilities.Data
+                    , FDSUtilities.DeviceActivationTimes
+--                    , FDSUtilities.Diff
+                    , FDSUtilities.Paths
+                    , FDSUtilities.RenameCase
+                    , FDSUtilities.RunTimeCalc
+                    , FDSUtilities.Simulation
+                    , FDSUtilities.Types
+                    , FDSUtilities.Types.Assess
+                    , FDSUtilities.Types.OutFile
+                    , FDSUtilities.Types.Data
+                    , FDSUtilities.Types.Screenshots
+                    , FDSUtilities.Types.Smokeview
+                    , FDSUtilities.Types.Simulation
+                    , FDSUtilities.Types.Common
+                    , FDSUtilities.Types.Fire
+                    , FDSUtilities.Class
+                    , FDSUtilities.Histogram
+                    , FDSUtilities.WatchCase
+                    , FDSUtilities.FDSFile
+                    , FDSUtilities.FDSFile.Decode
+                    , FDSUtilities.FDSFile.NamelistFunctions
+                    , FDSUtilities.FDSFile.Types
+                    , FDSUtilities.FDSFile.Utilities
+                    , FDSUtilities.Smokeview
+                    , FDSUtilities.Smokeview.IniConfig
+                    , FDSUtilities.Smokeview.SSF
+                    , FDSUtilities.Smokeview.Script
+                    , FDSUtilities.Summary
+                    , FDSUtilities.Parsing
+                    , FDSUtilities.Parsing.SliceFile
+                    , FDSUtilities.Parsing.SliceFileSum
+                    , FDSUtilities.Parsing.SimulationData
+                    , FDSUtilities.Parsing.SMVFile
+                    , FDSUtilities.Parsing.OutFile
+                    , FDSUtilities.Parsing.PLOT3D
+                    , FDSUtilities.Parsing.OutFile.Types
+                    , FDSUtilities.Parsing.OutFileIdeal
+                    , FDSUtilities.Parsing.FDSFile
+                    , FDSUtilities.Parsing.Common
+                    , FDSUtilities.Parsing.CommonIdeal
+                    , FDSUtilities.Parsing.Indent
+                    , FDSUtilities.Verification
+                    , FDSUtilities.Verification.Display
+                    , FDSUtilities.Verification.Tests
+    other-modules: Paths_fute_core
+    exposed: True
+    buildable: True
+    hs-source-dirs: src
+    ghc-options:
+        -Wall
+        -- -Werror
+        -Wno-unused-imports
+        -Wno-unused-local-binds
+        -Wno-name-shadowing
+        -Wno-unused-matches
+        -Wno-unused-top-binds
+
+test-suite TestSuite
+    build-depends: base -any
+        , array -any
+        , attoparsec -any
+        , attoparsec-binary -any
+        , blaze-html -any
+        , bytestring -any
+        , cassava -any
+        , colour -any
+        , containers -any
+        , data-binary-ieee754 -any
+        , data-default -any
+        , directory -any
+        , deepseq -any
+        , filepath -any
+        , Glob >= 0.9.0
+        , indents -any
+        , lens -any
+        , MissingH -any
+        , mtl -any
+        , namelist-parser >=0.2.0
+        , fds-input-parser
+        , old-locale -any
+        , parsec -any
+        , process -any
+        , repa -any
+        , statistics -any
+        , temporary -any
+        , time -any
+        , unbounded-delays -any
+        , vector -any
+        , fds-utilities
+        , HUnit -any
+        , QuickCheck -any
+        , test-framework -any
+        , test-framework-hunit -any
+        , test-framework-quickcheck2 -any
+
+   type: exitcode-stdio-1.0
+   main-is: Tests.hs
+   buildable: True
+   -- cpp-options: -DMAIN_FUNCTION=testMain
+   other-modules: Tests.Verification
+       , Tests.Parsing.SliceFile
+       , Tests.Parsing.PLOT3D
+       , Paths_fute_core
+   hs-source-dirs: test
+
+benchmark bench
+    type: exitcode-stdio-1.0
+    main-is: Bench.hs
+    ghc-options: -rtsopts -fprof-auto
+    -- benchmark-options: --output=benchmark.html
+    build-depends: base
+        , fds-utilities
+        , criterion
+    hs-source-dirs: bench

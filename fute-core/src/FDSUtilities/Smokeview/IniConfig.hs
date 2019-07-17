@@ -1,0 +1,304 @@
+module FDSUtilities.Smokeview.IniConfig where
+
+import Control.Lens
+
+import Data.List
+import qualified Data.Map as M
+
+import FDSUtilities.Types.Smokeview
+
+
+-- printTour :: Tour -> String
+-- printTour tour = tourName tour ++ "\n"
+    -- ++ " " ++ show (tourNKeyframes tour) ++ " " ++ printTourGlobalTension (tourGlobalTension tour) ++ " " ++ show (tourAvatarNum tour) ++ " " ++ "1" -- no idea what the final "1" is for
+    -- ++ concatMap printTourKeyframe (tourKeyframes tour)
+
+-- printTourKeyframe :: TourKeyframe -> String
+-- printTourKeyframe keyframe = concat $ intersperse " " $ vals
+    -- where
+        -- vals =
+            -- [ printIniVal (tourKeyframeTime keyframe)
+            -- , printIniVal (tourKeyframeXPos keyframe)
+            -- , printIniVal (tourKeyframeYPos keyframe)
+            -- , printIniVal (tourKeyframeZPos keyframe)
+            -- , viewString
+            -- , printIniVal (tourKeyframeContinuity keyframe)
+            -- , printIniVal (tourKeyframeTension keyframe)
+            -- , printIniVal (tourKeyframeZoom keyframe)
+            -- , printIniVal (tourKeyframeLocalSpeedFlag keyframe)
+            -- ]
+        -- viewString = case viewDir of
+                    -- AzimElev _ _ _ -> "1 " ++ printIniVal (viewDirectionAzimuth viewDir) ++ " " ++ printIniVal (viewDirectionElevation viewDir) ++ " " ++ printIniVal (viewDirectionBias viewDir)
+                    -- Cartesian _ _ _ -> "0 " ++ printIniVal (viewDirectionXView viewDir) ++ " " ++ printIniVal (viewDirectionYView viewDir) ++ " " ++ printIniVal (viewDirectionZView viewDir)
+            -- where viewDir = tourKeyframeViewDirection keyframe
+
+-- printTourGlobalTension :: Maybe Double -> String
+-- printTourGlobalTension gblTens = case gblTens of
+                        -- Just val -> "1 " ++ printIniVal val
+                        -- Nothing -> "0 0.00000"
+
+-- ppm = True
+
+
+
+
+-- printBarLevel :: Maybe Int -> String
+-- printBarLevel barLevel = case barLevel of
+                            -- Just val -> show val
+                            -- Nothing -> "-1"
+
+-- -- TODO: below
+-- -- printBasicConfig :: (Show a) => String -> a -> String
+-- -- printBasicCon
+
+-- printLabelStartupView name = "LABELSTARTUPVIEW\n " ++ name ++ "\n"
+-- -- XYZCLIP
+ -- -- 2
+ -- -- 0 -7.583500 0 76.083504
+ -- -- 0 -1.084500 0 83.584503
+ -- -- 0 -0.012000 0 4.282005
+
+
+
+
+
+-- -- printBounds dBound = printBound (dBoundMin dBound) ++ " " ++ printBound (dBoundMax dBound)
+
+-- -- printBound :: Maybe Double -> String
+-- -- printBound bndVal = case bndVal of
+                -- -- Just val -> "1 " ++ printIniVal val
+                -- -- Nothing -> "0 0.00000"
+-- -- data XYZClipOpts = ClipNone | ClipAll | ClipObsts
+
+-- -- instance FDSPrint ConfigColors where
+  -- -- fdsPrint configColors =
+    -- -- "COLORS\n------\n"
+    -- -- ++ fdsPrint (_configColorsColorBar configColors)
+
+
+-- makeIni :: IniConfig -> String
+-- makeIni = fdsPrint
+
+-- -- instance FDSPrint IniConfigLua where
+  -- -- fdsPrint iniConfig =
+    -- -- fdsPrint (iniConfig ^. iniConfigLuaColors)
+-- instance FDSPrint IniConfig where
+    -- fdsPrint iniConfig  = "# NIST Smokeview configuration file, Release Apr 30 2013\n\n"
+        -- ++ "COLORS\n------\n\n"
+        -- ++ "COLORBAR\n 12 1 " ++ printBarLevel (iniConfig ^. iniConfigBarLevel) ++ "\n 0.000000 0.000000 1.000000\n 0.000000 0.359375 1.000000\n 0.000000 0.718750 1.000000\n 0.000000 1.000000 0.921875\n 0.000000 1.000000 0.562500\n 0.000000 1.000000 0.203125\n 0.171875 1.000000 0.000000\n 0.531250 1.000000 0.000000\n 0.890625 1.000000 0.000000\n 1.000000 0.746032 0.000000\n 1.000000 0.380952 0.000000\n 1.000000 0.000000 0.000000\n"
+        -- ++ "COLOR2BAR\n 8\n 1.000000 1.000000 1.000000 :white  \n 1.000000 1.000000 0.000000 :yellow \n 0.000000 0.000000 1.000000 :blue   \n 1.000000 0.000000 0.000000 :red    \n 0.000000 1.000000 0.000000 :green  \n 1.000000 0.000000 1.000000 :magenta\n 0.000000 1.000000 1.000000 :cyan   \n 0.000000 0.000000 0.000000 :black  \n"
+        -- ++ "ISOCOLORS\n 10.000000 0.800000 : shininess, transparency\n 0.700000 0.700000 0.700000 : specular\n 3\n 0.960000 0.000000 0.960000\n 0.750000 0.800000 0.800000\n 0.000000 0.960000 0.280000\n"
+        -- ++ "VENTCOLOR\n 1.000000 0.000000 1.000000\n"
+        -- ++ "SENSORCOLOR\n 1.000000 1.000000 0.000000\n"
+        -- ++ "SENSORNORMCOLOR\n 1.000000 1.000000 0.000000\n"
+        -- ++ "HEATONCOLOR\n 1.000000 0.000000 0.000000\n"
+        -- ++ "HEATOFFCOLOR\n 1.000000 0.000000 0.000000\n"
+        -- ++ "SPRINKONCOLOR\n 0.000000 1.000000 0.000000\n"
+        -- ++ "SPRINKOFFCOLOR\n 1.000000 0.000000 0.000000\n"
+        -- ++ "BLOCKCOLOR\n 1.000000 0.800000 0.400000\n"
+        -- ++ "BOUNDCOLOR\n 0.500000 0.500000 0.500000\n"
+        -- ++ "STATICPARTCOLOR\n 0.000000 1.000000 0.000000\n"
+        -- ++ "BACKGROUNDCOLOR\n 0.000000 0.000000 0.000000\n"
+        -- ++ "FOREGROUNDCOLOR\n 1.000000 1.000000 1.000000\n"
+        -- ++ "FLIP\n 1\n"
+        -- ++ "TIMEBARCOLOR\n 0.600000 0.600000 0.600000\n"
+        -- ++ "SETBW\n 0\n"
+        -- ++ "COLORBAR_FLIP\n " ++ (if iniConfig ^. iniConfigColourBarFlip then "1" else "0") ++ "\n\n"
+        -- ++ " LIGHTING\n--------\n\n"
+        -- ++ "AMBIENTLIGHT\n 0.600000 0.600000 0.600000\n"
+        -- ++ "DIFFUSELIGHT\n 0.500000 0.500000 0.500000\n\n"
+        -- ++ " SIZES\n-----------\n\n"
+        -- ++ "VECTORPOINTSIZE\n 2.000000\n"
+        -- ++ "VECTORLINEWIDTH\n 1.000000\n"
+        -- ++ "VECLENGTH\n 0 0.250000\n"
+        -- ++ "VECTORPOINTSIZE\n 2.000000\n"
+        -- ++ "PARTPOINTSIZE\n 4.000000\n"
+        -- ++ "STREAKLINEWIDTH\n 1.000000\n"
+        -- ++ "ISOPOINTSIZE\n 4.000000\n"
+        -- ++ "ISOLINEWIDTH\n 2.000000\n"
+        -- ++ "PLOT3DPOINTSIZE\n 4.000000\n"
+        -- ++ "GRIDLINEWIDTH\n 2.000000\n"
+        -- ++ "PLOT3DLINEWIDTH\n 2.000000\n"
+        -- ++ "SENSORABSSIZE\n 0.038000\n"
+        -- ++ "SENSORRELSIZE\n 1.000000\n"
+        -- ++ "SPRINKLERABSSIZE\n 0.076000\n"
+        -- ++ "SPHERESEGS\n 6\n"
+        -- ++ fdsPrint (iniConfig ^. iniConfigWindowSize)
+        -- ++ "WINDOWOFFSET\n 45\n"
+        -- ++ "RENDEROPTION\n 993 2\n\n"
+        -- ++ " LINES\n-----------\n\n"
+        -- ++ "LINEWIDTH\n 2.000000\n"
+        -- ++ "VENTLINEWIDTH\n 2.000000\n"
+        -- ++ "SMOOTHLINES\n 1\n"
+        -- ++ "USENEWDRAWFACE\n 0\n\n"
+        -- ++ "OFFSETS\n-------\n\n"
+        -- ++ "VENTOFFSET\n 0.100000\n"
+        -- ++ "SLICEOFFSET\n 0.100000\n\n"
+        -- ++ "TIME MIN/MAX\n"
+        -- ++ "------------\n(0/1 min max skip (1=set, 0=unset)\n\n"
+        -- ++ "TLOAD\n"
+        -- ++ " " ++ printBounds (iniConfig ^. iniConfigTimeBounds) ++ " 0 0\n\n"
+        -- ++ "VALUE MIN/MAX\n"
+        -- ++ "-------------\n(0/1 min 0/1 max (1=set, 0=unset)\n\n"
+        -- ++ "V5_PARTICLES\n 0 1.000000 0 0.000000 Uniform\n"
+        -- ++ "V_PARTICLES\n 0 1.000000 0 0.000000\n"
+        -- ++ "C_PARTICLES\n 0 1.000000 0 0.000000\n"
+        -- ++ concatMap printSlicePropertiesVSlice (map snd $ M.toList $ dictToMap (iniConfig ^. iniConfigSliceProperties))
+        -- ++ concatMap printSlicePropertiesCSlice (map snd $ M.toList $ dictToMap (iniConfig ^. iniConfigSliceProperties))
+        -- ++ "SLICEDATAOUT\n 0 \n"
+        -- ++ "V_ZONE\n 0 1.000000 0 0.000000\n"
+        -- ++ "V_PLOT3D\n 5\n 1 0 1.000000 0 1.000000\n 2 0 1.000000 0 1.000000\n 3 0 1.000000 0 1.000000\n 4 0 1.000000 0 1.000000\n 5 0 1.000000 0 1.000000\n"
+        -- ++ "C_PLOT3D\n 5\n 1 0 1.0000/00 0 -0.000000\n 2 0 1.000000 0 -0.000000\n 3 0 1.000000 0 -0.000000\n 4 0 1.000000 0 -0.000000\n 5 0 1.000000 0 -0.000000\n"
+        -- ++ "UNLOAD_QDATA\n 0\nV_TARGET\n 0 1.000000 0 0.000000\n"
+        -- ++ "PERCENTILELEVEL\n 0.010000\n\n"
+        -- ++ "DATA LOADING\n------------\n\n"
+        -- ++ "FED\n 0\nFEDCOLORBAR\n FED\n"
+        -- ++ "SHOWFEDAREA\n 1\n"
+        -- ++ "NOPART\n 1\n"
+        -- ++ "PARTPOINTSTEP\n 1\n"
+        -- ++ "SLICEAVERAGE\n 0 10.000000 1\n"
+        -- ++ "SMOKE3DZIPSTEP\n 1\n"
+        -- ++ "ISOZIPSTEP\n 1\n"
+        -- ++ "SLICEZIPSTEP\n 1\n"
+        -- ++ "BOUNDZIPSTEP\n 1\n"
+        -- ++ "SHOWTRACERSALWAYS\n 0\n"
+        -- ++ "SHOWEVACSLICES\n 0 1 0\n"
+        -- ++ "DIRECTIONCOLOR\n 0.152941 0.250980 0.545098\n"
+        -- ++ "AVATAREVAC\n 0\n"
+        -- ++ "GRIDPARMS\n 0 1 1\n 84 85 12\n"
+        -- ++ "GSLICEPARMS\n 0 0 0 0\n 34.250000 41.250000 6.000000\n 0.000000 90.000000\n"
+        -- ++ "SHOWDEVICES\n 10\n sensor\n sprinkler_pendent\n smoke_detector\n human_fixed\n human_altered_with_data\n ellipsoid\n disk\n fire_fighter\n airpack\n helmit\n"
+        -- ++ "SHOWDEVICEVALS\n 0 0 0\n"
+        -- ++ "SLICEAUTO\n 1 \n 3\n"
+        -- ++ "MSLICEAUTO\n 1 \n 9\n"
+        -- ++ "COMPRESSAUTO\n 0 \n"
+        -- ++ "LOADFILESATSTARTUP\n 0\n"
+        -- ++ "PART5PROPDISP\n  1 \n"
+        -- ++ "PART5COLOR\n"
+        -- ++ "PART5CLASSVIS\n 1\n 1\n"
+        -- ++ "PROPINDEX\n 4\n 0 0\n 1 0\n 2 0\n 3 0\n\n"
+        -- ++ "CONTOURS\n--------\n\n"
+        -- ++ "CONTOURTYPE\n 0\n"
+        -- ++ "P3VIEW\n 0 83 1 84 1 12 \n"
+        -- ++ "TRANSPARENT\n 1 0.800000\n"
+        -- ++ "SURFINC\n 0\n"
+        -- ++ "P3DSURFACETYPE\n 1\n"
+        -- ++ "P3DSURFACESMOOTH\n 1\n\n"
+        -- ++ "VISIBILITY\n----------\n\n"
+        -- ++ "SHOWTITLE\n 1\n"
+        -- ++ "SHOWCOLORBARS\n 1\n"
+        -- ++ "SHOWBLOCKS\n 1\n"
+        -- ++ "SHOWNORMALWHENSMOOTH\n 1\n"
+        -- ++ "SMOOTHBLOCKSOLID\n 0\n"
+        -- ++ "SBATSTART\n 1\n"
+        -- ++ "SHOWTRANSPARENT\n 0\n"
+        -- ++ "SHOWVENTS\n 1 0 1\n"
+        -- ++ "SHOWTRANSPARENTVENTS\n 1\n"
+        -- ++ "SHOWSENSORS\n 1 1\n"
+        -- ++ "SHOWTIMEBAR\n 1\n"
+        -- ++ "SHOWTIMELABEL\n 1\n"
+        -- ++ "SHOWFRAMELABEL\n 1\n"
+        -- ++ "SHOWFRAMELABEL\n 1\n"
+        -- ++ "SHOWFLOOR\n 0\n"
+        -- ++ "SHOWWALLS\n 0\n"
+        -- ++ "SHOWCEILING\n 0\n"
+        -- ++ "SHOWSMOKEPART\n 2\n"
+        -- ++ "SHOWSPRINKPART\n 1\n"
+        -- ++ "SHOWMEMLOAD\n 0\n"
+        -- ++ "SHOWBLOCKLABEL\n 1\n"
+        -- ++ "SHOWAXISLABELS\n 0\n"
+        -- ++ "SHOWFRAME\n 1\n"
+        -- ++ "SHOWALLTEXTURES\n 0\n"
+        -- ++ "SHOWTHRESHOLD\n 0 0 400.000000\n"
+        -- ++ "SHOWHRRCUTOFF\n 1\n"
+        -- ++ "TWOSIDEDVENTS\n 1 0\n"
+        -- ++ "TRAINERVIEW\n 1\n"
+        -- ++ "SHOWTERRAIN\n 0\n"
+        -- ++ "TERRAINPARMS\n 90 50 50\n 200 200 200\n 1.000000\n"
+        -- ++ "OFFSETSLICE\n 0\n"
+        -- ++ "SHOWTRIANGLES\n 1 0 0 0 0 1\n"
+        -- ++ "SHOWSTREAK\n 0 0 1 -2\n"
+        -- ++ "ISOTRAN2\n 4\n"
+        -- ++ "SHOWISO\n 1\n"
+        -- ++ "SHOWISONORMALS\n 0\n"
+        -- ++ "SMOKESENSORS\n 1 0\n"
+        -- ++ "VOLSMOKE\n 0 1 1 0 0\n 20.000000 700.000000 1200.000000 3.000000 8700.000000 1.000000 1.000000\n\n"
+        -- ++ "MISC\n----\n\n"
+        -- ++ "STARTUPLANG\n en\n"
+        -- ++ "SHOWOPENVENTS\n 0 0\n" -- TODO: this should be incorporated as an option
+        -- ++ "SHOWDUMMYVENTS\n 1\n"
+        -- ++ "SHOWOTHERVENTS\n 0\n"
+        -- ++ "SHOWCVENTS\n 0\n"
+        -- ++ "SHOWSLICEINOBST\n 0\n"
+        -- ++ "SKIPEMBEDSLICE\n 0\n"
+        -- ++ "SHOWTICKS\n 0\n"
+        -- ++ "USERTICKS\n 0 1 5 1 1 1\n -7.500000 -1.000000 0.000000\n -7.500000 -1.000000 0.000000\n 76.000000 83.500000 12.000000\n 1.000000 1.000000 1.000000\n 1 1 1\n"
+        -- ++ "SHOOTER\n 0.494083 0.000000 0.071006\n 0.247041 0.000000 0.000000\n 0.000000 0.000000 0.000000\n 1.000000 0.000000 4.000000\n 10 1 100 0 0\n 1.000000 1.000000\n"
+        -- ++ "SHOWLABELS\n 0\n"
+        -- ++ "SHOWFRAMERATE\n 0\n"
+        -- ++ "FRAMERATEVALUE\n 1000\n"
+        -- ++ "VECTORSKIP\n 1\n"
+        -- ++ "AXISSMOOTH\n 1\n"
+        -- ++ "BLOCKLOCATION\n 5\n"
+        -- ++ "SHOWCADANDGRID\n 0\n"
+        -- ++ "OUTLINEMODE\n 2 0\n"
+        -- ++ "TITLESAFE\n 0\n"
+        -- ++ "FONTSIZE\n 0\n"
+        -- ++ "SCALEDFONT\n 12 1.000000 1\n 32 1.000000 1\n"
+        -- ++ "ZOOM\n 2 1.000000\n"
+        -- ++ "APERTURE\n 2\n"
+        -- ++ "RENDERFILETYPE\n 0\n"
+        -- ++ "RENDERFILELABEL\n 0\n"
+        -- ++ "SHOWGRID\n 0\n"
+        -- ++ "SHOWGRIDLOC\n 0\n"
+        -- ++ "CELLCENTERTEXT\n 0\n"
+        -- ++ "PIXELSKIP\n 0\n"
+        -- ++ "PROJECTION\n 1\n"
+        -- ++ "STEREO\n 0\n"
+        -- ++ "UNITCLASSES\n 6\n 0\n 0\n 0\n 0\n 0\n " ++ (if ppm then "1" else "0") ++ "\n"
+        -- ++ "MSCALE\n 1.000000 1.000000 1.000000\n"
+        -- ++ "RENDERCLIP\n0 0 0 0 0\n"
+        -- ++ "CLIP\n 0.001000 3.000000\n"
+        -- ++ fdsPrint (iniConfig ^. iniConfigXYZClip)
+        -- ++ "INPUT_FILE\n " ++ (iniConfig ^. iniConfigFDSFilename) ++ "\n"
+        -- ++ "EYEX\n 0.500000\n"
+        -- ++ "EYEY\n -0.958979\n"
+        -- ++ "EYEZ\n 0.500000\n"
+        -- ++ "EYEVIEW\n 0\n"
+        -- ++ maybe [] printLabelStartupView (iniConfig ^. iniConfigLabelStartupView)
+        -- ++ "VIEWTIMES\n 0.000000 2400.000000 1000\n"
+        -- ++ "TIMEOFFSET\n 0.000000\n"
+        -- ++ "SHOWHMSTIMELABEL\n 0\n"
+        -- ++ "CULLFACES\n 1\n\nZone\n----\n\n"
+        -- ++ "SHOWZONEFIRE\n 1\n"
+        -- ++ "SHOWSZONE\n 0\n"
+        -- ++ "SHOWHZONE\n 0\n"
+        -- ++ "SHOWVZONE\n 1\n"
+        -- ++ "SHOWHAZARDCOLORS\n 0\n"
+        -- ++ "VIEWPOINT5\n 0 1 2\n 0.441858 -2.867409 0.076006 1.000000 2\n 0.000000 0.000000 0.000000 1\n 0.494083 0.500000 0.071006\n 0.000000 450.000000\n 1.000000 0.000000 0.000000 0.000000\n 0.000000 1.000000 0.000000 0.000000\n 0.000000 0.000000 1.000000 0.000000\n 0.000000 0.000000 0.000000 1.000000\n 2 0 0 0 0 0 1\n -7.583500 -1.084500 -0.012000 76.083504 83.584503 4.282005\n horiz\n\n"
+        -- ++ concatMap printViewPoint (iniConfig ^. iniConfigViewPoints)
+        -- ++ "3D SMOKE INFO\n-------------\n\n"
+        -- ++ "ADJUSTALPHA\n 2\n"
+        -- ++ "USEGPU\n 0\n"
+        -- ++ "SMOKECULL\n 1\n"
+        -- ++ "SMOKESKIP\n 0\n"
+        -- ++ "SMOKEALBEDO\n 0.000000\n"
+        -- ++ "SMOKERTHICK\n 1.000000\n"
+        -- ++ "FIRECOLOR\n 255 128 0\n"
+        -- ++ "FIREDEPTH\n 2.000000\n"
+        -- ++ "VOLSMOKE\n 0 1 1 0 0\n 20.000000 700.000000 1200.000000 3.000000 8700.000000\nFIRECOLORMAP\n 0 8\n"
+        -- ++ "SHOWEXTREMEDATA\n 0 0 0\n"
+        -- ++ "EXTREMECOLORS\n 0 0 0 0 0 0\n"
+        -- ++ "COLORBARTYPE\n 0 % Rainbow \n\n"
+        -- ++ "TOUR INFO\n---------\n\n"
+        -- ++ "VIEWTOURFROMPATH\n 0\nVIEWALLTOURS\n 0\n"
+        -- ++ "SHOWTOURROUTE\n 0\n"
+        -- ++ "SHOWPATHNODES\n 0\n"
+        -- ++ "TOURCONSTANTVEL\n 0\n"
+        -- ++ "TOURCOLORS\n 1.000000 0.000000 0.000000   :selected path line\n 1.000000 0.000000 0.000000   :selected path line knots\n 0.000000 1.000000 0.000000   :selected knot\n -1.000000 -1.000000 -1.000000   :path line\n -1.000000 -1.000000 -1.000000   :path knots\n -1.000000 -1.000000 -1.000000   :text\n 1.000000 0.000000 0.000000   :avatar\n"
+        -- ++ "TOURINDEX\n -1\n"
+        -- ++ "DEFAULTTOURS\n 1\n"
+        -- ++ " Circular\n"
+        -- ++ " 16 1 0.000000 0 0\n 0.0 192.580917 41.25 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 160.000015 178.892487 105.648987 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 320.000031 140.194061 158.912811 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 480.0 83.176941 191.83165 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 640.000061 17.699905 198.713562 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 800.0 -44.915466 178.368591 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 960.0 -93.842407 134.314575 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 1120.0 -120.621017 74.168839 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 1280.000122 -120.621002 8.331135 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 1440.0 -93.842392 -51.814598 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 1600.0 -44.915443 -95.868614 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 1760.0 17.699934 -116.213562 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 1920.0 83.176971 -109.331657 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 2080.0 140.194092 -76.412788 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 2240.0 178.892502 -23.148964 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n 2400.0 192.580917 41.250027 6.0  1  34.25 41.25 6.0 0.0 0.0 0.0 1.0  0\n"
+        -- ++ "\n\n"
+        -- ++ "# Development Environment\n# -----------------------\n\n# Smokeview Version: 6.0.14\n# Smokeview Revision Number: 15697\n# Smokeview Compile Date: Apr 30 2013\n# OpenGL Version: 4.2.0\n# FDS Revision Number: 7031\n# Platform: WIN64\n\n\n# Graphics Environment\n# --------------------\n\n#   Red bits:8\n# Green bits:8\n#  Blue bits:8\n# Alpha bits:0\n# Depth bits:24\n\n"
