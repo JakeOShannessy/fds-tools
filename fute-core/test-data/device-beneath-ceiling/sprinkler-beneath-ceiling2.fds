@@ -1,0 +1,44 @@
+&HEAD CHID='sprinkler-beneath-ceiling2'
+      TITLE='Test geometry for verify that a sprinker is beneath the ceiling' /
+
+&TIME T_END=0.0 /
+
+&REAC ID='POLYURETHANE',
+      FUEL='REAC_FUEL',
+      CO_YIELD=0.05,
+      SOOT_YIELD=0.1,
+      C=6.3,
+      H=7.1,
+      O=2.1,
+      N=1.0 /
+&PROP ACTIVATION_OBSCURATION=12.0,
+      ID='Smoke Detector',
+      LENGTH=1.8,
+      QUANTITY='CHAMBER OBSCURATION' /
+&SPEC ID='WATER VAPOR SPK',
+      MASS_FRACTION=1.0,
+      SPEC_ID='WATER VAPOR' /
+&PART COLOR='BLUE',
+      DIAMETER=500.0,
+      ID='Sprinkler Droplets',
+      MONODISPERSE=.TRUE.,
+      SPEC_ID='WATER VAPOR SPK'
+      SAMPLING_FACTOR=50
+      AGE=10 /
+&PROP ACTIVATION_TEMPERATURE=74.0,
+      FLOW_RATE=70.0,
+      ID='Sprinkler',
+      PARTICLE_VELOCITY=10.0,
+      PART_ID='Sprinkler Droplets',
+      QUANTITY='SPRINKLER LINK TEMPERATURE',
+      RTI=50.0 /
+
+&MESH ID='MeshCore3b', IJK=124,48,32, XB=0.0,12.4,-1.6,3.2,0.0,3.2 /
+
+&DEVC ID='RightLobbyDetector',
+      PROP_ID='Smoke Detector',
+      XYZ=4.05,0.05,2.85 /
+
+&OBST ID='FFLobbyCeiling01', XB=1.4,9.6,-0.8,1.0,2.9,3.0 /
+
+&TAIL  /

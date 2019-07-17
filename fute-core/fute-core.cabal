@@ -4,8 +4,7 @@ cabal-version: >=1.8
 build-type: Simple
 license: MPL-2.0
 synopsis: Utilities to use with Fire Dynamics Simulator.
-Data-Files: data/CompileCompress.css
-    , test-data/test_pl3d.q
+Data-Files: test-data/test_pl3d.q
     , test-data/test_slice.sf
     , test-data/device-within-obstruction/detector-inside-block.fds
     , test-data/device-within-obstruction/detector-not-inside-block.fds

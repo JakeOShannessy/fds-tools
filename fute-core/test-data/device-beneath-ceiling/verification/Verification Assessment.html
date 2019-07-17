@@ -1,0 +1,854 @@
+<!DOCTYPE HTML>
+
+<html>
+    <head>
+        <title>
+            sprinkler-beneath-solid-mesh-boundary Inputs &amp; Verification
+        </title>
+        <style>
+            
+ul {
+  list-style-type: none;padding: 0px;margin-left: 15px;
+}
+.successTest {
+  background-color:hsl(120,100%,75%);
+}
+.successTest:hover, .successTest:active {
+  background-color:hsl(120,100%,50%);
+}
+.warningTest {
+  background-color:hsl(40,100%,75%);
+}
+.warningTest:hover, .warningTest:active {
+  background-color:hsl(40,100%,50%);
+}
+.failureTest {
+  background-color:hsl(0,100%,75%);
+}
+.failureTest:hover, .failureTest:active {
+  background-color:hsl(0,100%,60%);
+}
+span.success {
+  color:limegreen;}
+span.warning {
+  color:orange;
+}
+span.failure {
+  color:red;
+}
+.hidden-test>ul {
+  display: none;
+}
+.hidden-test>div>ul {
+  display: none;
+}
+
+
+
+
+
+.shown-test>ul {
+  display: block;
+}
+
+.shown-test>div>ul {
+  display: block;
+}
+
+.summary-table {
+/*   display: inline-block;
+  vertical-align: top; */
+}
+
+.verification-list {
+  vertical-align: top;
+  display: inline-block;
+}
+
+.summary-div {
+  vertical-align: top;
+  display: inline-block;
+}
+
+table a:link {
+	color: #666;
+	font-weight: bold;
+	text-decoration:none;
+}
+table a:visited {
+	color: #999999;
+	font-weight:bold;
+	text-decoration:none;
+}
+table a:active,
+table a:hover {
+	color: #bd5a35;
+	text-decoration:underline;
+}
+table {
+	font-family:Arial, Helvetica, sans-serif;
+	color:#666;
+	font-size:12px;
+	text-shadow: 1px 1px 0px #fff;
+	background:#eaebec;
+	margin:20px;
+	border:#ccc 1px solid;
+
+	-moz-border-radius:3px;
+	-webkit-border-radius:3px;
+	border-radius:3px;
+
+	-moz-box-shadow: 0 1px 2px #d1d1d1;
+	-webkit-box-shadow: 0 1px 2px #d1d1d1;
+	box-shadow: 0 1px 2px #d1d1d1;
+
+  display: inline-block;
+}
+table th {
+	padding:5px 5px 5px 5px;
+	border-top:1px solid #fafafa;
+	border-bottom:1px solid #e0e0e0;
+
+	background: #ededed;
+	background: -webkit-gradient(linear, left top, left bottom, from(#ededed), to(#ebebeb));
+	background: -moz-linear-gradient(top,  #ededed,  #ebebeb);
+}
+table th:first-child {
+	text-align: left;
+	padding-left:20px;
+}
+table tr:first-child th:first-child {
+	-moz-border-radius-topleft:3px;
+	-webkit-border-top-left-radius:3px;
+	border-top-left-radius:3px;
+}
+table tr:first-child th:last-child {
+	-moz-border-radius-topright:3px;
+	-webkit-border-top-right-radius:3px;
+	border-top-right-radius:3px;
+}
+table tr {
+	text-align: center;
+	padding-left:20px;
+}
+table td:first-child {
+	text-align: left;
+	padding-left:20px;
+	border-left: 0;
+}
+table td {
+	padding:5px;
+	border-top: 1px solid #ffffff;
+	border-bottom:1px solid #e0e0e0;
+	border-left: 1px solid #e0e0e0;
+
+	background: #fafafa;
+	background: -webkit-gradient(linear, left top, left bottom, from(#fbfbfb), to(#fafafa));
+	background: -moz-linear-gradient(top,  #fbfbfb,  #fafafa);
+}
+table tr.even td {
+	background: #f6f6f6;
+	background: -webkit-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f6f6f6));
+	background: -moz-linear-gradient(top,  #f8f8f8,  #f6f6f6);
+}
+table tr:last-child td {
+	border-bottom:0;
+}
+table tr:last-child td:first-child {
+	-moz-border-radius-bottomleft:3px;
+	-webkit-border-bottom-left-radius:3px;
+	border-bottom-left-radius:3px;
+}
+table tr:last-child td:last-child {
+	-moz-border-radius-bottomright:3px;
+	-webkit-border-bottom-right-radius:3px;
+	border-bottom-right-radius:3px;
+}
+table tr:hover td {
+	background: #f2f2f2;
+	background: -webkit-gradient(linear, left top, left bottom, from(#f2f2f2), to(#f0f0f0));
+	background: -moz-linear-gradient(top,  #f2f2f2,  #f0f0f0);
+}
+
+
+@media print {
+  .hidden-test>ul {display: block;}
+	.hidden-test>div>ul {display: block;}
+
+	.verification-list {
+		vertical-align: initial;
+		display: initial;
+	}
+
+	.summary-div {
+		vertical-align: initial;
+		display: initial;
+	}
+
+  table, th, td, tr, thead, tbody
+  {
+    border-collapse:collapse;
+/*     border: 1px solid black; */
+    background: none;
+    border-radius: 0;
+/*     width:100%; */
+/*     text-align:right; */
+  }
+
+/*   table th:first-child {
+	text-align: left;
+	padding-left:20px;
+} */
+table tr:first-child th:first-child {
+	border-top-left-radius:0px;
+}
+table tr:first-child th:last-child {
+	border-top-right-radius:0px;
+}
+
+  table tr:last-child td {
+	border-bottom:0;
+}
+table tr:last-child td:first-child {
+	border-bottom-left-radius:0px;
+}
+table tr:last-child td:last-child {
+	border-bottom-right-radius:0px;
+}
+
+
+}
+
+        </style>
+        <script type="text/javascript">
+            <!--
+function toggle_visibility(ev,el) {
+  if (el.classList.contains("test")) {
+    el.classList.toggle("shown-test");
+    el.classList.toggle("hidden-test");
+    ev.stopPropagation();
+  };
+}//-->
+
+        </script>
+    </head>
+    <body>
+        <h1>
+            sprinkler-beneath-solid-mesh-boundary Inputs &amp; Verification
+        </h1>
+        <br />
+        <div class="summary-div">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>
+                            General
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            CHID: 
+                        </td>
+                        <td>
+                            sprinkler-beneath-solid-mesh-boundary
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Simulation Time: 
+                        </td>
+                        <td>
+                            1.0 s
+                        </td>
+                    </tr>
+                </tbody>
+                <thead>
+                    <tr>
+                        <th>
+                            Fire
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            # Burners: 
+                        </td>
+                        <td>
+                            0
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Total Max. HRR: 
+                        </td>
+                        <td>
+                            0.00 kW
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Heat of Combustion: 
+                        </td>
+                        <td>
+                            18,713.40 kJ/kg
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Total Max. Soot Production Rate: 
+                        </td>
+                        <td>
+                            0.00e0 kg/s
+                        </td>
+                    </tr>
+                </tbody>
+                <thead>
+                    <tr>
+                        <th>
+                            Sprinklers
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            # Sprinklers: 
+                        </td>
+                        <td>
+                            0
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Sprinkler Activation Temperatures: 
+                        </td>
+                        <td>
+                            N/A
+                        </td>
+                    </tr>
+                </tbody>
+                <thead>
+                    <tr>
+                        <th>
+                            Detection
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            # Smoke Detectors: 
+                        </td>
+                        <td>
+                            1
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Smoke Detector Obscurations: 
+                        </td>
+                        <td>
+                            12.0 %Obs/m
+                        </td>
+                    </tr>
+                </tbody>
+                <thead>
+                    <tr>
+                        <th>
+                            Ventilation
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            # Exhaust Vents: 
+                        </td>
+                        <td>
+                            0
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Total Exhaust Rate: 
+                        </td>
+                        <td>
+                            0.0 m^3/s
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            # Supply Vents: 
+                        </td>
+                        <td>
+                            0
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Total Supply Rate: 
+                        </td>
+                        <td>
+                            0.0 m^3/s
+                        </td>
+                    </tr>
+                </tbody>
+                <thead>
+                    <tr>
+                        <th>
+                            Domain
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            # Meshes: 
+                        </td>
+                        <td>
+                            1
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            # Cells: 
+                        </td>
+                        <td>
+                            1,000
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Mesh Resolutions: 
+                        </td>
+                        <td>
+                            0.1m x 0.1m x 0.1m
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Non-Dimensionalised Ratio: 
+                        </td>
+                        <td>
+                            
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <ul class="verification-list">
+            <li class="test failureTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                <div>
+                    <strong>
+                        Verification Assessment
+                    </strong>
+                    <span class="failure">
+                        [Failed]
+                    </span>
+                    :
+                    <ul>
+                    </ul>
+                </div>
+                <ul>
+                    <li class="test failureTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Input Verification Tests
+                            </strong>
+                            <span class="failure">
+                                [Failed]
+                            </span>
+                            :
+                            <ul>
+                            </ul>
+                        </div>
+                        <ul>
+                            <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        REAC Properties
+                                    </strong>
+                                    <span class="success">
+                                        [OK]
+                                    </span>
+                                    :
+                                    <ul>
+                                    </ul>
+                                </div>
+                                <ul>
+                                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Soot Yield
+                                            </strong>
+                                            <span class="success">
+                                                [OK]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Soot Yield is 0.1.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                CO Yield
+                                            </strong>
+                                            <span class="success">
+                                                [OK]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    CO Yield is 5.0e-2.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="test failureTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        MISC Properties
+                                    </strong>
+                                    <span class="failure">
+                                        [Failed]
+                                    </span>
+                                    :
+                                    <ul>
+                                        <li>
+                                            No MISC namelist specified.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                            <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        Burners
+                                    </strong>
+                                    <span class="warning">
+                                        [Warning]
+                                    </span>
+                                    :
+                                    <ul>
+                                        <li>
+                                            No burners present.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                            <li class="test failureTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        DUMP Properties
+                                    </strong>
+                                    <span class="failure">
+                                        [Failed]
+                                    </span>
+                                    :
+                                    <ul>
+                                        <li>
+                                            No DUMP namelist specified.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Output Data Coverage
+                            </strong>
+                            <span class="warning">
+                                [Warning]
+                            </span>
+                            :
+                            <ul>
+                            </ul>
+                        </div>
+                        <ul>
+                            <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        CO Data Coverage
+                                    </strong>
+                                    <span class="warning">
+                                        [Warning]
+                                    </span>
+                                    :
+                                    <ul>
+                                    </ul>
+                                </div>
+                                <ul>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                X Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full X axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Y Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full Y axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Z Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full Z axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        Temperature Data Coverage
+                                    </strong>
+                                    <span class="warning">
+                                        [Warning]
+                                    </span>
+                                    :
+                                    <ul>
+                                    </ul>
+                                </div>
+                                <ul>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                X Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full X axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Y Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full Y axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Z Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full Z axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                <div>
+                                    <strong>
+                                        Soot Visibiltity Data Coverage
+                                    </strong>
+                                    <span class="warning">
+                                        [Warning]
+                                    </span>
+                                    :
+                                    <ul>
+                                    </ul>
+                                </div>
+                                <ul>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                X Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full X axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Y Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full Y axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li class="test warningTest shown-test" onclick="toggle_visibility(arguments[0],this);">
+                                        <div>
+                                            <strong>
+                                                Z Axis Coverage
+                                            </strong>
+                                            <span class="warning">
+                                                [Warning]
+                                            </span>
+                                            :
+                                            <ul>
+                                                <li>
+                                                    Full Z axis coverage of this value is not present.
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Mesh Overlap Test
+                            </strong>
+                            <span class="success">
+                                [OK]
+                            </span>
+                            :
+                            <ul>
+                                <li>
+                                    No meshes overlap.
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Flow Coverage Test
+                            </strong>
+                            <span class="success">
+                                [OK]
+                            </span>
+                            :
+                            <ul>
+                                <li>
+                                    All flow devices have devcs.
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Leakage Implementation Test
+                            </strong>
+                            <span class="success">
+                                [OK]
+                            </span>
+                            :
+                            <ul>
+                                <li>
+                                    No inert screens.
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Devices Stuck in Solids Test
+                            </strong>
+                            <span class="success">
+                                [OK]
+                            </span>
+                            :
+                            <ul>
+                                <li>
+                                    No stuck devices.
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="test successTest hidden-test" onclick="toggle_visibility(arguments[0],this);">
+                        <div>
+                            <strong>
+                                Sprinklers and detectors below ceiling
+                            </strong>
+                            <span class="success">
+                                [OK]
+                            </span>
+                            :
+                            <ul>
+                                <li>
+                                    No distant devices.
+                                </li>
+                            </ul>
+                        </div>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </body>
+</html>
