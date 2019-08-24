@@ -184,14 +184,6 @@ getCurrentProgressOut outData = do
         , currentProgress_currentWallTime = currentTime
         }
 
-
-data CurrentProgress = CurrentProgress
-    { currentProgress_endTime :: Double
-    , currentProgress_lastSimTime :: Double
-    , currentProgress_lastWallTime :: UTCTime
-    , currentProgress_currentWallTime :: UTCTime
-    } deriving (Show)
-
 combineDims :: [MeshGridDimensions] -> [MeshPhysicalDimensions] -> [MeshDimensions]
 combineDims gridDim physDim  = map (buildMatch gridDim physDim) [1..(length gridDim)]
     where
@@ -380,20 +372,6 @@ devActTime = do
     return (number, name, activation)
     -- where
         -- parseActTime = try $
-
-data MeshGridDimensions = MeshGridDimensions
-    Int -- ^MeshNum
-    Int -- ^x
-    Int -- ^y
-    Int -- ^z
-    deriving (Show)
-
-data MeshPhysicalDimensions = MeshPhysicalDimensions
-    Int -- ^MeshNum
-    Double -- ^x
-    Double -- ^y
-    Double -- ^z
-    deriving (Show)
 
 data ParsedObject
     = ParsedVersion Version

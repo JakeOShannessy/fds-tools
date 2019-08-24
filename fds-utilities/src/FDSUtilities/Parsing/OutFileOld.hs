@@ -260,20 +260,6 @@ devActTime = do
     -- where
         -- parseActTime = try $
 
-data MeshGridDimensions = MeshGridDimensions
-    Int -- ^MeshNum
-    Int -- ^x
-    Int -- ^y
-    Int -- ^z
-    deriving (Show)
-
-data MeshPhysicalDimensions = MeshPhysicalDimensions
-    Int -- ^MeshNum
-    Double -- ^x
-    Double -- ^y
-    Double -- ^z
-    deriving (Show)
-
 data ParsedObject
     = ParsedVersion Version
     | ParsedMeshGridDim MeshGridDimensions
