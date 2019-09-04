@@ -12,20 +12,6 @@ packages:
   original:
     hackage: attoparsec-binary-0.2
 - completed:
-    hackage: Chart-1.9@sha256:f41568b6b3704f66c2ec163295b430ab7d798f91de426c2d5aba747d1135cd9b,2855
-    pantry-tree:
-      size: 3031
-      sha256: aaf8b3f35af0012324865cb24c7989dfc794e8dab3eb2152e949cf5243a451ca
-  original:
-    hackage: Chart-1.9
-- completed:
-    hackage: Chart-cairo-1.9@sha256:82875639be230c9406dbea650647b2dc94b11060160d6dad2c98551bb23d544f,877
-    pantry-tree:
-      size: 238
-      sha256: 3eef9a2fdb682a95f5a60e66258d5b6036e9b8c19a7260f626ddda2d30113055
-  original:
-    hackage: Chart-cairo-1.9
-- completed:
     hackage: time-1.6.0.1@sha256:492067e1b6973db9df64bf0bc851985dabea138d8a35414fe9ee6870b4702c66,4232
     pantry-tree:
       size: 4350

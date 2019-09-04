@@ -144,7 +144,7 @@ test-suite TestSuite
         , time -any
         , unbounded-delays -any
         , vector -any
-        , fds-utilities
+        , fute-core
         , HUnit -any
         , QuickCheck -any
         , test-framework -any
@@ -167,6 +167,6 @@ benchmark bench
     ghc-options: -rtsopts -fprof-auto
     -- benchmark-options: --output=benchmark.html
     build-depends: base
-        , fds-utilities
+        , fds-core
         , criterion
     hs-source-dirs: bench

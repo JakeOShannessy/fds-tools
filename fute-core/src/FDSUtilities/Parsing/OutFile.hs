@@ -434,12 +434,17 @@ miscParameters' (Node val [(Node entries [])]) = parse theParser "" entries
             _ <- spaces
             _ <- string "LES Calculation"
             eol
-            _ <- choice [try smagorinskyConstant, try deardorffModel, (try $ do
-                string "Eddy Viscosity:           Deardorff Model (C_DEARDORFF)                          0.10" >> eol
-                string "Near-wall Eddy Viscosity: Smagorinsky with Van Driest damping (C_SMAGORINSKY)    0.20" >> eol
-                pure ())
+            _ <- choice [try smagorinskyConstant, try deardorffModel
+                , (try $ do
+                    dConst <- string "Eddy Viscosity:" *> onlySpaces *> string "Deardorff Model (C_DEARDORFF = " *> floatNum <* string ")" <* eol
+                    sConst <- string "Near-wall Eddy Viscosity:" *> onlySpaces *> string "Smagorinsky with Van Driest damping (C_SMAGORINSKY = " *> floatNum <* string ")" <* eol
+                    let (a,b) = (dConst, sConst) :: (Double, Double )
+                    pure ())
+                , (try $ do
+                    string "Eddy Viscosity:           Deardorff Model (C_DEARDORFF)                          0.10" >> eol
+                    string "Near-wall Eddy Viscosity: Smagorinsky with Van Driest damping (C_SMAGORINSKY)    0.20" >> eol
+                    pure ())
                 ]
-
             _ <- spaces
             _ <- string "Turbulent Prandtl Number"
             _ <- spaces
