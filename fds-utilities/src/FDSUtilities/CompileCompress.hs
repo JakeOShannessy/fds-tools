@@ -434,4 +434,4 @@ stdChartsSection paths' = H.div $ do
     let paths = filter isSVG paths'
     mapM_ (\path -> H.img H.! A.src (H.toValue path)) paths
     where
-        isSVG path = takeExtension path == ".png"
+        isSVG path = takeExtension path == ".svg"

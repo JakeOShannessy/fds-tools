@@ -26,8 +26,7 @@ library
                     , bytestring -any
                     , cassava -any
                     , Chart >=1.3
-                    , Chart-cairo -any
-                    , cairo >=0.13
+                    , Chart-diagrams -any
                     , colour -any
                     , containers -any
                     , data-binary-ieee754 -any
@@ -138,8 +137,7 @@ test-suite TestSuite
         , bytestring -any
         , cassava -any
         , Chart >=1.3
-        , Chart-cairo -any
-        , cairo >=0.13.0.0
+        , Chart-diagrams -any
         , colour -any
         , containers -any
         , data-binary-ieee754 -any

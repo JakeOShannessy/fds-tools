@@ -21,8 +21,9 @@ import qualified Data.Vector.Unboxed as V
 import Debug.Trace
 
 import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Cairo
-import Graphics.Rendering.Chart.Plot
+import Graphics.Rendering.Chart.Backend.Diagrams
+-- import Graphics.Rendering.Chart
+-- import Graphics.Rendering.Chart.Plot
 
 import System.FilePath
 import FDSUtilities.Types
@@ -34,14 +35,22 @@ produceChart destinationPath chartConfig dList title filename = produceChartC de
 produceChartC destinationPath chartConfig (width, height) dList title filename = do
     print "about to render SVG"
     -- TODO: rendering to svg has been hanging
-    _ <- renderableToFile (FileOptions (width, height) SVG) (joinPath [destinationPath, filename ++ ".svg"]) chR
+    let svg_opts = fo_size .~ (width, height)
+            $ fo_format .~ SVG
+            $ def
+    -- let png_opts = fo_size .~ (width, height)
+            -- $ fo_format .~ PNG
+            -- $ def
+    _ <- renderableToFile svg_opts (joinPath [destinationPath, filename ++ ".svg"]) chR
     print "SVG rendered"
-    print "about to render PNG"
-    _ <- renderableToFile (FileOptions (width, height) PNG) (joinPath [destinationPath, filename ++ ".png"]) chR
+    -- print "about to render PNG"
+    -- _ <- renderableToFile png_opts (joinPath [destinationPath, filename ++ ".png"]) chR
     print "PNG rendered"
-    return $ [joinPath [destinationPath, filename ++ ".png"], joinPath [destinationPath, filename ++ ".svg"]]
+    return $ [joinPath [destinationPath, filename ++ ".svg"]]
     where
         chR = chart title chartConfig dList
+
+
 
 
 produceRunChart :: FilePath -> TimeZone -> Double -> [(UTCTime, Double)] -> IO [FilePath]
@@ -49,26 +58,21 @@ produceRunChart destinationPath tZone simEndTime runData = do
     putStr "Charting: "
     putStr "Run Chart"
     putStrLn "..."
-    (pickfn) <- {-# SCC producingMonitor #-} renderableToFile (FileOptions (800,400) SVG) (joinPath [destinationPath, "RunTime" ++ ".svg"]) chR
+    let svg_opts = fo_size .~ (800, 400)
+            $ fo_format .~ SVG
+            $ def
+    (pickfn) <- {-# SCC producingMonitor #-} renderableToFile svg_opts (joinPath [destinationPath, "RunTime" ++ ".svg"]) chR
     putStrLn "SVG complete"
-    _ <- renderableToFile (FileOptions (800,400) PNG) (joinPath [destinationPath, "RunTime" ++ ".png"]) chR
-    putStrLn "PNG complete"
+    -- _ <- renderableToFile (FileOptions (800,400) PNG) (joinPath [destinationPath, "RunTime" ++ ".png"]) chR
+    -- putStrLn "PNG complete"
     putStrLn " complete."
     -- return $ [joinPath [destinationPath, "RunTime" ++ ".svg"]]
-    return $ [joinPath [destinationPath, "RunTime" ++ ".svg"], joinPath [destinationPath, "RunTime" ++ ".png"]]
+    return $ [joinPath [destinationPath, "RunTime" ++ ".svg"]]
     where
         chR = runChart "RunTime" tZone simEndTime runData
 
 
 takeRight (Right val) = val
-
-
--- data Case = Case [Chart] [DataVectorPair] deriving Show
--- data Chart = Chart
-    -- String
-    -- (Maybe StdCurve)
-    -- [String]
-    -- deriving Show
 
 nfpaHRRChartConfig = chartRefData .~
         [ DataFuncVector "Slow" "kW" (\t->(growthRateToAlpha NFPASlow)*t**2)

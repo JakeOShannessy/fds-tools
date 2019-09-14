@@ -32,7 +32,6 @@ import FDSUtilities.Parsing.OutFile
 
 -- import Graphics.Rendering.Chart
 -- import Graphics.Rendering.Chart.Axis.LocalTime
--- import Graphics.Rendering.Chart.Backend.Cairo
 -- import Graphics.Rendering.Chart.Plot
 
 -- import System.Console.GetOpt
@@ -77,4 +76,3 @@ getDetectionTimesSimulation sim actObs = do
     let names = map (\(DataVectorPair _ (DataVector name _ _))->name) vecs
         times = getDetectionTimes actObs vecs
     return $ zip names times
-    

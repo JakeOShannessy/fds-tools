@@ -32,7 +32,6 @@ import FDSUtilities.Parsing.OutFile
 
 -- import Graphics.Rendering.Chart
 -- import Graphics.Rendering.Chart.Axis.LocalTime
--- import Graphics.Rendering.Chart.Backend.Cairo
 
 -- import System.Console.GetOpt
 -- import System.Directory

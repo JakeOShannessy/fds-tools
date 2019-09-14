@@ -12,12 +12,33 @@ packages:
   original:
     hackage: attoparsec-binary-0.2
 - completed:
+    hackage: Chart-1.9.1@sha256:cc50e1e65738ab2d6c30ae9e3f138962f87667d81f7860a0deeca9053f6d21ed,2857
+    pantry-tree:
+      size: 3031
+      sha256: 6e8a7f52ff2c2c1bb26e75dad141c3096a1ade6dde027535d3ba0e09d76bbece
+  original:
+    hackage: Chart-1.9.1
+- completed:
+    hackage: Chart-diagrams-1.9.2@sha256:2284b9767babf2859e777c599e9298f5b915e17a4250d05c9b22851504ff6991,1735
+    pantry-tree:
+      size: 934
+      sha256: 9e2fcc44afc544a42ce2e277e436c22a6910497420f05e1829f5849fa2b8ef15
+  original:
+    hackage: Chart-diagrams-1.9.2
+- completed:
     hackage: time-1.6.0.1@sha256:492067e1b6973db9df64bf0bc851985dabea138d8a35414fe9ee6870b4702c66,4232
     pantry-tree:
       size: 4350
       sha256: ca87237ad8065079a9609385509cacb9444bb8c0f1ce2a70eacb88463dabe6fa
   original:
     hackage: time-1.6.0.1
+- completed:
+    hackage: gnuplot-0.5.6@sha256:7dd7a13dc62631785f05e9e219d59c4b6520212181082e67e003a2759227aaa5,5200
+    pantry-tree:
+      size: 4529
+      sha256: c68f4cf5ca5b07e93469cc0002718e385f77613cfd0f1717e97b34d192f93825
+  original:
+    hackage: gnuplot-0.5.6
 - completed:
     cabal-file:
       size: 1536

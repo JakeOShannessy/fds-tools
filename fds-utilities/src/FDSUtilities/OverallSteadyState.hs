@@ -32,7 +32,7 @@ import FDSUtilities.Types.Monitor
 import GHC.Float
 
 import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Cairo
+import Graphics.Rendering.Chart.Backend.Diagrams
 
 import System.Directory
 import System.FilePath
@@ -319,8 +319,11 @@ parseSumAndRenderSliceTotal chartConf destDir filepaths = do
         totalSumTAveragedNorm = normaliseSumData nCells totalSumTAveraged
     let renderableRaw  = chart ("Total Value") chartConf [totalSum, totalSumTAveraged]
         filepathRaw  = joinPath [destDir, "Total"]
-    _ <- renderableToFile (FileOptions (800,400) SVG) (filepathRaw ++ ".svg") renderableRaw
-    _ <- renderableToFile (FileOptions (800,400) PNG) (filepathRaw ++ ".png") renderableRaw
+    let svg_opts = fo_size .~ (800, 400)
+            $ fo_format .~ SVG
+            $ def
+    _ <- renderableToFile svg_opts (filepathRaw ++ ".svg") renderableRaw
+    -- _ <- renderableToFile (FileOptions (800,400) PNG) (filepathRaw ++ ".png") renderableRaw
     return [filepathRaw]
 
 
@@ -350,7 +353,10 @@ parseSumAndRenderSlice chartConf cellDimsTable meshNamesTable destDir (meshNum, 
         -- filepathNorm = joinPath [destDir, name ++ " - Mesh Steady State - Normalised.svg"]
     -- putStrLn "summedVectorsTAverage"
     -- print $ summedVectorsTAverage
-    _ <- renderableToFile (FileOptions (1200,600) SVG) filepathRaw renderableRaw
+    let svg_opts = fo_size .~ (1200,600)
+            $ fo_format .~ SVG
+            $ def
+    _ <- renderableToFile svg_opts filepathRaw renderableRaw
     -- _ <- renderableToFile (FileOptions (1200,600) SVG) renderableNorm filepathNorm
     return [filepathRaw {-, filepathNorm-}]
 
@@ -396,7 +402,10 @@ parseCountAndRenderSlice cellDimsTable meshNamesTable destDir threshold entry@(m
     let (SliceDataHeader lName sName units location) = header
     let renderable = chart (name ++ " " ++ show boundingBox ++ " - Untenable Area") def [summedVectors]
     let outFilePath = (joinPath [destDir, name ++ "-UntenableArea.png"])
-    _ <- renderableToFile (FileOptions (1200,600) SVG) outFilePath renderable
+    let svg_opts = fo_size .~ (1200,600)
+            $ fo_format .~ SVG
+            $ def
+    _ <- renderableToFile svg_opts outFilePath renderable
     return outFilePath
 
 parseCountAndRenderSliceTotal cellDimsTable meshNamesTable destDir threshold entries = do
@@ -404,7 +413,10 @@ parseCountAndRenderSliceTotal cellDimsTable meshNamesTable destDir threshold ent
     let totalSum = sumDVectorPairs summedSlices
     let renderableRaw  = chart ("Total Untenable Area") def [totalSum]
     let filepathRaw  = joinPath [destDir, "Total" ++ ".svg"]
-    _ <- renderableToFile (FileOptions (1200,600) SVG) filepathRaw renderableRaw
+    let svg_opts = fo_size .~ (1200,600)
+            $ fo_format .~ SVG
+            $ def
+    _ <- renderableToFile svg_opts filepathRaw renderableRaw
     return [filepathRaw]
 
 parseSliceFileChunkedArea :: FilePath -> (Float -> Bool) -> IO (Either String (SliceDataHeader, [(Float, [Float])]))

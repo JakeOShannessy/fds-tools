@@ -20,6 +20,7 @@ import Data.Either
 import Data.Time
 
 import FDSUtilities.Types
+import FDSUtilities.Parsing.OutFile.Types
 
 import Text.ParserCombinators.Parsec as P
 import Text.ParserCombinators.Parsec.Token

@@ -1,24 +1,26 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<?define ProductVersion = "1.10.0"?>
+<?define ProductVersion = "1.11.0"?>
 <?define ProductUpgradeCode = "18709979-23a5-45d7-a7f3-1b3fedb0f653"?>
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
     <Product Name='FDS Tools'
-             Id='*'
-             UpgradeCode="$(var.ProductUpgradeCode)"
-             Language='1033'
-             Version='$(var.ProductVersion)'
-             Manufacturer='Jake'>
+            Id='*'
+            UpgradeCode="$(var.ProductUpgradeCode)"
+            Language='1033'
+            Version='$(var.ProductVersion)'
+            Manufacturer='Jake'>
         <Package Id='*'
-                 Keywords='Installer'
-                 Description="FDS Tools Installer"
-                 Comments='Installs the executable and provides QuickChart in context menu on .smv files.'
-                 Manufacturer='Jake'
-                 InstallerVersion='200'
-                 Platform='x64'
-                 Languages='1033'
-                 Compressed='yes' />
-        <Condition Message="You need to be an administrator to install this product.">Privileged</Condition>
+                InstallScope='perUser'
+                InstallPrivileges='limited'
+                Keywords='Installer'
+                Description="FDS Tools Installer"
+                Comments='Installs the executable and provides QuickChart in context menu on .smv files.'
+                Manufacturer='Jake'
+                InstallerVersion='200'
+                Platform='x64'
+                Languages='1033'
+                Compressed='yes' />
+        <!-- <Condition Message="You need to be an administrator to install this product.">Privileged</Condition> -->
         <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' />
         <Property Id='DiskPrompt' Value="FDS Tools Suite Installer" />
         <Upgrade Id="$(var.ProductUpgradeCode)">
@@ -26,45 +28,37 @@
             <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" Property="OLDERVERSIONBEINGUPGRADED"/>
         </Upgrade>
         <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>
-
+        <Property Id="ALLUSERS" Secure="yes" Value="2" />
+        <Property Id="MSIINSTALLPERUSER" Secure="yes" Value="1" />
         <Directory Id='TARGETDIR' Name='SourceDir'>
             <Directory Id='ProgramFiles64Folder' Name='PFiles'>
                 <Directory Id='Fireng' Name='Fireng'>
-                    <Directory Id='INSTALLDIR' Name='FDS Tools $(var.ProductVersion)'>
+                    <Directory Id='INSTALLDIR' Name='FDS Tools'>
                         <Component Id='FuteScript' Guid='020e5228-fa89-48ff-add5-8d39c5d70f9b' Win64="yes">
-                            <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="yes" Part="last" Action="set" System="yes" />
+                            <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="yes" Part="last" Action="set" System="no" />
                             <File Id='FuteScriptCMD' Name='fute.cmd' Source='scripts/fute.cmd' KeyPath='yes'>
                             </File>
                         </Component>
                         <Directory Id='BINDIR' Name='bin'>
                             <Component Id='QuickMon' Guid='1ab03b30-4375-4d2d-9dcc-56d139bc6943' Win64="yes">
-                                <File Id='QuickMonEXE' Name='FDSQuickMon.exe' Source='dist/FDSQuickMon.exe' KeyPath='yes'>
+                                <File Id='QuickMonEXE' Name='FDSQuickMon.exe' Source='dist/FDSQuickMon.exe'>
                                 </File>
-                                <!-- <RegistryKey Id='SMVFileTypeReg' Root='HKLM' Key='SOFTWARE\Classes\.smv' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="smvDoc"/>
-                                </RegistryKey> -->
-                                <RegistryKey Id='SMVFileTypeRegOther' Root='HKLM' Key='SOFTWARE\Classes\SystemFileAssociations\.smv\Shell\QuickChart\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSQuickMon.exe&quot; &quot;%1&quot;"/>
+                                <RegistryKey Id='SMVFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\QuickChart\Command' ForceDeleteOnUninstall="yes">
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSQuickMon.exe&quot; &quot;%1&quot;" KeyPath='yes'/>
                                 </RegistryKey>
-                                <!-- <RegistryKey Id='SMVFileTypeNameReg' Root='HKLM' Key='SOFTWARE\Classes\smvDoc' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="Smokeview File"/>
-                                </RegistryKey> -->
-                                <!-- <RegistryKey Id='QuickMonContextMenuReg' Root='HKLM' Key='SOFTWARE\Classes\smvDoc\Shell\QuickChart\command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSQuickMon.exe&quot; &quot;%1&quot;"/>
-                                </RegistryKey> -->
                             </Component>
                             <!-- <Component Id='DetAct' Guid='39230750-a65f-4768-87bd-4ad212640dc6'>
                                 <File Id='DetActEXE' Name='DetectionActivation.exe' Source='FDSUtilities/dist/build/DetectionActivation/DetectionActivation.exe' KeyPath='yes'>
                                 </File>
                             </Component> -->
                             <Component Id='FuteComponent' Guid='e347a522-cde9-4228-a6cf-cc210f31cf15' Win64="yes">
-                                <File Id='FuteEXE' Name='fute.exe' Source='dist/fute.exe' KeyPath='yes'>
+                                <File Id='FuteEXE' Name='fute.exe' Source='dist/fute.exe'>
                                 </File>
                                 <!-- <RegistryKey Id='FDSFileTypeReg' Root='HKLM' Key='SOFTWARE\Classes\.fds' ForceDeleteOnUninstall="yes">
                                     <RegistryValue Type='string' Value="fdsDoc"/>
                                 </RegistryKey> -->
-                                <RegistryKey Id='FDSFileTypeRegOther' Root='HKLM' Key='SOFTWARE\Classes\SystemFileAssociations\.fds\Shell\FDSVerification\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute.exe&quot; verify-input &quot;%1&quot; --show"/>
+                                <RegistryKey Id='FDSFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.fds\Shell\FDSVerification\Command' ForceDeleteOnUninstall="yes">
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute.exe&quot; verify-input &quot;%1&quot; --show" KeyPath='yes'/>
                                 </RegistryKey>
                                 <!-- <RegistryKey Id='FDSFileTypeRegCommand' Root='HKLM' Key='SOFTWARE\Classes\.fds\Shell\FDSVerification\command' ForceDeleteOnUninstall="yes">
                                     <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSVerification.exe&quot; &quot;%1&quot;"/>

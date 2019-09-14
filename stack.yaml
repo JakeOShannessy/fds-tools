@@ -7,9 +7,10 @@ packages:
   - ./fute-core
 extra-deps:
   - attoparsec-binary-0.2
-  - Chart-1.9
-  - Chart-cairo-1.9
+  - Chart-1.9.1
+  - Chart-diagrams-1.9.2
   - time-1.6.0.1
+  - gnuplot-0.5.6
   - git: https://github.com/JakeOShannessy/namelist-parser.git
     commit: 8c0148c088c10c4580dd127153555d077977d05a
   - git: https://github.com/JakeOShannessy/fds-input-parser.git
