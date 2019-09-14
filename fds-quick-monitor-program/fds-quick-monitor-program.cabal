@@ -1,5 +1,5 @@
 name: fds-quick-monitor-program
-version:             0.1.0.7
+version:             1.11.0
 synopsis:            A simple utility to display basic simulation results.
 license:             MPL-2.0
 author:              Jake O'Shannessy
@@ -22,4 +22,3 @@ executable FDSQuickMon
                , data-default -any
                , lens -any
   hs-source-dirs:      src
-
