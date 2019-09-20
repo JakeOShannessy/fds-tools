@@ -40,7 +40,9 @@ parseOutFile :: FilePath -> IO (Either ParseError OutData)
 parseOutFile filePath = do
     tZone <- getCurrentTimeZone
     input <- readFile filePath
-    let (Node _ parsedForest) = parseIndent input
+    -- Filter out lines that start from the beginning
+    let theLines = filter (\s-> case s of; [] -> True; (s:ss) -> s == ' ';) $ lines input
+    let (Node _ parsedForest) = parseIndent $ unlines theLines
     -- TODO: correctly carry through ParseErrors.
     let parsedObjects = mapMaybe (parseObject tZone) parsedForest
     return $ Right $ parsedObjectsToOutData parsedObjects

@@ -194,11 +194,14 @@ readCSV2DVector file = do
 -- | Convert from vector of rows (which are lists) to vector of columns (which are vectors)
 retrans :: [V.Vector Double] -> [V.Vector Double] -> [V.Vector Double]
 -- retrans doneVecs [] = doneVecs
-retrans doneVecs todoVecs | not $ V.null $ headErr "retrans" todoVecs = retrans (cVec:doneVecs) remVecs
+retrans doneVecs todoVecs | not $ V.null $ headTodoVecs = retrans (cVec:doneVecs) remVecs
                           | otherwise = doneVecs
     where
         cVec = V.fromList $ map V.head todoVecs
         remVecs = map V.tail todoVecs
+        headTodoVecs = case todoVecs of
+            (x:xs) -> x
+            [] -> error "todoVec is empty"
 -- TODO: Modify cassava to allow for multiple header lines.
 -- TODO: Also, return the values of the header.
 -- TODO: Skip unrequested columns.

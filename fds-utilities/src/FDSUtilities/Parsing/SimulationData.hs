@@ -193,7 +193,7 @@ readCSV2DVector file = do
 -- TODO: remove the below and parse differently
 -- | Convert from vector of rows (which are lists) to vector of columns (which are vectors)
 retrans :: [V.Vector Double] -> [V.Vector Double] -> [V.Vector Double]
--- retrans doneVecs [] = doneVecs
+retrans doneVecs [] = doneVecs
 retrans doneVecs todoVecs | not $ V.null $ headErr "retrans" todoVecs = retrans (cVec:doneVecs) remVecs
                           | otherwise = doneVecs
     where

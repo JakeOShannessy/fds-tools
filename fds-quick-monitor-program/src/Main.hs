@@ -54,6 +54,8 @@ launch path = do
             void getChar
 
 guardedLaunch file = do
+    let dir = takeDirectory file
+    setCurrentDirectory dir
     res <- Control.Exception.try $ launch file
     case res of
         Right x -> pure x
