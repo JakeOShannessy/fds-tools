@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TemplateHaskell #-}
 module FDSUtilities.Plot where
 
 -- import Control.Concurrent
@@ -17,11 +18,14 @@ import Data.Maybe
 import Data.Time
 -- import qualified Data.Map as M
 import qualified Data.Vector.Unboxed as V
+import qualified Graphics.SVGFonts.ReadFont       as F
+import qualified Graphics.Rendering.Chart.Backend as B
+import Data.FileEmbed (embedFile, makeRelativeToProject)
 
 import Debug.Trace
 
 import Graphics.Rendering.Chart
-import Graphics.Rendering.Chart.Backend.Diagrams
+import Graphics.Rendering.Chart.Backend.Diagrams hiding (loadSansSerifFonts)
 -- import Graphics.Rendering.Chart
 -- import Graphics.Rendering.Chart.Plot
 
@@ -37,6 +41,7 @@ produceChartC destinationPath chartConfig (width, height) dList title filename =
     -- TODO: rendering to svg has been hanging
     let svg_opts = fo_size .~ (width, height)
             $ fo_format .~ SVG
+            $ fo_fonts .~ (pure loadSansSerifFonts)
             $ def
     -- let png_opts = fo_size .~ (width, height)
             -- $ fo_format .~ PNG
@@ -51,6 +56,30 @@ produceChartC destinationPath chartConfig (width, height) dList title filename =
         chR = chart title chartConfig dList
 
 
+-- denv :: DEnv Double
+-- denv = createEnv B.vectorAlignmentFns 1000 700 loadSansSerifFonts
+-- {-# NOINLINE denv #-}
+
+loadSansSerifFonts :: FontSelector Double
+loadSansSerifFonts = selectFont
+    where
+    sansR = snd $ F.loadFont' "SourceSansPro_R" $(makeRelativeToProject "fonts/SourceSansPro_R.svg" >>= embedFile)
+    sansRB = snd $ F.loadFont' "SourceSansPro_RB" $(makeRelativeToProject "fonts/SourceSansPro_RB.svg" >>= embedFile)
+    sansRBI = snd $ F.loadFont' "SourceSansPro_RBI" $(makeRelativeToProject "fonts/SourceSansPro_RBI.svg" >>= embedFile)
+    sansRI = snd $ F.loadFont' "SourceSansPro_RI" $(makeRelativeToProject "fonts/SourceSansPro_RI.svg" >>= embedFile)
+
+    selectFont :: B.FontStyle -> F.PreparedFont Double
+    selectFont fs = case (B._font_name fs, B._font_slant fs, B._font_weight fs) of
+        (_, B.FontSlantNormal , B.FontWeightNormal) -> alterFontFamily "sans-serif" sansR
+        (_, B.FontSlantNormal , B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRB
+        (_, B.FontSlantItalic , B.FontWeightNormal) -> alterFontFamily "sans-serif" sansRI
+        (_, B.FontSlantOblique, B.FontWeightNormal) -> alterFontFamily "sans-serif" sansRI
+        (_, B.FontSlantItalic , B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRBI
+        (_, B.FontSlantOblique, B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRBI
+{-# NOINLINE loadSansSerifFonts #-}
+
+alterFontFamily :: String -> F.PreparedFont n -> F.PreparedFont n
+alterFontFamily n (fd, om) = (fd { F.fontDataFamily = n }, om)
 
 
 produceRunChart :: FilePath -> TimeZone -> Double -> [(UTCTime, Double)] -> IO [FilePath]
@@ -60,6 +89,7 @@ produceRunChart destinationPath tZone simEndTime runData = do
     putStrLn "..."
     let svg_opts = fo_size .~ (800, 400)
             $ fo_format .~ SVG
+            $ fo_fonts .~ (pure loadSansSerifFonts)
             $ def
     (pickfn) <- {-# SCC producingMonitor #-} renderableToFile svg_opts (joinPath [destinationPath, "RunTime" ++ ".svg"]) chR
     putStrLn "SVG complete"
@@ -285,7 +315,7 @@ runChart title tZone simEndTime dPoints
         ((penUltStepClock, penUltStepSim):(ultStepClock, ultStepSim):[]) = drop (length dPoints - 2) dPoints
         -- negative numbers here cause explosion of memory when linked into other modules on windows.
         timeLeft :: Int
-        timeLeft = max 0 $floor $ (dCalcTime / dSimTime) * (simEndTime - (ultStepSim))
+        timeLeft = max 0 $ floor $ (dCalcTime / dSimTime) * (simEndTime - (ultStepSim))
             where
                 dCalcTime = realToFrac (diffUTCTime (ultStepClock) (penUltStepClock)) :: Double
                 dSimTime = (ultStepSim) - (penUltStepSim)
