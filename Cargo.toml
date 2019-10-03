@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "fute-core-rs",
+    "fute-rs",
+    "plot3d-rs",
+]

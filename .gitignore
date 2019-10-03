@@ -17,10 +17,10 @@ cabal.sandbox.config
 *.ps
 *.aux
 .stack-work/
+target
 
 # Project specific
 fds-utilities/test-out
 fds-utilities/test-data
 test-data
 test-out
-

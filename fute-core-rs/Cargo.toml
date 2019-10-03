@@ -1,0 +1,8 @@
+[package]
+name = "fute-core"
+version = "0.1.0"
+authors = ["Jake O'Shannessy <joshannessy@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+fds-input-parser = {path = "../../fds-input-parser-rs"}
