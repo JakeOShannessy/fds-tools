@@ -705,10 +705,6 @@ fn parse_prop(i: &str) -> IResult<&str, Prop> {
     Ok((i,prop))
 }
 
-
-
-
-// data SMVDevice = SMVDevice String Double Double Double Double Double Double Int Int deriving Show
 #[derive(Clone, Debug)]
 pub struct Device {
     pub name: String,
@@ -840,31 +836,8 @@ fn parse_mesh(i: &str) -> IResult<&str, Mesh> {
     };
     let (i,_) = opt(line_ending)(i)?;
     Ok((i, mesh))
-//     if version >= (Version 6 0 0)
-//         then do
-//             _ <- string "CVENT"
-//             eol
-//             _ <- onlySpaces
-//             nCVents <- intNum
-//             eol
-//             -- cvents <- count nCVents parseCVent
-//             eol
-//             spaces  -- TODO: remove
-//         else return ()
-
-//     return $ SMVMesh
-//         { smvMeshName = name
-//         , smvMeshOffset = (offset1, offset2, offset3)
-//         , smvMeshGrid = ((nXCells, nYCells, nZCells), grid4Unknown)
-//         , smvMeshBBox = bbox
-//         , smvMeshColour = meshColour
-//         , smvMeshTRNs = trns
-//         , smvMeshObsts = obsts
-//         , smvMeshVents = vents
-//         }
 }
 
-//     return $ ((xMin, xMax, yMin, yMax, zMin, zMax), (r,g,b))
 #[derive(Clone, Debug)]
 pub struct PDim {
     pub xb: (f64, f64, f64, f64, f64, f64),
@@ -1009,14 +982,6 @@ fn parse_trns(i: &str) -> IResult<&str, MeshTRNs> {
         trnz,
     };
     Ok((i, trns))
-// parseTRNs = do
-//     string "TRNX" *> eol
-//     trnx <- parseTRN
-//     string "TRNY" *> eol
-//     trny <- parseTRN
-//     string "TRNZ" *> eol
-//     trnz <- parseTRN
-//     return $ MeshTRNs trnx trny trnz
 }
 
 fn parse_trn(i: &str) -> IResult<&str, Vec<(i64,f64)>> {
@@ -1026,16 +991,6 @@ fn parse_trn(i: &str) -> IResult<&str, Vec<(i64,f64)>> {
     let (i, entries) = many0(parse_trn_entry)(i)?;
     let (i,_) = line_ending(i)?;
     Ok((i, entries))
-// parseTRN = do
-//     n <- onlySpaces *> intNum <* eol
-//     entries <- many (try parseTRNEntry)
-//     eol
-//     return entries
-//     where
-//         parseTRNEntry :: Parser (Int, Double)
-//         parseTRNEntry = (,)
-//             <$> (onlySpaces *> intNum) -- i
-//             <*> (onlySpaces *> floatNum <* eol) -- v
 }
 
 fn parse_trn_entry(i: &str) -> IResult<&str, (i64,f64)> {
@@ -1047,14 +1002,7 @@ fn parse_trn_entry(i: &str) -> IResult<&str, (i64,f64)> {
     let (i,_) = line_ending(i)?;
     Ok((i,(n,f)))
 }
-// data SMVObst = SMVObst
-//     { smvObstXB :: (Double, Double, Double, Double, Double, Double)
-//     , smvObstId :: Int  -- This value is not unique
-//     , smvObstSurfaces :: (Int, Int, Int, Int, Int, Int)
-//     , smvObstIJK :: (Int, Int, Int, Int, Int, Int)
-//     , smvObstColourIndex:: Int
-//     , smvObstBlockType :: Int
-//     } deriving Show
+
 #[derive(Clone, Debug)]
 pub struct Obst {
     pub xb: (f64, f64, f64, f64, f64, f64),
@@ -1079,23 +1027,6 @@ fn parse_obsts(i: &str) -> IResult<&str, Vec<Obst>> {
         obsts.push(stitch_obst(a, b));
     }
     Ok((i, obsts))
-// parseObsts = do
-//     string "OBST" *> eol
-//     n <- onlySpaces *> intNum <* eol
-//     line1s <- count n parseObstLine1
-//     line2s <- count n parseObstLine2
-//     eol
-//     let obsts = zipWith stitchObst line1s line2s -- TODO: actually make this into a useful datatype
-//     return obsts
-//     where
-//         stitchObst ((x1, x2, y1, y2, z1, z2), id, (s1, s2, s3, s4, s5, s6)) ((i1, i2, j1, j2, k1, k2), colorindex, blocktype) = SMVObst
-//             { smvObstXB = (x1, x2, y1, y2, z1, z2)
-//             , smvObstId = id
-//             , smvObstSurfaces = (s1, s2, s3, s4, s5, s6)
-//             , smvObstIJK = (i1, i2, j1, j2, k1, k2)
-//             , smvObstColourIndex = colorindex
-//             , smvObstBlockType = blocktype
-//             }
 }
 fn stitch_obst(l1: ((f64, f64, f64, f64, f64, f64),i64,(u64,u64,u64,u64,u64,u64)), l2: ((i64,i64,i64,i64,i64,i64), i64, i64)) -> Obst {
     Obst {
@@ -1108,19 +1039,6 @@ fn stitch_obst(l1: ((f64, f64, f64, f64, f64, f64),i64,(u64,u64,u64,u64,u64,u64)
     }
 }
 
-// data SMVVent = SMVVent
-//     { smvVentXB :: (Double, Double, Double, Double, Double, Double)
-//     , smvVentUnkown1 :: Int
-//     , smvVentUnkown2 :: Int
-//     , smvVentUnkown3 :: Int
-//     , smvVentUnkown4 :: Int
-//     , smvVentUnkown5 :: Int
-//     , smvVentUnkown6 :: Int
-//     , smvVentUnkown7 :: Int
-//     , smvVentUnkown8 :: Int
-//     , smvVentUnkown9 :: Int
-//     , smvVentUnkown10 :: Int
-//     } deriving Show
 #[derive(Clone, Debug)]
 pub struct Vent {
     pub xb: (f64, f64, f64, f64, f64, f64),
@@ -1152,17 +1070,6 @@ fn parse_vents(i: &str) -> IResult<&str, Vec<Vent>> {
         vents.push(stitch_vent(a, b));
     }
     Ok((i, vents))
-// parseVents = do
-//     string "VENT" *> eol
-//     n <- onlySpaces *> intNum
-//     i <- onlySpaces *> intNum <* eol -- number of dummy vents
-//     line1s <- count n parseVentLine1
-//     line2s <- count n parseVentLine2
-//     optional eol
-//     let vents = zipWith stitchVent line1s line2s -- TODO: actually make this into a useful datatype
-//     return vents
-//     where
-//         stitchVent ((x1, x2, y1, y2, z1, z2), g, h) (i, j, k, l, m, n, o, p) = SMVVent (x1, x2, y1, y2, z1, z2) g h i j k l m n o p
 }
 
 fn stitch_vent(l1: ((f64, f64, f64, f64, f64, f64), i64, i64), l2: (i64,i64,i64,i64,i64,i64,i64,i64)) -> Vent {
@@ -1196,17 +1103,6 @@ fn parse_cvents(i: &str) -> IResult<&str, Vec<CVent>> {
     let (i,cvents) = nom::multi::count(parse_cvent, n as usize)(i)?;
     let (i,_) = line_ending(i)?;
     Ok((i, cvents))
-// parseVents = do
-//     string "VENT" *> eol
-//     n <- onlySpaces *> intNum
-//     i <- onlySpaces *> intNum <* eol -- number of dummy vents
-//     line1s <- count n parseVentLine1
-//     line2s <- count n parseVentLine2
-//     optional eol
-//     let vents = zipWith stitchVent line1s line2s -- TODO: actually make this into a useful datatype
-//     return vents
-//     where
-//         stitchVent ((x1, x2, y1, y2, z1, z2), g, h) (i, j, k, l, m, n, o, p) = SMVVent (x1, x2, y1, y2, z1, z2) g h i j k l m n o p
 }
 
 fn parse_cvent(i: &str) -> IResult<&str, CVent> {
@@ -1256,31 +1152,6 @@ fn parse_obst1_extra(i: &str) -> IResult<&str, (f64, f64, f64)> {
     let (i,_) = space0(i)?;
     Ok((i,(op_a,op_b,op_c)))
 }
-// parseObstLine1 = do
-//     x1 <- onlySpaces *> floatNum
-//     x2 <- onlySpaces *> floatNum
-//     y1 <- onlySpaces *> floatNum
-//     y2 <- onlySpaces *> floatNum
-//     z1 <- onlySpaces *> floatNum
-//     z2 <- onlySpaces *> floatNum
-//     id <- onlySpaces *> intNum
-//     s1 <- onlySpaces *> intNum
-//     s2 <- onlySpaces *> intNum
-//     s3 <- onlySpaces *> intNum
-//     s4 <- onlySpaces *> intNum
-//     s5 <- onlySpaces *> intNum
-//     s6 <- onlySpaces *> intNum
-//     onlySpaces
-//     ops <- optionMaybe (do
-//                 opA <- onlySpaces *> floatNum
-//                 opB <- onlySpaces *> floatNum
-//                 opC <- onlySpaces *> floatNum
-//                 onlySpaces
-//                 return (opA, opB, opC)
-//             )
-//     eol
-//     return ((x1, x2, y1, y2, z1, z2), id, (s1, s2, s3, s4, s5, s6))
-
 
 fn parse_obst_line2(i: &str) -> IResult<&str, ((i64,i64,i64,i64,i64,i64), i64, i64)> {
     let (i,_) = space0(i)?;
@@ -1318,26 +1189,6 @@ fn parse_obst2_extra(i: &str) -> IResult<&str, (f64, f64, f64, f64)> {
     let (i,_) = space0(i)?;
     Ok((i,(op_a,op_b,op_c, op_d)))
 }
-// parseObstLine2 = do
-//     i1 <- onlySpaces *> intNum
-//     i2 <- onlySpaces *> intNum
-//     j1 <- onlySpaces *> intNum
-//     j2 <- onlySpaces *> intNum
-//     k1 <- onlySpaces *> intNum
-//     k2 <- onlySpaces *> intNum
-//     colorindex <- onlySpaces *> intNum
-//     blocktype <- onlySpaces *> intNum
-//     ops <- optionMaybe (do
-//                 opA <- onlySpaces *> floatNum
-//                 opB <- onlySpaces *> floatNum
-//                 opC <- onlySpaces *> floatNum
-//                 opD <- onlySpaces *> floatNum
-//                 return (opA, opB, opC, opD)
-//             )
-//     eol
-
-//     return ((i1, i2, j1, j2, k1, k2), colorindex, blocktype)
-
 
 fn parse_vent_line1(i: &str) -> IResult<&str, ((f64, f64, f64, f64, f64, f64), i64, i64)> {
     let (i,_) = space0(i)?;
@@ -1425,26 +1276,6 @@ fn parse_vent2_extra(i: &str) -> IResult<&str, (f64, f64, f64, f64)> {
     let (i,_) = space0(i)?;
     Ok((i,(op_a,op_b,op_c,op_d)))
 }
-// parseVentLine2 = do
-//     i <- onlySpaces *> intNum
-//     j <- onlySpaces *> intNum
-//     k <- onlySpaces *> intNum
-//     l <- onlySpaces *> intNum
-//     m <- onlySpaces *> intNum
-//     n <- onlySpaces *> intNum
-//     o <- onlySpaces *> intNum
-//     p <- onlySpaces *> intNum
-//     ops <- optionMaybe (do
-//                 opA <- onlySpaces *> floatNum
-//                 opB <- onlySpaces *> floatNum
-//                 opC <- onlySpaces *> floatNum
-//                 opD <- onlySpaces *> floatNum
-//                 return (opA, opB, opC, opD)
-//             )
-//     eol
-
-//     return (i, j, k, l, m, n, o, p)
-
 // parseAlias :: Parser String
 // parseAlias =  char '%' *> manyTill anyChar (try (string " &"))
 fn parse_face(i: &str) -> IResult<&str, String> {
@@ -1457,12 +1288,10 @@ fn parse_vert(i: &str) -> IResult<&str, String> {
 
 
 fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
-    unimplemented!()
-// parseTailEntry :: Parser TailEntry
-// parseTailEntry = do
-//     name <- basicString
-//     case name of
-//         "SLCF" -> do
+    let (i, entry_name) = nom::character::complete::alphanumeric1(i)?;
+
+    match entry_name {
+        "SLCF" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum
 //                     alias <- onlySpaces *> optionMaybe parseAlias
 //                     clearLine   -- TODO: change
@@ -1477,7 +1306,7 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
 //                             -- Nothing -> "unknown"
 //                     eol
 //                     return $ DataFileTailEntry $ SLCFDataFile meshNum filename longName shortName units alias
-//         "SLCC" -> do
+        "SLCC" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum
 //                     alias <- onlySpaces *> optionMaybe parseAlias
 //                     clearLine   -- TODO: change
@@ -1499,7 +1328,7 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
 //                       , slcfUnits = units
 //                       , slcfAlias = alias
 //                       }
-//         "BNDF" -> do
+        "BNDF" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum
 //                     anotherNum <- onlySpaces *> intNum <* eol   -- TODO: find out what this number is and include in datatype
 //                     filename <- onlySpaces *> fullString <* eol
@@ -1512,7 +1341,7 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
 //                             -- Nothing -> "unknown"
 //                     eol
 //                     return $ DataFileTailEntry $ BNDFDataFile meshNum filename longName shortName units
-//         "BNDC" -> do    -- TODO: BNDF and BNDC are the same
+        "BNDC" => unimplemented!(),    // TODO: BNDF and BNDC are the same
 //                     meshNum <- onlySpaces *> intNum
 //                     anotherNum <- onlySpaces *> intNum <* eol   -- TODO: find out what this number is and include in datatype
 //                     filename <- onlySpaces *> fullString <* eol
@@ -1525,7 +1354,7 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
 //                             -- Nothing -> "unknown"
 //                     eol
 //                     return $ DataFileTailEntry $ BNDFDataFile meshNum filename longName shortName units
-//         "PRT5" -> do
+        "PRT5" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     (aNum:bNum:_) <- many1 $ do
@@ -1534,64 +1363,73 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
 //                         eol
 //                         return aNum
 //                     return $ DataFileTailEntry $ PRT5DataFile meshNum filename aNum bNum
-//         "SMOKE3D" -> do
+        "SMOKE3D" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     longName <- onlySpaces *> basicStringSpacesExtra <* eol
 //                     shortName <- onlySpaces *> basicStringExtra <* eol
 //                     units <- onlySpaces *> basicStringExtra <* eol
 //                     return $ DataFileTailEntry $ SMOKE3DDataFile meshNum filename longName shortName units
-//         "SMOKF3D" -> do
+        "SMOKF3D" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     longName <- onlySpaces *> basicStringSpacesExtra <* eol
 //                     shortName <- onlySpaces *> basicStringExtra <* eol
 //                     units <- onlySpaces *> basicStringExtra <* eol
 //                     return $ DataFileTailEntry $ SMOKE3DDataFile meshNum filename longName shortName units
-//         "PL3D" -> do
+        "PL3D" => unimplemented!(),
 //                     time <- onlySpaces *> floatNum
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     pl3dEntries <- many parsePL3DEntry
 //                     return $ DataFileTailEntry $ PL3DDataFile time meshNum filename pl3dEntries
-//         "XYZ" -> do
+        "XYZ" => {
+            let (i,_) = line_ending(i)?;
+            let (i, name_full) = not_line_ending(i)?;
+            let name = name_full.trim();
+            let (i,_) = line_ending(i)?;
+            Ok((i, TailEntry::DataFile(DataFileEntry::XYZ(XYZDataFile {
+                filename: name.to_string()
+            }))))
+        }
 //                     eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     return $ DataFileTailEntry $ XYZDataFile filename
-//         "ISOG" -> do
+        "ISOG" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     longName <- onlySpaces *> basicStringSpacesExtra <* eol
 //                     shortName <- onlySpaces *> basicStringExtra <* eol
 //                     units <- onlySpaces *> basicStringExtra <* eol
 //                     return $ DataFileTailEntry $ SMOKE3DDataFile meshNum filename longName shortName units
-//         "DEVICE_ACT" -> do
+        "DEVICE_ACT" => unimplemented!(),
 //                     devcName <- onlySpaces *> deviceNameParser <* eol <* onlySpaces
 //                     d1 <- intNum <* onlySpaces
 //                     d2 <- floatNum <* onlySpaces
 //                     d3 <- intNum <* eol
 //                     return $ DeviceActivationTailEntry $ DevcActEntry devcName d1 d2 d3
-//         "SHOW_OBST" -> do
+        "SHOW_OBST" => unimplemented!(),
 //                     k1 <- onlySpaces *> intNum <* eol
 //                     k2 <- onlySpaces *> intNum
 //                     k3 <- onlySpaces *> floatNum <* eol
 //                     return $ ObstVisTailEntry $ ShowObst k1 k2 k3
-//         "HIDE_OBST" -> do
+        "HIDE_OBST" => unimplemented!(),
 //                     j1 <- onlySpaces *> intNum <* eol
 //                     j2 <- onlySpaces *> intNum
 //                     j3 <- onlySpaces *> floatNum <* eol
 //                     return $ ObstVisTailEntry $ HideObst j1 j2 j3
-//         "CLOSE_VENT" -> do
+        "CLOSE_VENT" => unimplemented!(),
 //                     j1 <- onlySpaces *> intNum <* eol
 //                     j2 <- onlySpaces *> intNum
 //                     j3 <- onlySpaces *> floatNum <* eol
 //                     return $ ObstVisTailEntry $ HideObst j1 j2 j3   --TODO: incorrect entry
-//         "OPEN_VENT" -> do
+        "OPEN_VENT" => unimplemented!(),
 //                     j1 <- onlySpaces *> intNum <* eol
 //                     j2 <- onlySpaces *> intNum
 //                     j3 <- onlySpaces *> floatNum <* eol
 //                     return $ ObstVisTailEntry $ HideObst j1 j2 j3 --TODO: incorrect entry
-//         _ -> error $ "The following was parsed by \"parseDataFile\" >" ++ name ++ "<"
+        _ => panic!("The following was parsed by \"parseDataFile\" >{}<", entry_name),
+    }
 }
 
 fn sort_tail_entries(tail_entries: Vec<TailEntry>) -> (Vec<DataFileEntry>, Vec<DevcActEntry>, Vec<ObstVisEntry>) {
@@ -1615,7 +1453,13 @@ pub enum TailEntry {
 
 #[derive(Clone, Debug)]
 pub enum DataFileEntry {
+    XYZ(XYZDataFile)
 
+}
+
+#[derive(Clone, Debug)]
+pub struct XYZDataFile {
+    pub filename: String,
 }
 // data DataFileEntry   -- TODO: Considere moving each datafile type to its own datatype and making DataFileEntry a Typeclass
 //     = SLCFDataFile
