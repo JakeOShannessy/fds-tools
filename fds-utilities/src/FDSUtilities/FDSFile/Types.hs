@@ -1040,24 +1040,24 @@ data Surf = Surf
     , surf_C_HORIZONTAL :: Double
     , surf_C_VERTICAL :: Double
     , surf_COLOR :: Maybe String
-    , surf_CONVECTION_LENGTH_SCALE :: Double
-    , surf_CONVECTIVE_HEAT_FLUX :: Double
-    , surf_CONVERT_VOLUME_TO_MASS :: Bool
-    , surf_DEFAULT :: Bool
-    , surf_DT_INSERT :: Double
-    , surf_EMISSIVITY :: Double
-    , surf_EMISSIVITY_BACK :: Double
-    , surf_EVAC_DEFAULT :: Bool
-    , surf_EXTERNAL_FLUX :: Double
-    , surf_E_COEFFICIENT :: Double
-    , surf_FIRELINE_MLR_MAX :: Double
-    , surf_FREE_SLIP :: Bool
-    , surf_FYI :: Maybe String
-    , surf_GEOMETRY :: String
-    , surf_HEAT_OF_VAPORIZATION :: Double
-    , surf_HEAT_TRANSFER_COEFFICIENT :: Double
-    , surf_HEAT_TRANSFER_COEFFICIENT_BACK :: Double
-    , surf_HEAT_TRANSFER_MODEL :: String
+    -- , surf_CONVECTION_LENGTH_SCALE :: Double
+    -- , surf_CONVECTIVE_HEAT_FLUX :: Double
+    -- , surf_CONVERT_VOLUME_TO_MASS :: Bool
+    -- , surf_DEFAULT :: Bool
+    -- , surf_DT_INSERT :: Double
+    -- , surf_EMISSIVITY :: Double
+    -- , surf_EMISSIVITY_BACK :: Double
+    -- , surf_EVAC_DEFAULT :: Bool
+    -- , surf_EXTERNAL_FLUX :: Double
+    -- , surf_E_COEFFICIENT :: Double
+    -- , surf_FIRELINE_MLR_MAX :: Double
+    -- , surf_FREE_SLIP :: Bool
+    -- , surf_FYI :: Maybe String
+    -- , surf_GEOMETRY :: String
+    -- , surf_HEAT_OF_VAPORIZATION :: Double
+    -- , surf_HEAT_TRANSFER_COEFFICIENT :: Double
+    -- , surf_HEAT_TRANSFER_COEFFICIENT_BACK :: Double
+    -- , surf_HEAT_TRANSFER_MODEL :: String
     , surf_HRRPUA :: Maybe Double
     , surf_HT3D :: Bool
     , surf_ID :: Maybe String

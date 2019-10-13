@@ -9,6 +9,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use env_logger;
+mod commands;
+use commands::*;
 
 fn main() {
     env_logger::init();
@@ -110,6 +112,20 @@ fn main() {
                 )
                 .about("Plot information from the .out file"),
         )
+        .subcommand(
+            SubCommand::with_name("quick-chart")
+                .arg(
+                    Arg::with_name("SMV-FILE")
+                        .required(true)
+                        .help("Path to an SMV file."),
+                )
+                .arg(Arg::with_name("open")
+                        .long("open")
+                        .short("o")
+                        .takes_value(false)
+                        .help("Sets the level of verbosity"))
+                .about("Compile a summary of information"),
+        )
         .get_matches();
 
     if let Some(_count_cells_matches) = matches.subcommand_matches("count-cells") {
@@ -123,5 +139,8 @@ fn main() {
     } else if let Some(_new_rev_matches) = matches.subcommand_matches("new-rev") {
     } else if let Some(_current_progress_matches) = matches.subcommand_matches("current-progress") {
     } else if let Some(_plot_out_matches) = matches.subcommand_matches("plot-out") {
+    } else if let Some(quick_chart_matches) = matches.subcommand_matches("quick-chart") {
+        let smv_path = PathBuf::from(quick_chart_matches.value_of("SMV-FILE").unwrap());
+        quick_chart(&smv_path);
     }
 }

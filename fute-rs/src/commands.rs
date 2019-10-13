@@ -1,4 +1,5 @@
 
+use std::path::Path;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -10,8 +11,9 @@
 /// Output the number of cells for each mesh as a human readable table. This is
 /// not machine readable.
 pub fn count_cells(input_path: &Path) {
-    let fds_data = parse_and_decode_fds_input_file(path);
-    let meshes = fds_data.meshes;
+    // let fds_data = parse_and_decode_fds_input_file(path);
+    // let meshes = fds_data.meshes;
+    unimplemented!()
     // let meshes = fdsFile_Meshes inData
     //     fmt = formatNum intFmt
     // let tab = Table
@@ -258,3 +260,7 @@ pub fn count_cells(input_path: &Path) {
 //             where
 //                 toDouble (ValueInt i) = fromIntegral i
 //                 toDouble (ValueDouble d) = d
+
+pub fn quick_chart(smv_path: &Path) {
+    println!("quick-charting: {:?}", smv_path);
+}
