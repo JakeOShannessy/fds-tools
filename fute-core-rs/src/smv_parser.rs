@@ -1370,7 +1370,34 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
 //                     shortName <- onlySpaces *> basicStringExtra <* eol
 //                     units <- onlySpaces *> basicStringExtra <* eol
 //                     return $ DataFileTailEntry $ SMOKE3DDataFile meshNum filename longName shortName units
-        "SMOKF3D" => unimplemented!(),
+        "SMOKF3D" => {
+            let (i,_) = space0(i)?;
+            let (i,mesh_num) = parse_int(i)?;
+            let (i,_) = line_ending(i)?;
+            let (i,_) = space0(i)?;
+            let (i, filename_full) = not_line_ending(i)?;
+            let filename = filename_full.trim();
+            let (i,_) = line_ending(i)?;
+            let (i,_) = space0(i)?;
+            let (i, longname_full) = not_line_ending(i)?;
+            let longname = longname_full.trim();
+            let (i,_) = line_ending(i)?;
+            let (i,_) = space0(i)?;
+            let (i, shortname_full) = not_line_ending(i)?;
+            let shortname = shortname_full.trim();
+            let (i,_) = line_ending(i)?;
+            let (i,_) = space0(i)?;
+            let (i, units_full) = not_line_ending(i)?;
+            let units = units_full.trim();
+            let (i,_) = line_ending(i)?;
+            Ok((i, TailEntry::DataFile(DataFileEntry::Smoke3d(Smoke3dDataFile {
+                mesh_num: mesh_num,
+                filename: filename.to_string(),
+                longname: longname.to_string(),
+                shortname: shortname.to_string(),
+                units: units.to_string(),
+            }))))
+        },
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
 //                     longName <- onlySpaces *> basicStringSpacesExtra <* eol
@@ -1392,9 +1419,6 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
                 filename: name.to_string()
             }))))
         }
-//                     eol
-//                     filename <- onlySpaces *> fullString <* eol
-//                     return $ DataFileTailEntry $ XYZDataFile filename
         "ISOG" => unimplemented!(),
 //                     meshNum <- onlySpaces *> intNum <* eol
 //                     filename <- onlySpaces *> fullString <* eol
@@ -1453,13 +1477,21 @@ pub enum TailEntry {
 
 #[derive(Clone, Debug)]
 pub enum DataFileEntry {
-    XYZ(XYZDataFile)
-
+    XYZ(XYZDataFile),
+    Smoke3d(Smoke3dDataFile),
 }
 
 #[derive(Clone, Debug)]
 pub struct XYZDataFile {
     pub filename: String,
+}
+#[derive(Clone, Debug)]
+pub struct Smoke3dDataFile {
+    pub mesh_num: i64,
+    pub filename: String,
+    pub longname: String,
+    pub shortname: String,
+    pub units: String,
 }
 // data DataFileEntry   -- TODO: Considere moving each datafile type to its own datatype and making DataFileEntry a Typeclass
 //     = SLCFDataFile

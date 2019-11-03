@@ -128,7 +128,10 @@ fn main() {
         )
         .get_matches();
 
-    if let Some(_count_cells_matches) = matches.subcommand_matches("count-cells") {
+    if let Some(count_cells_matches) = matches.subcommand_matches("count-cells") {
+        let input_path = PathBuf::from(count_cells_matches.value_of("FDS-FILE").unwrap());
+        let n_cells = commands::count_cells(&input_path);
+        println!("{}", n_cells);
     } else if let Some(_meshes_matches) = matches.subcommand_matches("meshes") {
     } else if let Some(_mesh_check_matches) = matches.subcommand_matches("mesh-check") {
     } else if let Some(_plot_hrr_matches) = matches.subcommand_matches("plot-hrr") {

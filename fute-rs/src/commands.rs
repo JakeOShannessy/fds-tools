@@ -1,5 +1,6 @@
 
 use std::path::Path;
+use fds_input_parser::parse_and_decode_fds_input_file;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -10,10 +11,14 @@ use std::path::Path;
 
 /// Output the number of cells for each mesh as a human readable table. This is
 /// not machine readable.
-pub fn count_cells(input_path: &Path) {
-    // let fds_data = parse_and_decode_fds_input_file(path);
-    // let meshes = fds_data.meshes;
-    unimplemented!()
+pub fn count_cells(input_path: &Path) -> u64 {
+    let fds_data = parse_and_decode_fds_input_file(input_path);
+    let meshes: Vec<fds_input_parser::decode::Mesh> = fds_data.meshes;
+    let mut total_cells = 0;
+    for mesh in meshes {
+        total_cells += mesh.cells();
+    }
+    total_cells
     // let meshes = fdsFile_Meshes inData
     //     fmt = formatNum intFmt
     // let tab = Table
