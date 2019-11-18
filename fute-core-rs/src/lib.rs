@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate nom;
-mod verification_tests;
 mod smv_parser;
+mod verification_tests;
 
 #[cfg(test)]
 mod tests {

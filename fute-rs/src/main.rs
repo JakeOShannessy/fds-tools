@@ -4,11 +4,11 @@ extern crate log;
 extern crate clap;
 use clap::{App, AppSettings, Arg, SubCommand};
 // use rustc_hex::ToHex;
+use env_logger;
 use std::fs::create_dir;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use env_logger;
 mod commands;
 use commands::*;
 
@@ -26,7 +26,7 @@ fn main() {
                     Arg::with_name("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
-                )
+                ),
         )
         .subcommand(
             SubCommand::with_name("meshes")
@@ -35,7 +35,7 @@ fn main() {
                     Arg::with_name("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
-                )
+                ),
         )
         .subcommand(
             SubCommand::with_name("mesh-check")
@@ -44,17 +44,15 @@ fn main() {
                     Arg::with_name("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
-                )
+                ),
         )
         // This will understand the ACL
         .subcommand(
-            SubCommand::with_name("plot-hrr")
-                .about("Plot the HRR")
-                .arg(
-                    Arg::with_name("SMV-FILE")
-                        .required(true)
-                        .help("Path to SMV file."),
-                )
+            SubCommand::with_name("plot-hrr").about("Plot the HRR").arg(
+                Arg::with_name("SMV-FILE")
+                    .required(true)
+                    .help("Path to SMV file."),
+            ),
         )
         // This will understand the ACL
         .subcommand(
@@ -64,7 +62,7 @@ fn main() {
                     Arg::with_name("SMV-FILE")
                         .required(true)
                         .help("Path to SMV file."),
-                )
+                ),
         )
         .subcommand(
             SubCommand::with_name("peak-hrr")
@@ -73,7 +71,7 @@ fn main() {
                     Arg::with_name("SMV-FILE")
                         .required(true)
                         .help("Path to SMV file."),
-                )
+                ),
         )
         .subcommand(
             SubCommand::with_name("verify-input")
@@ -82,7 +80,7 @@ fn main() {
                     Arg::with_name("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
-                )
+                ),
         )
         .subcommand(SubCommand::with_name("rename").about("Rename a simulation"))
         .subcommand(
@@ -119,11 +117,13 @@ fn main() {
                         .required(true)
                         .help("Path to an SMV file."),
                 )
-                .arg(Arg::with_name("open")
+                .arg(
+                    Arg::with_name("open")
                         .long("open")
                         .short("o")
                         .takes_value(false)
-                        .help("Sets the level of verbosity"))
+                        .help("Sets the level of verbosity"),
+                )
                 .about("Compile a summary of information"),
         )
         .get_matches();

@@ -1,6 +1,5 @@
-
-use std::path::Path;
 use fds_input_parser::parse_and_decode_fds_input_file;
+use std::path::Path;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -154,7 +153,6 @@ pub fn count_cells(input_path: &Path) -> u64 {
 //     paths <- produceChart "charts" eurocodeHRRChartConfig [hrrVector] (chid ++ " - Realised HRR") "HRR"
 //     return paths
 
-
 // verifyInput path = do
 //     // res is the verification output
 //     res <- verifyInputFile path
@@ -184,15 +182,12 @@ pub fn count_cells(input_path: &Path) -> u64 {
 //             putStrLn "Opening failed, press any key to continue"
 //             void getChar
 
-
-
 // renameSimulationInPath inPath = do
 //     renameSimulation sim
 //     where
 //         inchid =  takeBaseName inPath
 //         dir = takeDirectory inPath
 //         sim = FDSSimulation {simDir = dir, simCHID = inchid}
-
 
 // currentProgress path = do
 //     let simulation = FDSSimulation
@@ -202,7 +197,6 @@ pub fn count_cells(input_path: &Path) -> u64 {
 //     Right outData <- parseSimulationOutFile simulation
 //     currentProgress <- getCurrentProgressOut outData
 //     C.putStrLn $ encode currentProgress
-
 
 // instance ToJSON CurrentProgress where
 //     toJSON currentProgress =

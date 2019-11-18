@@ -1,6 +1,6 @@
-use fds_input_parser::{FDSFile};
 use fds_input_parser::decode::*;
 use fds_input_parser::xb::HasXB;
+use fds_input_parser::FDSFile;
 
 // /// Check that the appropriate files are present.
 // validateFilePresence :: [FilePath] -> [FilePath] -> [FilePath] -> IO Bool
@@ -38,7 +38,6 @@ use fds_input_parser::xb::HasXB;
 //     let pattern = compile ((simCHID simulation) ++ "*")
 //     relatedFiles <- globDir [pattern] (simDir simulation)
 //     return (concat relatedFiles)
-
 
 // /// Ensure that everage flow device is covered by a flow rate device/
 // flowCoverage fdsData =
@@ -179,7 +178,7 @@ fn meshes_overlap_test(fds_data: FDSFile) -> Vec<MeshIntersection> {
         if let Some(mesh) = meshes.pop() {
             for (i, other_mesh) in meshes.iter().enumerate() {
                 if mesh.intersect(&other_mesh) {
-                    intersections.push(MeshIntersection::new(index_a, i+1))
+                    intersections.push(MeshIntersection::new(index_a, i + 1))
                 }
             }
         } else {
@@ -190,13 +189,11 @@ fn meshes_overlap_test(fds_data: FDSFile) -> Vec<MeshIntersection> {
     intersections
 }
 
-
 #[derive(Copy, Clone, Debug)]
 pub struct ReacTests {
-    pub soot_yield: Result<SootYieldTestSuccess,SootYieldTestFailure>,
-    pub co_yield: Result<SootYieldTestSuccess,SootYieldTestFailure>,
+    pub soot_yield: Result<SootYieldTestSuccess, SootYieldTestFailure>,
+    pub co_yield: Result<SootYieldTestSuccess, SootYieldTestFailure>,
 }
-
 
 /// Test that the REAC properties are reasonable.
 fn reaction_tests(fds_data: &FDSFile) -> ReacTests {
@@ -220,12 +217,12 @@ pub enum SootYieldTestFailure {
     BadValue(f64),
 }
 
-fn soot_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess,SootYieldTestFailure> {
+fn soot_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess, SootYieldTestFailure> {
     let sy = match fds_data.reacs.len() {
-            0 => Err(SootYieldTestFailure::NoReac),
-            1 => Ok(fds_data.reacs[0].soot_yield),
-            _ => Err(SootYieldTestFailure::MultipleReacs),
-        }?;
+        0 => Err(SootYieldTestFailure::NoReac),
+        1 => Ok(fds_data.reacs[0].soot_yield),
+        _ => Err(SootYieldTestFailure::MultipleReacs),
+    }?;
     if sy == 0.07 || sy == 0.1 {
         Ok(SootYieldTestSuccess::GoodValue(sy))
     } else {
@@ -245,12 +242,12 @@ pub enum COYieldTestFailure {
     BadValue(f64),
 }
 
-fn co_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess,SootYieldTestFailure> {
+fn co_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess, SootYieldTestFailure> {
     let sy = match fds_data.reacs.len() {
-            0 => Err(SootYieldTestFailure::NoReac),
-            1 => Ok(fds_data.reacs[0].soot_yield),
-            _ => Err(SootYieldTestFailure::MultipleReacs),
-        }?;
+        0 => Err(SootYieldTestFailure::NoReac),
+        1 => Ok(fds_data.reacs[0].soot_yield),
+        _ => Err(SootYieldTestFailure::MultipleReacs),
+    }?;
     if sy == 0.05 {
         Ok(SootYieldTestSuccess::GoodValue(sy))
     } else {
@@ -260,8 +257,8 @@ fn co_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess,SootYieldTes
 
 #[derive(Copy, Clone, Debug)]
 pub struct MiscTests {
-    pub visibility_factor: Result<VisibilityFactorTestSuccess,VisibilityFactorTestFailure>,
-    pub maximum_visibility: Result<MaximumVisibilityTestSuccess,MaximumVisibilityTestFailure>,
+    pub visibility_factor: Result<VisibilityFactorTestSuccess, VisibilityFactorTestFailure>,
+    pub maximum_visibility: Result<MaximumVisibilityTestSuccess, MaximumVisibilityTestFailure>,
 }
 
 fn misc_tests(fds_data: &FDSFile) -> MiscTests {
@@ -284,7 +281,9 @@ pub enum VisibilityFactorTestFailure {
     BadValue(f64),
 }
 
-fn visibility_factor_test(fds_data: &FDSFile) -> Result<VisibilityFactorTestSuccess,VisibilityFactorTestFailure> {
+fn visibility_factor_test(
+    fds_data: &FDSFile,
+) -> Result<VisibilityFactorTestSuccess, VisibilityFactorTestFailure> {
     let visibility_factor = match fds_data.misc {
         None => Err(VisibilityFactorTestFailure::NoMisc),
         Some(ref misc) => Ok(misc.visibility_factor),
@@ -295,7 +294,6 @@ fn visibility_factor_test(fds_data: &FDSFile) -> Result<VisibilityFactorTestSucc
         Err(VisibilityFactorTestFailure::BadValue(visibility_factor))
     }
 }
-
 
 #[derive(Copy, Clone, Debug)]
 pub enum MaximumVisibilityTestSuccess {
@@ -308,7 +306,9 @@ pub enum MaximumVisibilityTestFailure {
     BadValue(f64),
 }
 
-fn maximum_visibility_test(fds_data: &FDSFile) -> Result<MaximumVisibilityTestSuccess,MaximumVisibilityTestFailure> {
+fn maximum_visibility_test(
+    fds_data: &FDSFile,
+) -> Result<MaximumVisibilityTestSuccess, MaximumVisibilityTestFailure> {
     let maximum_visibility = match fds_data.misc {
         None => Err(MaximumVisibilityTestFailure::NoMisc),
         Some(ref misc) => Ok(misc.maximum_visibility),
@@ -328,44 +328,44 @@ fn dump_tests(fds_data: &FDSFile) {
 
 fn dt_restart_test(fds_data: &FDSFile) {
     unimplemented!()
-//       dt_restart :: Dump -> FDSFile -> Tree CompletedTest
-//       dt_restart dump fdsData =
-//           let
-//               testName = "Restart Interval"
-//               nValue = dump_DT_RESTART dump
-//           in Node (CompletedTest testName $ Success
-//             $ "Value: " ++ show nValue ++ ".") []
+    //       dt_restart :: Dump -> FDSFile -> Tree CompletedTest
+    //       dt_restart dump fdsData =
+    //           let
+    //               testName = "Restart Interval"
+    //               nValue = dump_DT_RESTART dump
+    //           in Node (CompletedTest testName $ Success
+    //             $ "Value: " ++ show nValue ++ ".") []
 }
 
 fn nframes_test(fds_data: &FDSFile) {
     unimplemented!()
-//       nframes :: Dump -> FDSFile -> Tree CompletedTest
-//       nframes dump fdsData =
-//           let
-//               testName = "Number of Frames"
-//               nValue = dump_NFRAMES dump
-//           in if (mod (round simInterval :: Int) nValue)  == 0
-//                 -- TODO: check that simTime is whole number
-//               then Node (CompletedTest testName $ Success
-//                 $ "Value: " ++ show nValue ++ ".") []
-//               else Node (CompletedTest testName $ Success
-//                 $ "Value of " ++ show nValue
-//                 ++ " may result in clipped output.") []
+    //       nframes :: Dump -> FDSFile -> Tree CompletedTest
+    //       nframes dump fdsData =
+    //           let
+    //               testName = "Number of Frames"
+    //               nValue = dump_NFRAMES dump
+    //           in if (mod (round simInterval :: Int) nValue)  == 0
+    //                 -- TODO: check that simTime is whole number
+    //               then Node (CompletedTest testName $ Success
+    //                 $ "Value: " ++ show nValue ++ ".") []
+    //               else Node (CompletedTest testName $ Success
+    //                 $ "Value of " ++ show nValue
+    //                 ++ " may result in clipped output.") []
 }
 
 /// Test all burners.
 fn burners_test(fds_data: &FDSFile) {
     unimplemented!()
-// burnerTestsGroup :: FDSFile -> Tree CompletedTest
-// burnerTestsGroup = \fdsData ->
-//   let
-//     testName = "Burners"
-//     burners = getBurners fdsData
-//     completedTests = map (burnerTestsIndividual fdsData) burners
-//   in case completedTests of
-//     [] -> Node (CompletedTest testName (Warning "No burners present."))
-//         completedTests
-//     _  -> Node (CompletedTest testName (worstN completedTests)) completedTests
+    // burnerTestsGroup :: FDSFile -> Tree CompletedTest
+    // burnerTestsGroup = \fdsData ->
+    //   let
+    //     testName = "Burners"
+    //     burners = getBurners fdsData
+    //     completedTests = map (burnerTestsIndividual fdsData) burners
+    //   in case completedTests of
+    //     [] -> Node (CompletedTest testName (Warning "No burners present."))
+    //         completedTests
+    //     _  -> Node (CompletedTest testName (worstN completedTests)) completedTests
 }
 
 /// Test a burner
@@ -376,7 +376,6 @@ fn burner_test(fds_data: &FDSFile, burner: &Burner) {
     let intersection_result = intersection_test(fds_data, burner);
     unimplemented!()
 }
-
 
 #[derive(Clone, Debug)]
 pub struct Burner {
@@ -411,8 +410,12 @@ impl Burner {
         let ambient_temperature = 293.15_f64;
         let g = 9.81_f64;
         let max_hrr = self.max_hrr();
-        let resolutions: Vec<(f64, f64, f64)> = self.meshes.iter().map(|m| m.resolution()).collect();
-        let nominal_cell_sizes: Vec<f64> = resolutions.into_iter().map(|(rx,ry,rz)| max(rx,max(ry,rz))).collect();
+        let resolutions: Vec<(f64, f64, f64)> =
+            self.meshes.iter().map(|m| m.resolution()).collect();
+        let nominal_cell_sizes: Vec<f64> = resolutions
+            .into_iter()
+            .map(|(rx, ry, rz)| max(rx, max(ry, rz)))
+            .collect();
         let max_nominal_cell_size = if nominal_cell_sizes.len() == 0 {
             panic!("no cell dimensions for burner")
         } else {
@@ -424,10 +427,11 @@ impl Burner {
             }
             m
         };
-        let char_fire_diameter = (max_hrr / (ambient_density*ambient_specific_heat
-            *ambient_temperature*(g.sqrt()))).powf(2_f64/5_f64);
+        let char_fire_diameter = (max_hrr
+            / (ambient_density * ambient_specific_heat * ambient_temperature * (g.sqrt())))
+        .powf(2_f64 / 5_f64);
         // Non-Dimensionalised Ratio
-        let ndr = char_fire_diameter/max_nominal_cell_size;
+        let ndr = char_fire_diameter / max_nominal_cell_size;
         ndr
     }
 }
@@ -444,7 +448,7 @@ fn max(a: f64, b: f64) -> f64 {
 #[derive(Clone, Debug)]
 pub enum BurnerObject {
     Vent(Vent),
-    Obst(Obst)
+    Obst(Obst),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -496,32 +500,32 @@ fn growth_rate_test(fds_data: &FDSFile) {
     // TODO: This requires understanding the burner and it's exposed surfaces
     // TODO: allow steady state curves
     unimplemented!()
-//           testName = "Growth Rate"
-//           surfs = getBurnerSurf fdsData burner
-//       in case surfs of
-//         [] -> Node (CompletedTest testName
-//             $ Failure "burner does not have burner surf") []
-//         [surf] ->
-//             let calcs =
-//                     [ "SURF: " ++ (getIdBound surf)
-//                     ]
-//             in case checkGrowthRate fdsData burner of
-//                   Right (growthRate, diff) ->
-//                       let error = diff/(growthRateToAlpha growthRate)
-//                           sign = if diff >=0 then "+" else ""
-//                       in Node (CompletedTest testName $ Success $ unlines
-//                         $ calcs ++
-//                           [ show growthRate
-//                           , "Difference: " ++ sign ++ show diff
-//                           , "Error: " ++ sign ++ show (error*100) ++ "%"
-//                           , "Conforms to standard fire."
-//                           ]) []
-//                   Left alpha -> Node (CompletedTest testName $ Failure
-//                     $ unlines $ calcs ++
-//                       [ "alpha: " ++ show alpha
-//                       , "Does not conform to standard fire."
-//                       ]) []
-//         _ -> Node (CompletedTest testName
+    //           testName = "Growth Rate"
+    //           surfs = getBurnerSurf fdsData burner
+    //       in case surfs of
+    //         [] -> Node (CompletedTest testName
+    //             $ Failure "burner does not have burner surf") []
+    //         [surf] ->
+    //             let calcs =
+    //                     [ "SURF: " ++ (getIdBound surf)
+    //                     ]
+    //             in case checkGrowthRate fdsData burner of
+    //                   Right (growthRate, diff) ->
+    //                       let error = diff/(growthRateToAlpha growthRate)
+    //                           sign = if diff >=0 then "+" else ""
+    //                       in Node (CompletedTest testName $ Success $ unlines
+    //                         $ calcs ++
+    //                           [ show growthRate
+    //                           , "Difference: " ++ sign ++ show diff
+    //                           , "Error: " ++ sign ++ show (error*100) ++ "%"
+    //                           , "Conforms to standard fire."
+    //                           ]) []
+    //                   Left alpha -> Node (CompletedTest testName $ Failure
+    //                     $ unlines $ calcs ++
+    //                       [ "alpha: " ++ show alpha
+    //                       , "Does not conform to standard fire."
+    //                       ]) []
+    //         _ -> Node (CompletedTest testName
 }
 //             $ Failure "burner has multiple different burner surf types") []
 
@@ -591,20 +595,19 @@ pub struct Sprinkler {
 
 fn sprinkler_activation_temperature_test() {
     unimplemented!()
-//     temperatureTest :: Namelist -> NamelistFile -> Tree CompletedTest
-//     temperatureTest sprinkler fdsData =
-//       let
-//         testName = "Activation Temperature"
-//         q = maxBurnerHRR fdsData burner
-//         sF = sourceFroude q fuelArea
-//       in if sF <= maxThreshold
-//         then Node (CompletedTest testName $ Success $ "Conforms. " ++ show sF ++ " <= " ++ show maxThreshold) []
-//         else Node (CompletedTest testName $ Failure $ "Does not conform.") []
-//       where
-//         fuelArea = burnerArea burner
-//         maxThreshold = 2.5
+    //     temperatureTest :: Namelist -> NamelistFile -> Tree CompletedTest
+    //     temperatureTest sprinkler fdsData =
+    //       let
+    //         testName = "Activation Temperature"
+    //         q = maxBurnerHRR fdsData burner
+    //         sF = sourceFroude q fuelArea
+    //       in if sF <= maxThreshold
+    //         then Node (CompletedTest testName $ Success $ "Conforms. " ++ show sF ++ " <= " ++ show maxThreshold) []
+    //         else Node (CompletedTest testName $ Failure $ "Does not conform.") []
+    //       where
+    //         fuelArea = burnerArea burner
+    //         maxThreshold = 2.5
 }
-
 
 //--GUIDELINES
 //
@@ -622,19 +625,17 @@ fn sprinkler_activation_temperature_test() {
 //         summaryResults = worstN testResults
 //   in Node (CompletedTest testName summaryResults) testResults
 
-
 // genericDataCoverageTest slices =
-    // let relSlices = filter
-            // (\slice
-            // -> hasParameterValue "SPEC_ID" "carbon monoxide" slice
-            // && hasParameterValue "QUANTITY" "VOLUME FRACTION" slice
-            // ) slices
-    // in TestGroup (name ++ " Data Coverage")
-        // [ xAxisCoverage relSlices
-        // , yAxisCoverage relSlices
-        // , zAxisCoverage relSlices
-        // ]
-
+// let relSlices = filter
+// (\slice
+// -> hasParameterValue "SPEC_ID" "carbon monoxide" slice
+// && hasParameterValue "QUANTITY" "VOLUME FRACTION" slice
+// ) slices
+// in TestGroup (name ++ " Data Coverage")
+// [ xAxisCoverage relSlices
+// , yAxisCoverage relSlices
+// , zAxisCoverage relSlices
+// ]
 
 // // |Carbon monoxide data coverage test.
 // coDataCoverage slices fdsData =
@@ -687,7 +688,6 @@ fn sprinkler_activation_temperature_test() {
 //         testResults = pam (pam tests coSlices) fdsData
 //         summaryResults = worstN testResults
 //     in Node (CompletedTest testName summaryResults) testResults
-
 
 // xAxisCoverage slices fdsData =
 //     let
