@@ -22,32 +22,36 @@ use version_compare::version::Version;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SMVFile {
-    title: String, // , fds_version    : Version
-                   // , nMeshes       : u64
-                   // , surfs         : Vec<SMVSurf>
-                   // , pClass        : Vec<SMVPClass>
-                   // , outline       : Vec<SMVOutlineEntry>
-                   // , props         : Vec<SMVProp>
-                   // , devices       : Vec<SMVDevice>
-                   // , smvMeshes     : Vec<SMVMesh>
-                   // , smvDataFiles  : Vec<DataFileEntry>
-                   // , devcActs      : Vec<DevcActEntry>
-                   // , obstVis       : Vec<ObstVisEntry>
+    title: String,
+    chid: String,
+    // , fds_version    : Version
+    // , nMeshes       : u64
+    // , surfs         : Vec<SMVSurf>
+    // , pClass        : Vec<SMVPClass>
+    // , outline       : Vec<SMVOutlineEntry>
+    // , props         : Vec<SMVProp>
+    // , devices       : Vec<SMVDevice>
+    // , smvMeshes     : Vec<SMVMesh>
+    // , smvDataFiles  : Vec<DataFileEntry>
+    // , devcActs      : Vec<DevcActEntry>
+    // , obstVis       : Vec<ObstVisEntry>
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RawSMVFile {
-    title: Option<String>, // , fds_version    : Version
-                   // , nMeshes       : u64
-                   // , surfs         : Vec<SMVSurf>
-                   // , pClass        : Vec<SMVPClass>
-                   // , outline       : Vec<SMVOutlineEntry>
-                   // , props         : Vec<SMVProp>
-                   // , devices       : Vec<SMVDevice>
-                   // , smvMeshes     : Vec<SMVMesh>
-                   // , smvDataFiles  : Vec<DataFileEntry>
-                   // , devcActs      : Vec<DevcActEntry>
-                   // , obstVis       : Vec<ObstVisEntry>
+    title: Option<String>,
+    chid: Option<String>,
+    // , fds_version    : Version
+    // , nMeshes       : u64
+    // , surfs         : Vec<SMVSurf>
+    // , pClass        : Vec<SMVPClass>
+    // , outline       : Vec<SMVOutlineEntry>
+    // , props         : Vec<SMVProp>
+    // , devices       : Vec<SMVDevice>
+    // , smvMeshes     : Vec<SMVMesh>
+    // , smvDataFiles  : Vec<DataFileEntry>
+    // , devcActs      : Vec<DevcActEntry>
+    // , obstVis       : Vec<ObstVisEntry>
     unknown_blocks: Vec<SMVBlock>
 }
 
@@ -62,7 +66,11 @@ impl RawSMVFile {
             "TITLE" => {
                 let s = block.content.trim();
                 self.title = Some(s.to_string());
-            }
+            },
+            "CHID" => {
+                let s = block.content.trim();
+                self.chid = Some(s.to_string());
+            },
             _ => self.unknown_blocks.push(block),
         }
     }
@@ -72,6 +80,7 @@ impl Default for RawSMVFile {
     fn default() -> Self {
         RawSMVFile {
             title: Default::default(),
+            chid: Default::default(),
             unknown_blocks: Default::default(),
         }
     }
@@ -80,7 +89,8 @@ impl Default for RawSMVFile {
 impl Into<SMVFile> for RawSMVFile {
     fn into(self) -> SMVFile {
         SMVFile {
-            title: self.title.unwrap()
+            title: self.title.unwrap(),
+            chid: self.chid.unwrap(),
         }
     }
 }
@@ -152,6 +162,7 @@ where
         }
     }
 }
+
 pub fn parse_smv_file<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
     let (i, blocks) = many0(parse_smv_block)(i)?;
     let mut raw_smv_file = RawSMVFile::new();
@@ -171,172 +182,172 @@ pub fn parse_smv_file<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
     }
 }
 
-pub fn parse_smv_file_old<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
-    let (i, _) = tag("TITLE")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = char(' ')(i)?;
-    let (i, title) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+// pub fn parse_smv_file_old<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
+//     let (i, _) = tag("TITLE")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = char(' ')(i)?;
+//     let (i, title) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = alt((tag("VERSION"), tag("FDSVERSION")))(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = alt((tag("VERSION"), tag("FDSVERSION")))(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _rev_str) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _rev_str) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    // TODO: This is only necessary in some versions
-    let (i, _) = tag("FDS")(i)?;
-    let (i, _) = char(' ')(i)?;
-    let (i, version_str) = not_line_ending(i)?;
-    let version = Version::from(version_str).unwrap();
-    let (i, _) = line_ending(i)?;
-    let (i, git_version) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     // TODO: This is only necessary in some versions
+//     let (i, _) = tag("FDS")(i)?;
+//     let (i, _) = char(' ')(i)?;
+//     let (i, version_str) = not_line_ending(i)?;
+//     let version = Version::from(version_str).unwrap();
+//     let (i, _) = line_ending(i)?;
+//     let (i, git_version) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("ENDF")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = char(' ')(i)?;
-    let (i, _) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("ENDF")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = char(' ')(i)?;
+//     let (i, _) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("INPF")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = char(' ')(i)?;
-    let (i, _) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("INPF")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = char(' ')(i)?;
+//     let (i, _) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("REVISION")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("REVISION")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("CHID")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = char(' ')(i)?;
-    let (i, chid) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("CHID")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = char(' ')(i)?;
+//     let (i, chid) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, csvfs) = many0(parse_csvf)(i)?;
+//     let (i, csvfs) = many0(parse_csvf)(i)?;
 
-    let (i, _) = tag("NMESHES")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = char(' ')(i)?;
-    let (i, n_meshes) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("NMESHES")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = char(' ')(i)?;
+//     let (i, n_meshes) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("VIEWTIMES")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, a) = parse_double(i)?;
-    let (i, _) = space0(i)?;
-    let (i, b) = parse_double(i)?;
-    let (i, _) = space0(i)?;
-    let (i, c) = parse_int(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    // TODO: it is important that this is implemented before production
-    // let (i, geom_model) = opt(parse_geom_model)(i)?;
+//     let (i, _) = tag("VIEWTIMES")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, a) = parse_double(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, b) = parse_double(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, c) = parse_int(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     // TODO: it is important that this is implemented before production
+//     // let (i, geom_model) = opt(parse_geom_model)(i)?;
 
-    let (i, _) = tag("ALBEDO")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, albedo) = parse_double(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("ALBEDO")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, albedo) = parse_double(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, iblank) = opt(parse_iblank)(i)?;
-    let (i, _) = parse_gvec(i)?;
+//     let (i, iblank) = opt(parse_iblank)(i)?;
+//     let (i, _) = parse_gvec(i)?;
 
-    // TODO: it is likely there is allowed to be multiple of these.
-    let (i, _) = tag("SURFDEF")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, surf_def) = not_line_ending(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     // TODO: it is likely there is allowed to be multiple of these.
+//     let (i, _) = tag("SURFDEF")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, surf_def) = not_line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, surfs) = many0(parse_surface)(i)?;
-    let (i, materials) = many0(parse_material)(i)?;
-    let (i, geom) = opt(parse_geom)(i)?;
-    let (i, pclasses) = many0(parse_pclass)(i)?;
-    // let (i, hclasses) = many0(parse_hclass)(i)?;
-    let (i, outline) = parse_outline(i)?;
+//     let (i, surfs) = many0(parse_surface)(i)?;
+//     let (i, materials) = many0(parse_material)(i)?;
+//     let (i, geom) = opt(parse_geom)(i)?;
+//     let (i, pclasses) = many0(parse_pclass)(i)?;
+//     // let (i, hclasses) = many0(parse_hclass)(i)?;
+//     let (i, outline) = parse_outline(i)?;
 
-    let (i, _) = tag("TOFFSET")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, e) = parse_double(i)?;
-    let (i, _) = space0(i)?;
-    let (i, f) = parse_double(i)?;
-    let (i, _) = space0(i)?;
-    let (i, g) = parse_double(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("TOFFSET")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, e) = parse_double(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, f) = parse_double(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, g) = parse_double(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("HRRPUVCUT")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, h) = parse_int(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, j) = many0(parse_hrrpuvcut_entry)(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("HRRPUVCUT")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, h) = parse_int(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, j) = many0(parse_hrrpuvcut_entry)(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("RAMP")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, k) = parse_int(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, ramps) = nom::multi::count(parse_ramp, k as usize)(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("RAMP")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, k) = parse_int(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, ramps) = nom::multi::count(parse_ramp, k as usize)(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, props) = many0(parse_prop)(i)?;
-    let (i, devices) = many0(parse_device)(i)?;
+//     let (i, props) = many0(parse_prop)(i)?;
+//     let (i, devices) = many0(parse_device)(i)?;
 
-    let (i, _) = tag("VERT")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, n_verts) = parse_int(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, verts) = nom::multi::count(parse_vert, n_verts as usize)(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("VERT")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, n_verts) = parse_int(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, verts) = nom::multi::count(parse_vert, n_verts as usize)(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, _) = tag("FACE")(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, _) = space0(i)?;
-    let (i, n_faces) = parse_int(i)?;
-    let (i, _) = line_ending(i)?;
-    let (i, faces) = nom::multi::count(parse_face, n_faces as usize)(i)?;
-    let (i, _) = line_ending(i)?;
+//     let (i, _) = tag("FACE")(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, _) = space0(i)?;
+//     let (i, n_faces) = parse_int(i)?;
+//     let (i, _) = line_ending(i)?;
+//     let (i, faces) = nom::multi::count(parse_face, n_faces as usize)(i)?;
+//     let (i, _) = line_ending(i)?;
 
-    let (i, meshes) = many0(parse_mesh)(i)?;
-    let (i, _) = opt(parse_smoke_diff)(i)?;
-    let (i, tail_entries) = many0(parse_tail_entry)(i)?;
-    let (dataFileEntries, devActEntries, obstVisEntries) = sort_tail_entries(tail_entries);
+//     let (i, meshes) = many0(parse_mesh)(i)?;
+//     let (i, _) = opt(parse_smoke_diff)(i)?;
+//     let (i, tail_entries) = many0(parse_tail_entry)(i)?;
+//     let (dataFileEntries, devActEntries, obstVisEntries) = sort_tail_entries(tail_entries);
 
-    if i.len() == 0 {
-        Ok((
-            i,
-            SMVFile {
-                title: title.to_string(),
-                // fds_version: version,
-            },
-        ))
-    } else {
-        Err(nom::Err::Error(error_position!(
-            i,
-            nom::error::ErrorKind::Eof
-        )))
-    }
-}
+//     if i.len() == 0 {
+//         Ok((
+//             i,
+//             SMVFile {
+//                 title: title.to_string(),
+//                 // fds_version: version,
+//             },
+//         ))
+//     } else {
+//         Err(nom::Err::Error(error_position!(
+//             i,
+//             nom::error::ErrorKind::Eof
+//         )))
+//     }
+// }
 
 fn parse_smoke_diff(i: &str) -> IResult<&str, ()> {
     let (i, _) = tag("SMOKEDIFF")(i)?;
@@ -1856,21 +1867,10 @@ mod tests {
     //     }
 
     #[test]
-    fn parse_smv_title() {
-        assert_eq!(
-            parse_smv_file(include_str!("room_fire.smv"))
-                .expect("smv parsing failed")
-                .1
-                .title,
-            "Single Couch Test Case".to_string()
-        );
-
-        // assert_eq!(boolean(b"T"), Ok((&[][..], true)));
-        // assert_eq!(boolean(b"f"), Ok((&[][..], false)));
-        // assert_eq!(boolean(b"F"), Ok((&[][..], false)));
-        // assert_eq!(boolean(b".FALSE."), Ok((&[][..], false)));
-        // assert_eq!(boolean(b".TRUE."), Ok((&[][..], true)));
-        // assert_eq!(boolean(b".TRUE., "), Ok((b", ".as_ref(), true)));
+    fn parse_smv_simple() {
+        let result = parse_smv_file(include_str!("room_fire.smv")).expect("smv parsing failed").1;
+        assert_eq!(result.title, "Single Couch Test Case".to_string() );
+        assert_eq!(result.chid, "room_fire".to_string() );
     }
 
     #[test]
