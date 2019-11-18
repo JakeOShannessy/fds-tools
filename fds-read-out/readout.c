@@ -1,8 +1,24 @@
+#define INMAIN
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <time.h>
+
+// #include "options.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+// #include GLUT_H
+
+//   dummy
+
+// #include "string_util.h"
+// #include "smokeviewvars.h"
+
+#ifdef pp_LUA
+#include "c_api.h"
+#include "lua_api.h"
+#endif
 
 #define TABVALUE 4 // by default a tab counts as 4 spaces
 #define MATCH 1
@@ -11,6 +27,11 @@
 #define MAX_LINE_LENGTH 4096
 
 char *datetimeToString(char *time, struct tm tmdatetime);
+
+char append_string[1024];
+int show_version;
+int show_help;
+int hash_option;
 
 typedef struct Version {
     int major;
@@ -40,6 +61,9 @@ typedef struct Timestep {
     struct tm time;
     float stepsize;
     float simtime;
+    float max_vel_err;
+    float max_pres_err;
+    int pressure_iterations;
     // everything else may or may not exist
 } Timestep;
  // Time Step    2000   May  6, 2016  16:47:19
@@ -151,6 +175,28 @@ int parseOtherSecondLine(char *buffer) {
   return 0;
 }
 
+int parseThirdLine(char *buffer) {
+  int pressure_iterations;
+  sscanf(buffer,"Pressure Iterations:  %d", &pressure_iterations);
+  (*first_empty_timestep).pressure_iterations = pressure_iterations;
+  return 0;
+}
+
+
+int parseFourthLine(char *buffer) {
+  float max_vel_err;
+  sscanf(buffer,"Maximum Velocity Error:  %f", &max_vel_err);
+  (*first_empty_timestep).max_vel_err = max_vel_err;
+  return 0;
+}
+
+int parseFifthLine(char *buffer) {
+  float max_pres_err;
+  sscanf(buffer,"Maximum Pressure Error:  %f", &max_pres_err);
+  (*first_empty_timestep).max_pres_err = max_pres_err;
+  return 0;
+}
+
 
 int parseRunTimeDiagnostics(int indentationLevel, FILE *stream) {
   // the indentation level will not change.
@@ -183,6 +229,27 @@ int parseRunTimeDiagnostics(int indentationLevel, FILE *stream) {
           fprintf(stderr,"%s\n", buffer);
           exit(1);
         }
+
+        currentLine++;
+        if(fgets(buffer, MAX_LINE_LENGTH, stream) == NULL)break;
+        buffer[strcspn(buffer, "\n")] = 0;
+        l = strlen(buffer);
+        read = countspaces(&currentSpaces, buffer);
+        parseThirdLine(&buffer[read]);
+
+        currentLine++;
+        if(fgets(buffer, MAX_LINE_LENGTH, stream) == NULL)break;
+        buffer[strcspn(buffer, "\n")] = 0;
+        l = strlen(buffer);
+        read = countspaces(&currentSpaces, buffer);
+        parseFourthLine(&buffer[read]);
+
+        currentLine++;
+        if(fgets(buffer, MAX_LINE_LENGTH, stream) == NULL)break;
+        buffer[strcspn(buffer, "\n")] = 0;
+        l = strlen(buffer);
+        read = countspaces(&currentSpaces, buffer);
+        parseFifthLine(&buffer[read]);
 
         first_empty_timestep += 1;
         ntimesteps++;
@@ -348,18 +415,36 @@ int main(int argc, char *argv[]) {
     return 1;
   }
   if(!strcmp(argv[1], "rundata")) {
-    printf("{\"NameX\":\"Simulation Time\", \"UnitsX\":\"s\", \"NameY\":\"Wall Time\", \"UnitsY\":\"-\", \"Values\": {\n");
+    printf("{\"NameX\":\"Simulation Time\", \"UnitsX\":\"s\", \"NameY\":\"Wall Time\", \"UnitsY\":\"-\", \"Values\": [\n");
     for (i=0; &timesteps[i]!=first_empty_timestep; i++) {
       char time[DATESTRING_BUFFERSIZE];
       datetimeToString(time, timesteps[i].time);
-      printf("\"x\":\"%s\",\"y\":%f\n", time, timesteps[i].simtime);
+      printf("{\"x\":\"%s\",\"y\":%f},\n", time, timesteps[i].simtime);
     }
-    printf("}}\n");
+    printf("]}\n");
+  } else if(!strcmp(argv[1], "pressure-error")) {
+    printf("{\"NameX\":\"Simulation Time\", \"UnitsX\":\"s\", \"NameY\":\"Pressure Error\", \"UnitsY\":\"1/s^2\", \"Values\": [\n");
+    for (i=0; &timesteps[i]!=first_empty_timestep; i++) {
+      printf("{\"x\":%f,\"y\":%f},\n", timesteps[i].simtime, timesteps[i].max_pres_err);
+    }
+    printf("]}\n");
+  } else if(!strcmp(argv[1], "velocity-error")) {
+    printf("{\"NameX\":\"Simulation Time\", \"UnitsX\":\"s\", \"NameY\":\"Velocity Error\", \"UnitsY\":\"m/s\", \"Values\": [\n");
+    for (i=0; &timesteps[i]!=first_empty_timestep; i++) {
+      printf("{\"x\":%f,\"y\":%f},\n", timesteps[i].simtime, timesteps[i].max_vel_err);
+    }
+    printf("]}\n");
+  } else if(!strcmp(argv[1], "pressure-iterations")) {
+    printf("{\"NameX\":\"Simulation Time\", \"UnitsX\":\"s\", \"NameY\":\"Pressure Iterations\", \"UnitsY\":\"-\", \"Values\": [\n");
+    for (i=0; &timesteps[i]!=first_empty_timestep; i++) {
+      printf("{\"x\":%f,\"y\":%d},\n", timesteps[i].simtime, timesteps[i].pressure_iterations);
+    }
+    printf("]}\n");
   } else if (!strcmp(argv[1], "progress")) {
 
     // time_t time_of_day;
     char start_wall[DATESTRING_BUFFERSIZE];
-    strftime(start_wall, DATESTRING_BUFFERSIZE-1, "%Y-%m-%dT%H:%M:%SZ", &timesteps[i].time);
+    strftime(start_wall, DATESTRING_BUFFERSIZE-1, "%Y-%m-%dT%H:%M:%SZ", &timesteps[0].time);
     // time_of_day = mktime(&timesteps[i].time);
 
     // time_t time_of_day;
@@ -372,4 +457,3 @@ int main(int argc, char *argv[]) {
   }
   return 0;
 }
-
