@@ -36,6 +36,56 @@ pub struct SMVFile {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct RawSMVFile {
+    title: Option<String>, // , fds_version    : Version
+                   // , nMeshes       : u64
+                   // , surfs         : Vec<SMVSurf>
+                   // , pClass        : Vec<SMVPClass>
+                   // , outline       : Vec<SMVOutlineEntry>
+                   // , props         : Vec<SMVProp>
+                   // , devices       : Vec<SMVDevice>
+                   // , smvMeshes     : Vec<SMVMesh>
+                   // , smvDataFiles  : Vec<DataFileEntry>
+                   // , devcActs      : Vec<DevcActEntry>
+                   // , obstVis       : Vec<ObstVisEntry>
+    unknown_blocks: Vec<SMVBlock>
+}
+
+impl RawSMVFile {
+    pub fn new() -> Self {
+        RawSMVFile {
+            ..Default::default()
+        }
+    }
+    pub fn add_block(&mut self, block: SMVBlock) {
+        match block.title.as_str() {
+            "TITLE" => {
+                let s = block.content.trim();
+                self.title = Some(s.to_string());
+            }
+            _ => self.unknown_blocks.push(block),
+        }
+    }
+}
+
+impl Default for RawSMVFile {
+    fn default() -> Self {
+        RawSMVFile {
+            title: Default::default(),
+            unknown_blocks: Default::default(),
+        }
+    }
+}
+
+impl Into<SMVFile> for RawSMVFile {
+    fn into(self) -> SMVFile {
+        SMVFile {
+            title: self.title.unwrap()
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct SMVBlock {
     pub title: String,
     pub content: String,
@@ -104,20 +154,14 @@ where
 }
 pub fn parse_smv_file<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
     let (i, blocks) = many0(parse_smv_block)(i)?;
-    let mut title: Option<String> = None;
+    let mut raw_smv_file = RawSMVFile::new();
     for block in blocks {
-        if block.title == "TITLE" {
-            let s = block.content.trim();
-            title = Some(s.to_string());
-        }
+        raw_smv_file.add_block(block);
     }
     if i.len() == 0 {
         Ok((
             i,
-            SMVFile {
-                title: title.unwrap().to_string(),
-                // fds_version: version,
-            },
+            raw_smv_file.into(),
         ))
     } else {
         Err(nom::Err::Error(error_position!(
