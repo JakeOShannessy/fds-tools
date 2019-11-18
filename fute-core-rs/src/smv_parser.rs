@@ -52,7 +52,7 @@ pub struct RawSMVFile {
     // , smvDataFiles  : Vec<DataFileEntry>
     // , devcActs      : Vec<DevcActEntry>
     // , obstVis       : Vec<ObstVisEntry>
-    unknown_blocks: Vec<SMVBlock>
+    unknown_blocks: Vec<SMVBlock>,
 }
 
 impl RawSMVFile {
@@ -66,11 +66,11 @@ impl RawSMVFile {
             "TITLE" => {
                 let s = block.content.trim();
                 self.title = Some(s.to_string());
-            },
+            }
             "CHID" => {
                 let s = block.content.trim();
                 self.chid = Some(s.to_string());
-            },
+            }
             _ => self.unknown_blocks.push(block),
         }
     }
@@ -148,12 +148,12 @@ where
                     Some(n) => n.as_char(),
                     None => {
                         return Ok((input.slice(total_index..), input.slice(..total_index)));
-                    },
+                    }
                 };
                 // If the next value is whitespace, we want to update temp_input
                 // and loop.
                 if nth1.is_whitespace() {
-                    temp_input = temp_input.slice((index+1)..);
+                    temp_input = temp_input.slice((index + 1)..);
                     continue;
                 } else {
                     return Ok((input.slice(total_index..), input.slice(..total_index)));
@@ -170,10 +170,7 @@ pub fn parse_smv_file<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
         raw_smv_file.add_block(block);
     }
     if i.len() == 0 {
-        Ok((
-            i,
-            raw_smv_file.into(),
-        ))
+        Ok((i, raw_smv_file.into()))
     } else {
         Err(nom::Err::Error(error_position!(
             i,
@@ -1868,9 +1865,11 @@ mod tests {
 
     #[test]
     fn parse_smv_simple() {
-        let result = parse_smv_file(include_str!("room_fire.smv")).expect("smv parsing failed").1;
-        assert_eq!(result.title, "Single Couch Test Case".to_string() );
-        assert_eq!(result.chid, "room_fire".to_string() );
+        let result = parse_smv_file(include_str!("room_fire.smv"))
+            .expect("smv parsing failed")
+            .1;
+        assert_eq!(result.title, "Single Couch Test Case".to_string());
+        assert_eq!(result.chid, "room_fire".to_string());
     }
 
     #[test]
@@ -1878,7 +1877,8 @@ mod tests {
         assert_eq!(
             many0(parse_smv_block)(include_str!("room_fire.smv"))
                 .expect("smv parsing failed")
-                .1.len(),
+                .1
+                .len(),
             91
         );
 
@@ -1894,10 +1894,7 @@ mod tests {
     fn parse_block() {
         let example = "BLOCKNAME1\n BLOCKCONTENT1\n BLOCKCONTENT2\n\n";
         let results = parse_smv_block(example).expect("smv parsing failed").1;
-        assert_eq!(
-            results.title,
-            "BLOCKNAME1".to_string()
-        );
+        assert_eq!(results.title, "BLOCKNAME1".to_string());
         assert_eq!(
             results.content,
             " BLOCKCONTENT1\n BLOCKCONTENT2\n\n".to_string()
@@ -1907,15 +1904,23 @@ mod tests {
     #[test]
     fn parse_many_blocks() {
         let example = "BLOCKNAME1\n BLOCKCONTENT1\n BLOCKCONTENT2\nBLOCKNAME2\n BLOCKCONTENT1\n BLOCKCONTENT2\n";
-        let results = many0(parse_smv_block)(example).expect("smv parsing failed").1;
-        assert_eq!(*results.get(0).unwrap(), SMVBlock {
-            title: "BLOCKNAME1".to_string(),
-            content: " BLOCKCONTENT1\n BLOCKCONTENT2\n".to_string(),
-        });
-        assert_eq!(*results.get(1).unwrap(), SMVBlock {
-            title: "BLOCKNAME2".to_string(),
-            content: " BLOCKCONTENT1\n BLOCKCONTENT2\n".to_string(),
-        });
+        let results = many0(parse_smv_block)(example)
+            .expect("smv parsing failed")
+            .1;
+        assert_eq!(
+            *results.get(0).unwrap(),
+            SMVBlock {
+                title: "BLOCKNAME1".to_string(),
+                content: " BLOCKCONTENT1\n BLOCKCONTENT2\n".to_string(),
+            }
+        );
+        assert_eq!(
+            *results.get(1).unwrap(),
+            SMVBlock {
+                title: "BLOCKNAME2".to_string(),
+                content: " BLOCKCONTENT1\n BLOCKCONTENT2\n".to_string(),
+            }
+        );
     }
 
     //     #[test]
