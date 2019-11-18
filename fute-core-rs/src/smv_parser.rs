@@ -102,8 +102,32 @@ where
         }
     }
 }
-
 pub fn parse_smv_file<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
+    let (i, blocks) = many0(parse_smv_block)(i)?;
+    let mut title: Option<String> = None;
+    for block in blocks {
+        if block.title == "TITLE" {
+            let s = block.content.trim();
+            title = Some(s.to_string());
+        }
+    }
+    if i.len() == 0 {
+        Ok((
+            i,
+            SMVFile {
+                title: title.unwrap().to_string(),
+                // fds_version: version,
+            },
+        ))
+    } else {
+        Err(nom::Err::Error(error_position!(
+            i,
+            nom::error::ErrorKind::Eof
+        )))
+    }
+}
+
+pub fn parse_smv_file_old<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
     let (i, _) = tag("TITLE")(i)?;
     let (i, _) = line_ending(i)?;
     let (i, _) = char(' ')(i)?;
@@ -1795,6 +1819,23 @@ mod tests {
                 .1
                 .title,
             "Single Couch Test Case".to_string()
+        );
+
+        // assert_eq!(boolean(b"T"), Ok((&[][..], true)));
+        // assert_eq!(boolean(b"f"), Ok((&[][..], false)));
+        // assert_eq!(boolean(b"F"), Ok((&[][..], false)));
+        // assert_eq!(boolean(b".FALSE."), Ok((&[][..], false)));
+        // assert_eq!(boolean(b".TRUE."), Ok((&[][..], true)));
+        // assert_eq!(boolean(b".TRUE., "), Ok((b", ".as_ref(), true)));
+    }
+
+    #[test]
+    fn parse_smv_blocks() {
+        assert_eq!(
+            many0(parse_smv_block)(include_str!("room_fire.smv"))
+                .expect("smv parsing failed")
+                .1.len(),
+            91
         );
 
         // assert_eq!(boolean(b"T"), Ok((&[][..], true)));
