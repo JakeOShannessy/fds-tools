@@ -44,6 +44,12 @@ pub fn parse_smv_file<'a, 'b>(
     let (i, _) = alt((tag("VERSION"),tag("FDSVERSION")))(i)?;
     let (i, _) = line_ending(i)?;
 
+
+    let (i, _rev_str) = not_line_ending(i)?;
+    let (i, _) = line_ending(i)?;
+    let (i, _) = line_ending(i)?;
+
+    // TODO: This is only necessary in some versions
     let (i, _) = tag("FDS")(i)?;
     let (i, _) = char(' ')(i)?;
     let (i, version_str) = not_line_ending(i)?;
@@ -1710,15 +1716,10 @@ mod tests {
 //     }
 
     #[test]
-    fn simple_smv_examples() {
+    fn parse_smv_title() {
         assert_eq!(
-            parse_smv_file(include_str!("IlonaRose_M6FS_R1_IlonaRose.smv")),
-            Ok((
-                "",
-                SMVFile {
-                    title: "L1; Transient; 5 m/s; Custom Fan; 2.9 m ff-lobby ceiling; 3.2 m lift-lobby ceiling; 2.4 m lobby doors; Ceiling Variation; Sensitivity; 2nd Array Activation;".to_string(),
-                }
-            ))
+            parse_smv_file(include_str!("room_fire.smv")).expect("smv parsing failed").1.title,
+            "Single Couch Test Case".to_string()
         );
 
         // assert_eq!(boolean(b"T"), Ok((&[][..], true)));
