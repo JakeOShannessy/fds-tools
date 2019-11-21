@@ -134,7 +134,9 @@ fn main() {
         println!("{}", n_cells);
     } else if let Some(_meshes_matches) = matches.subcommand_matches("meshes") {
     } else if let Some(_mesh_check_matches) = matches.subcommand_matches("mesh-check") {
-    } else if let Some(_plot_hrr_matches) = matches.subcommand_matches("plot-hrr") {
+    } else if let Some(plot_hrr_matches) = matches.subcommand_matches("plot-hrr") {
+        let smv_path = PathBuf::from(plot_hrr_matches.value_of("SMV-FILE").unwrap());
+        commands::plot_hrr(&smv_path)
     } else if let Some(_show_hrr_matches) = matches.subcommand_matches("show-hrr") {
     } else if let Some(_peak_hrr_matches) = matches.subcommand_matches("peak-hrr") {
     } else if let Some(_verify_input_matches) = matches.subcommand_matches("verify-input") {

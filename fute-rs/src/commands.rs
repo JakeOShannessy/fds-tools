@@ -1,5 +1,9 @@
 use fds_input_parser::parse_and_decode_fds_input_file;
+use fute_core::parse_smv_file;
 use std::path::Path;
+use std::fs::File;
+use std::io::prelude::*;
+use csv;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -128,6 +132,58 @@ pub fn count_cells(input_path: &Path) -> u64 {
 
 // plotHRR :: FilePath -> IO ()
 // plotHRR path = createHRRPlots path >> return ()
+pub fn plot_hrr(smv_path: &Path) {
+    let mut file = File::open(smv_path).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let (_, smv_file) = parse_smv_file(&contents).unwrap();
+    // for csvf in smv_file.csvfs {
+    //     println!("csvf: {:?}", csvf);
+    // }
+    let hrr_csvf = smv_file.csvfs.iter().find(|csvf| csvf.type_ == "hrr").unwrap();
+    println!("csvfhrr: {:?}", hrr_csvf);
+    let value = "HRR";
+    let csv_file = File::open(&hrr_csvf.filename).unwrap();
+    // let mut csv_contents = String::new();
+    // file.read_to_string(&mut contents).unwrap();
+    // Build the CSV reader and iterate over each record.
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .trim(csv::Trim::All)
+        .from_reader(csv_file);
+    let mut value_index_option: Option<usize> = None;
+    let mut time_index_option: Option<usize> = None;
+    {
+        let headers = rdr.headers().unwrap();
+        for (i, header) in headers.iter().enumerate() {
+            if header == "Time" {
+                time_index_option = Some(i);
+            } else if header == value {
+                value_index_option = Some(i);
+            }
+        }
+    }
+    let value_index = value_index_option.expect("value index");
+    let time_index = time_index_option.expect("time index");
+    // let mut data_vec = Vec::new();
+    // for result in rdr.deserialize() {
+    //     // The iterator yields Result<StringRecord, Error>, so we check the
+    //     // error here.
+    //     let record: Vec<f64> = result.unwrap();
+    //     let t = record.get(time_index).expect("time val").clone();
+    //     let v = record.get(value_index).expect("val").clone();
+    //     data_vec.push(DataEntry { x: t, y: v });
+    // }
+    // let data_vector = DataVector {
+    //     values: data_vec,
+    //     name_x: "Time".to_string(),
+    //     units_x: "s".to_string(),
+    //     name_y: info.value.clone(),
+    //     units_y: "(unknown)".to_string(),
+    // };
+    // ok(Json(data_vector))
+    unimplemented!()
+}
 
 // createHRRPlots :: FilePath -> IO [FilePath]
 // createHRRPlots path = do

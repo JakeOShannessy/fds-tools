@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use nom::error::ErrorKind;
 use nom::error::ParseError;
 use nom::lib::std::ops::{Range, RangeFrom, RangeTo};
@@ -22,8 +23,9 @@ use version_compare::version::Version;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SMVFile {
-    title: String,
-    chid: String,
+    pub title: String,
+    pub chid: String,
+    pub csvfs: Vec<CSVEntry>,
     // , fds_version    : Version
     // , nMeshes       : u64
     // , surfs         : Vec<SMVSurf>
@@ -41,6 +43,7 @@ pub struct SMVFile {
 pub struct RawSMVFile {
     title: Option<String>,
     chid: Option<String>,
+    csvfs: Vec<CSVEntry>,
     // , fds_version    : Version
     // , nMeshes       : u64
     // , surfs         : Vec<SMVSurf>
@@ -71,6 +74,10 @@ impl RawSMVFile {
                 let s = block.content.trim();
                 self.chid = Some(s.to_string());
             }
+            "CSVF" => {
+                let (_i,s) = parse_csvf(&block.content).unwrap();
+                self.csvfs.push(s);
+            }
             _ => self.unknown_blocks.push(block),
         }
     }
@@ -81,6 +88,7 @@ impl Default for RawSMVFile {
         RawSMVFile {
             title: Default::default(),
             chid: Default::default(),
+            csvfs: Default::default(),
             unknown_blocks: Default::default(),
         }
     }
@@ -91,6 +99,7 @@ impl Into<SMVFile> for RawSMVFile {
         SMVFile {
             title: self.title.unwrap(),
             chid: self.chid.unwrap(),
+            csvfs: self.csvfs,
         }
     }
 }
@@ -142,7 +151,7 @@ where
                 total_index += index + 1;
                 let mut it = temp_input.slice(index..).iter_elements();
                 // nth is the '\n' that we found
-                let nth = it.next().unwrap().as_char();
+                let _nth = it.next().unwrap().as_char();
                 // nth1 is one after
                 let nth1 = match it.next() {
                     Some(n) => n.as_char(),
@@ -424,15 +433,13 @@ pub fn parse_double(i: &str) -> IResult<&str, f64> {
 //     Ok((i, s.iter().collect()))
 // }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CSVEntry {
     pub type_: String,
     pub filename: String,
 }
 
 fn parse_csvf(i: &str) -> IResult<&str, CSVEntry> {
-    let (i, _) = tag("CSVF")(i)?;
-    let (i, _) = line_ending(i)?;
     let (i, _) = char(' ')(i)?;
     let (i, _) = space0(i)?;
     let (i, type_) = not_line_ending(i)?;
