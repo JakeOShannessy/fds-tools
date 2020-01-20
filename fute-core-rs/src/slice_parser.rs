@@ -12,7 +12,7 @@ pub struct SliceHeader {
     pub quantity: String,
     pub short_name: String,
     pub units: String,
-    pub dimensions: (u32, u32, u32, u32, u32, u32),
+    pub dimensions: Dimensions,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -21,11 +21,21 @@ pub struct Frame {
     pub values: Vec<f32>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Dimensions {
+    pub i_min: u32,
+    pub i_max: u32,
+    pub j_min: u32,
+    pub j_max: u32,
+    pub k_min: u32,
+    pub k_max: u32,
+}
+
 pub fn parse_slice_file<'a, 'b>(i: &'b [u8]) -> IResult<&'b [u8], SliceFile> {
     let (i, header) = parse_slice_header(i)?;
-    let i_dim = header.dimensions.1 - header.dimensions.0 + 1;
-    let j_dim = header.dimensions.3 - header.dimensions.2 + 1;
-    let k_dim = header.dimensions.5 - header.dimensions.4 + 1;
+    let i_dim = header.dimensions.i_max - header.dimensions.i_min + 1;
+    let j_dim = header.dimensions.j_max - header.dimensions.j_min + 1;
+    let k_dim = header.dimensions.k_max - header.dimensions.k_min + 1;
     let (i, frames) = many0(|iv| parse_data_set(i_dim, j_dim, k_dim, iv))(i)?;
     if i.len() == 0 {
         Ok((i, SliceFile { header, frames }))
@@ -47,7 +57,10 @@ pub fn parse_data_set<'a, 'b>(
     let (i, time) = nom::number::streaming::le_f32(i)?;
     let (i, check) = le_u32(i)?;
     if check != rec_length {
-        panic!("slice malformed");
+        return Err(nom::Err::Failure(nom::error::make_error(
+            i,
+            nom::error::ErrorKind::Eof
+        )));
     }
     let (i, values) = parse_slice_data(i_dim, j_dim, k_dim, i)?;
     Ok((i, Frame { time, values }))
@@ -66,12 +79,10 @@ pub fn parse_slice_data<'a, 'b>(
     )(i)?;
     let (i, check) = le_u32(i)?;
     if check != rec_length {
-        panic!(
-            "slice malformed: start: {} end: {}, expected: {}",
-            rec_length,
-            check,
-            i_dim * j_dim * k_dim
-        );
+        return Err(nom::Err::Failure(nom::error::make_error(
+            i,
+            nom::error::ErrorKind::Eof
+        )));
     }
     Ok((i, data))
 }
@@ -94,12 +105,42 @@ fn parse_slice_header(i: &[u8]) -> IResult<&[u8], SliceHeader> {
     ))
 }
 
-fn parse_dimensions(i: &[u8]) -> IResult<&[u8], (u32, u32, u32, u32, u32, u32)> {
+// #[derive(Clone)]
+// pub enum ParseDimenionsError {
+//     InvalidRecLength,
+// }
+
+// impl nom::error::ParseError for ParseDimenionsError {
+//     fn from_error_kind(input: I, kind: ErrorKind) -> Self {
+
+//     }
+
+//     fn append(input: I, kind: ErrorKind, other: Self) -> Self {
+
+//     }
+// }
+
+// impl std::fmt::Display for ParseDimenionsError {
+// 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+// 		write!(f, "A parsing error occurred.")
+// 	}
+// }
+// impl std::fmt::Debug for ParseDimenionsError {
+// 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+// 		<ParseDimenionsError as std::fmt::Display>::fmt(self, f)
+// 	}
+// }
+// impl std::error::Error for ParseDimenionsError { }
+
+fn parse_dimensions(i: &[u8]) -> IResult<&[u8], Dimensions /*, ParseDimenionsError */> {
     // Take the length of the record, which is the first 4 bytes of the record
     // as a 32-bit as an integer. The length is in bytes.
     let (i, rec_length) = le_u32(i)?;
     if rec_length != 24 {
-        panic!("slice malformed");
+        return Err(nom::Err::Failure(nom::error::make_error(
+            i,
+            nom::error::ErrorKind::Eof
+        )));
     }
     // Take the number of bytes specified by rec_length.
     let (i, i1) = le_u32(i)?;
@@ -111,9 +152,19 @@ fn parse_dimensions(i: &[u8]) -> IResult<&[u8], (u32, u32, u32, u32, u32, u32)> 
 
     let (i, check) = le_u32(i)?;
     if check != rec_length {
-        panic!("slice malformed");
+        return Err(nom::Err::Failure(nom::error::make_error(
+            i,
+            nom::error::ErrorKind::Eof
+        )));
     }
-    Ok((i, (i1, i2, j1, j2, k1, k2)))
+    Ok((i, Dimensions {
+        i_min: i1,
+        i_max: i2,
+        j_min: j1,
+        j_max: j2,
+        k_min: k1,
+        k_max: k2,
+    }))
 }
 
 // -- |Parse the data from a record, ensuring the record length tags at the start
@@ -126,7 +177,10 @@ fn parse_record(i: &[u8]) -> IResult<&[u8], &[u8]> {
     let (i, b_string) = nom::bytes::streaming::take(rec_length)(i)?;
     let (i, check) = le_u32(i)?;
     if check != rec_length {
-        panic!("slice malformed");
+        return Err(nom::Err::Failure(nom::error::make_error(
+            i,
+            nom::error::ErrorKind::Eof
+        )));
     }
     Ok((i, &b_string))
 }
@@ -144,7 +198,23 @@ mod tests {
         assert_eq!(result.header.quantity.trim(), "TEMPERATURE".to_string());
         assert_eq!(result.header.units.trim(), "C".to_string());
         assert_eq!(result.header.short_name.trim(), "temp".to_string());
-        assert_eq!(result.header.dimensions, (14, 14, 0, 10, 0, 24));
+        assert_eq!(result.header.dimensions, Dimensions {
+            i_min: 14,
+            i_max: 14,
+            j_min: 0,
+            j_max: 10,
+            k_min: 0,
+            k_max: 24,
+        });
         assert_eq!(result.frames.len(), 945);
+    }
+
+    #[test]
+    fn parse_slice_simple_bad01() {
+        let result = parse_slice_file(include_bytes!("room_fire_01_bad01.sf"));
+        assert_eq!(result.map_err(|e| match e {
+            nom::Err::Failure(e) => e.1,
+            _ => panic!("bad result"),
+        }), Err(nom::error::ErrorKind::Eof));
     }
 }
