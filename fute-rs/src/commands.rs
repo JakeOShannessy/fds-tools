@@ -3,6 +3,7 @@ use fute_core::parse_smv_file;
 use std::path::Path;
 use std::fs::File;
 use std::io::prelude::*;
+use plotters::prelude::*;
 use csv;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
@@ -133,17 +134,32 @@ pub fn count_cells(input_path: &Path) -> u64 {
 // plotHRR :: FilePath -> IO ()
 // plotHRR path = createHRRPlots path >> return ()
 pub fn plot_hrr(smv_path: &Path) {
-    let mut file = File::open(smv_path).unwrap();
+    println!("smv path: {:?}", smv_path);
+    let mut file = File::open(smv_path).expect("Could not open smv file");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let (_, smv_file) = parse_smv_file(&contents).unwrap();
+    file.read_to_string(&mut contents).expect("Could not read smv file");
+    let (_, smv_file) = parse_smv_file(&contents).expect("Could not parse smv file");
     // for csvf in smv_file.csvfs {
     //     println!("csvf: {:?}", csvf);
     // }
-    let hrr_csvf = smv_file.csvfs.iter().find(|csvf| csvf.type_ == "hrr").unwrap();
+    let hrr_csvf = smv_file.csvfs.iter().find(|csvf| csvf.type_ == "hrr").expect("No HRR CSV file.");
     println!("csvfhrr: {:?}", hrr_csvf);
     let value = "HRR";
-    let csv_file = File::open(&hrr_csvf.filename).unwrap();
+    let mut csv_file = File::open(&hrr_csvf.filename).expect("Could not open HRR file");
+    // First we need to trim the first line from the csv
+    // We start with a single byte buffer. This is a little hacky but it
+    // works
+    let mut buffer = [0; 1];
+    loop {
+        // Read a single byte off the start of the buffer
+        let _n: usize = csv_file.read(&mut buffer).unwrap();
+
+        // We have reached teh end of the line (works for CRLF and LF)
+        // '\n' == 10
+        if buffer[0] == 10 {
+            break;
+        }
+    }
     // let mut csv_contents = String::new();
     // file.read_to_string(&mut contents).unwrap();
     // Build the CSV reader and iterate over each record.
@@ -165,24 +181,58 @@ pub fn plot_hrr(smv_path: &Path) {
     }
     let value_index = value_index_option.expect("value index");
     let time_index = time_index_option.expect("time index");
-    // let mut data_vec = Vec::new();
-    // for result in rdr.deserialize() {
-    //     // The iterator yields Result<StringRecord, Error>, so we check the
-    //     // error here.
-    //     let record: Vec<f64> = result.unwrap();
-    //     let t = record.get(time_index).expect("time val").clone();
-    //     let v = record.get(value_index).expect("val").clone();
-    //     data_vec.push(DataEntry { x: t, y: v });
-    // }
-    // let data_vector = DataVector {
-    //     values: data_vec,
-    //     name_x: "Time".to_string(),
-    //     units_x: "s".to_string(),
-    //     name_y: info.value.clone(),
-    //     units_y: "(unknown)".to_string(),
-    // };
-    // ok(Json(data_vector))
-    unimplemented!()
+    let mut svg = Vec::new();
+    let mut x_data = Vec::new();
+    let mut y_data = Vec::new();
+
+    for result in rdr.deserialize() {
+        // The iterator yields Result<StringRecord, Error>, so we check the
+        // error here.
+        let record: Vec<f64> = result.unwrap();
+        let t = record.get(time_index).expect("time val").clone();
+        let v = record.get(value_index).expect("val").clone();
+        x_data.push(t);
+        y_data.push(v);
+    }
+
+    let title = "HRR".to_string();
+    {
+        let root = SVGBackend::with_buffer(&mut svg, (640, 480)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+        let mut chart = ChartBuilder::on(&root)
+            .caption(title, ("Arial", 16).into_font())
+            .margin(15)
+            .x_label_area_size(50)
+            .y_label_area_size(60)
+            .build_ranged(0_f32..((1800_f32) as f32), 0_f32..3000_f32)
+            // .build()
+            .unwrap();
+
+        chart.configure_mesh()
+            .x_desc("Time (s)")
+            .y_desc("HRR (kW)")
+            .y_label_formatter(&|x| format!("{:.2e}", x))
+            .draw().unwrap();
+
+        chart
+            .draw_series(LineSeries::new(
+                x_data.iter().zip(y_data).map(|(x,y)| (*x as f32, y as f32)),
+                &BLUE,
+            )
+            ).unwrap()
+            // .label("Failure Line")
+            .legend(|(x, y)| PathElement::new(vec![(x, y - 12), (x + 20, y - 12)], &BLUE));
+
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .margin(20)
+            .draw().unwrap();
+    }
+    std::fs::create_dir_all("verification").expect("could not create dir");
+    let mut file = File::create("verification/hrr.svg").expect("Could not create file");
+    file.write_all(&svg).expect("write failed");
 }
 
 // createHRRPlots :: FilePath -> IO [FilePath]
