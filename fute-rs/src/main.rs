@@ -136,7 +136,11 @@ fn main() {
     } else if let Some(_mesh_check_matches) = matches.subcommand_matches("mesh-check") {
     } else if let Some(plot_hrr_matches) = matches.subcommand_matches("plot-hrr") {
         println!("plot-hrr");
-        let smv_path = PathBuf::from(plot_hrr_matches.value_of("SMV-FILE").expect("Invalid arguments"));
+        let smv_path = PathBuf::from(
+            plot_hrr_matches
+                .value_of("SMV-FILE")
+                .expect("Invalid arguments"),
+        );
         commands::plot_hrr(&smv_path)
     } else if let Some(_show_hrr_matches) = matches.subcommand_matches("show-hrr") {
     } else if let Some(_peak_hrr_matches) = matches.subcommand_matches("peak-hrr") {

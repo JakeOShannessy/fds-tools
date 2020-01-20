@@ -75,7 +75,7 @@ impl RawSMVFile {
                 self.chid = Some(s.to_string());
             }
             "CSVF" => {
-                let (_i,s) = parse_csvf(&block.content).unwrap();
+                let (_i, s) = parse_csvf(&block.content).unwrap();
                 self.csvfs.push(s);
             }
             _ => self.unknown_blocks.push(block),

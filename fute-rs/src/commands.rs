@@ -1,10 +1,10 @@
+use csv;
 use fds_input_parser::parse_and_decode_fds_input_file;
 use fute_core::parse_smv_file;
-use std::path::Path;
+use plotters::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
-use plotters::prelude::*;
-use csv;
+use std::path::Path;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -137,12 +137,17 @@ pub fn plot_hrr(smv_path: &Path) {
     println!("smv path: {:?}", smv_path);
     let mut file = File::open(smv_path).expect("Could not open smv file");
     let mut contents = String::new();
-    file.read_to_string(&mut contents).expect("Could not read smv file");
+    file.read_to_string(&mut contents)
+        .expect("Could not read smv file");
     let (_, smv_file) = parse_smv_file(&contents).expect("Could not parse smv file");
     // for csvf in smv_file.csvfs {
     //     println!("csvf: {:?}", csvf);
     // }
-    let hrr_csvf = smv_file.csvfs.iter().find(|csvf| csvf.type_ == "hrr").expect("No HRR CSV file.");
+    let hrr_csvf = smv_file
+        .csvfs
+        .iter()
+        .find(|csvf| csvf.type_ == "hrr")
+        .expect("No HRR CSV file.");
     println!("csvfhrr: {:?}", hrr_csvf);
     let value = "HRR";
     let mut csv_file = File::open(&hrr_csvf.filename).expect("Could not open HRR file");
@@ -208,18 +213,23 @@ pub fn plot_hrr(smv_path: &Path) {
             // .build()
             .unwrap();
 
-        chart.configure_mesh()
+        chart
+            .configure_mesh()
             .x_desc("Time (s)")
             .y_desc("HRR (kW)")
             .y_label_formatter(&|x| format!("{:.2e}", x))
-            .draw().unwrap();
+            .draw()
+            .unwrap();
 
         chart
             .draw_series(LineSeries::new(
-                x_data.iter().zip(y_data).map(|(x,y)| (*x as f32, y as f32)),
+                x_data
+                    .iter()
+                    .zip(y_data)
+                    .map(|(x, y)| (*x as f32, y as f32)),
                 &BLUE,
-            )
-            ).unwrap()
+            ))
+            .unwrap()
             // .label("Failure Line")
             .legend(|(x, y)| PathElement::new(vec![(x, y - 12), (x + 20, y - 12)], &BLUE));
 
@@ -228,7 +238,8 @@ pub fn plot_hrr(smv_path: &Path) {
             .background_style(&WHITE.mix(0.8))
             .border_style(&BLACK)
             .margin(20)
-            .draw().unwrap();
+            .draw()
+            .unwrap();
     }
     std::fs::create_dir_all("verification").expect("could not create dir");
     let mut file = File::create("verification/hrr.svg").expect("Could not create file");
