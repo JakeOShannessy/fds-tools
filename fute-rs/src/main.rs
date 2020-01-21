@@ -68,9 +68,9 @@ fn main() {
             SubCommand::with_name("peak-hrr")
                 .about("Print the highest HRR value from available data")
                 .arg(
-                    Arg::with_name("SMV-FILE")
+                    Arg::with_name("FDS-FILE")
                         .required(true)
-                        .help("Path to SMV file."),
+                        .help("Path to FDS file."),
                 ),
         )
         .subcommand(
@@ -143,7 +143,13 @@ fn main() {
         );
         commands::plot_hrr(&smv_path)
     } else if let Some(_show_hrr_matches) = matches.subcommand_matches("show-hrr") {
-    } else if let Some(_peak_hrr_matches) = matches.subcommand_matches("peak-hrr") {
+    } else if let Some(peak_hrr_matches) = matches.subcommand_matches("peak-hrr") {
+        let fds_path = PathBuf::from(
+            peak_hrr_matches
+                .value_of("FDS-FILE")
+                .expect("Invalid arguments"),
+        );
+        commands::peak_hrr(&fds_path)
     } else if let Some(_verify_input_matches) = matches.subcommand_matches("verify-input") {
     } else if let Some(_rename_matches) = matches.subcommand_matches("rename") {
     } else if let Some(_new_rev_matches) = matches.subcommand_matches("new-rev") {

@@ -130,6 +130,14 @@ pub fn count_cells(input_path: &Path) -> u64 {
 //     let maxHRR = V.maximum valuesY
 //     printf "%.2f" maxHRR
 //     return ()
+pub fn peak_hrr(fds_path: &Path) {
+    use fute_core::FDSFileExt;
+    // use fute_core::FDSFile;
+    use fute_core::parse_and_decode_fds_input_file;
+    let fds_file = parse_and_decode_fds_input_file(fds_path);
+    let hrr: f64 = fds_file.burners().iter().map(|burner| burner.hrr).sum();
+    println!("{:.2} kW/m²", hrr);
+}
 
 // plotHRR :: FilePath -> IO ()
 // plotHRR path = createHRRPlots path >> return ()

@@ -42,7 +42,7 @@ pub fn parse_slice_file<'a, 'b>(i: &'b [u8]) -> IResult<&'b [u8], SliceFile> {
     } else {
         Err(nom::Err::Error(error_position!(
             i,
-            nom::error::ErrorKind::Eof
+            nom::error::ErrorKind::RegexpMatch
         )))
     }
 }
@@ -59,7 +59,7 @@ pub fn parse_data_set<'a, 'b>(
     if check != rec_length {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Eof
+            nom::error::ErrorKind::Permutation
         )));
     }
     let (i, values) = parse_slice_data(i_dim, j_dim, k_dim, i)?;
@@ -81,7 +81,7 @@ pub fn parse_slice_data<'a, 'b>(
     if check != rec_length {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Eof
+            nom::error::ErrorKind::TakeWhileMN
         )));
     }
     Ok((i, data))
@@ -139,7 +139,7 @@ fn parse_dimensions(i: &[u8]) -> IResult<&[u8], Dimensions /*, ParseDimenionsErr
     if rec_length != 24 {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Eof
+            nom::error::ErrorKind::CrLf
         )));
     }
     // Take the number of bytes specified by rec_length.
@@ -154,7 +154,7 @@ fn parse_dimensions(i: &[u8]) -> IResult<&[u8], Dimensions /*, ParseDimenionsErr
     if check != rec_length {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Eof
+            nom::error::ErrorKind::Fix
         )));
     }
     Ok((i, Dimensions {
@@ -167,8 +167,8 @@ fn parse_dimensions(i: &[u8]) -> IResult<&[u8], Dimensions /*, ParseDimenionsErr
     }))
 }
 
-// -- |Parse the data from a record, ensuring the record length tags at the start
-// -- and finish match.
+/// Parse the data from a record, ensuring the record length tags at the start
+/// and finish match.
 fn parse_record(i: &[u8]) -> IResult<&[u8], &[u8]> {
     // Take the length of the record, which is the first 4 bytes of the record
     // as a 32-bit as an integer. The length is in bytes.
@@ -177,9 +177,10 @@ fn parse_record(i: &[u8]) -> IResult<&[u8], &[u8]> {
     let (i, b_string) = nom::bytes::streaming::take(rec_length)(i)?;
     let (i, check) = le_u32(i)?;
     if check != rec_length {
+        panic!("bad rec_length start: {} end: {}", rec_length, check);
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Eof
+            nom::error::ErrorKind::ManyMN
         )));
     }
     Ok((i, &b_string))
@@ -215,6 +216,6 @@ mod tests {
         assert_eq!(result.map_err(|e| match e {
             nom::Err::Failure(e) => e.1,
             _ => panic!("bad result"),
-        }), Err(nom::error::ErrorKind::Eof));
+        }), Err(nom::error::ErrorKind::RegexpMatch));
     }
 }
