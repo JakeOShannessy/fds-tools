@@ -43,6 +43,72 @@ pub fn count_cells(input_path: &Path) -> u64 {
     //     s = Text.Tabular.AsciiArt.render T.unpack T.unpack T.unpack tab
     // putStrLn s
 }
+pub fn meshes(fds_path: &Path) {
+    use prettytable::{color, Attr, Cell, Row, Table};
+    use fute_core::FDSFileExt;
+    // use fute_core::FDSFile;
+    use fute_core::parse_and_decode_fds_input_file;
+    use num_format::{Locale, ToFormattedString};
+
+    let fds_file = parse_and_decode_fds_input_file(fds_path);
+    let meshes = fds_file.meshes;
+    let mut table = Table::new();
+    table.set_titles(Row::new(vec![
+        Cell::new("#").with_style(Attr::Bold),
+        Cell::new("Mesh Id.").with_style(Attr::Bold),
+        Cell::new("# Cells").with_style(Attr::Bold),
+        Cell::new("I-J-K").with_style(Attr::Bold),
+        Cell::new("Δx-Δy-Δz").with_style(Attr::Bold),
+        Cell::new("Aspect Ratio").with_style(Attr::Bold),
+    ]));
+    let mut n_cells_total: u64 = 0;
+    for (i, mesh) in meshes.iter().enumerate() {
+        let xb = mesh.xb;
+        let ijk = mesh.ijk;
+        let n_cell = Cell::new(&format!("{}", i+1));
+        let id_cell = Cell::new(mesh.id.as_ref().unwrap_or(&"Unnamed MESH".to_string()));
+        let n_cells =  ijk.i*ijk.j*ijk.k;
+        let quantity_cell = Cell::new(&n_cells.to_formatted_string(&Locale::en));
+        let ijk_cell = Cell::new(&format!("{}-{}-{}", ijk.i,ijk.j,ijk.k));
+        let dx = (xb.x2-xb.x1)/(ijk.i as f64);
+        let dy = (xb.y2-xb.y1)/(ijk.j as f64);
+        let dz = (xb.z2-xb.z1)/(ijk.k as f64);
+        let dxyz_cell = Cell::new(&format!("{:.2}-{:.2}-{:.2}", dx,dy,dz));
+        let max_dx = if dx >= dy && dx >= dz {
+            dx
+        } else if dy >= dz {
+            dy
+        } else {
+            dz
+        };
+        let min_dx = if dx <= dy && dx <= dz {
+            dx
+        } else if dy <= dz {
+            dy
+        } else {
+            dz
+        };
+        let aspect_ratio_cell = Cell::new(&format!("{:.2}", max_dx/min_dx));
+        table.add_row(Row::new(vec![
+            n_cell,
+            id_cell,
+            quantity_cell,
+            ijk_cell,
+            dxyz_cell,
+            aspect_ratio_cell,
+        ]));
+        n_cells_total += n_cells as u64;
+    }
+    table.add_row(Row::new(vec![
+        Cell::new("Total"),
+        Cell::new(""),
+        Cell::new(&n_cells_total.to_formatted_string(&Locale::en)),
+        Cell::new(""),
+        Cell::new(""),
+        Cell::new(""),
+    ]));
+    table.printstd();
+}
 
 // meshPermutations :: [a] -> [(a,a)]
 // meshPermutations [_] = []
@@ -112,24 +178,6 @@ pub fn count_cells(input_path: &Path) -> u64 {
 //         "linux" -> runCommand $ "xdg-open " ++ head paths
 //     return ()
 
-// peakHRR :: FilePath -> IO ()
-// peakHRR path = do
-//     fdsRaw <- (fmap decodeNamelistFile) <$> parseFDSFile path
-//     let
-//         fdsData = case fdsRaw of
-//             Right x -> x
-//             Left e -> error $ show e
-//         chid = take 40 (fromJust $ getCHID fdsData)
-//         simulation = FDSSimulation
-//             { simDir = takeDirectory path
-//             , simCHID = chid
-//             }
-//     theDataVectors <- getDataListAll simulation
-//     let Just (DataVectorPair _ (DataVector _ _ valuesY)) = findDVectorPairByYNameMaybe theDataVectors ("kW", "HRR")
-//         // chr = chart (chid ++ " - Realised HRR") eurocodeHRRChartConfig [hrrVector]
-//     let maxHRR = V.maximum valuesY
-//     printf "%.2f" maxHRR
-//     return ()
 pub fn peak_hrr(fds_path: &Path) {
     use fute_core::FDSFileExt;
     // use fute_core::FDSFile;

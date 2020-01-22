@@ -132,7 +132,13 @@ fn main() {
         let input_path = PathBuf::from(count_cells_matches.value_of("FDS-FILE").unwrap());
         let n_cells = commands::count_cells(&input_path);
         println!("{}", n_cells);
-    } else if let Some(_meshes_matches) = matches.subcommand_matches("meshes") {
+    } else if let Some(meshes_matches) = matches.subcommand_matches("meshes") {
+        let fds_path = PathBuf::from(
+            meshes_matches
+                .value_of("FDS-FILE")
+                .expect("Invalid arguments"),
+        );
+        commands::meshes(&fds_path)
     } else if let Some(_mesh_check_matches) = matches.subcommand_matches("mesh-check") {
     } else if let Some(plot_hrr_matches) = matches.subcommand_matches("plot-hrr") {
         println!("plot-hrr");
