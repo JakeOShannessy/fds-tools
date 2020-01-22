@@ -10,6 +10,7 @@ pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
 pub use fds_input_parser::FDSFile;
 pub use fds_input_parser::parse_and_decode_fds_input_file;
+pub use fds_input_parser::decode;
 use fds_input_parser::decode::*;
 
 const READ_BUFFER_SIZE: usize = 8192;

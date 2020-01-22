@@ -1,6 +1,7 @@
 use csv;
-use fds_input_parser::parse_and_decode_fds_input_file;
+use fute_core::parse_and_decode_fds_input_file;
 use fute_core::parse_smv_file;
+use fute_core::decode::*;
 use plotters::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
@@ -17,7 +18,7 @@ use std::path::Path;
 /// not machine readable.
 pub fn count_cells(input_path: &Path) -> u64 {
     let fds_data = parse_and_decode_fds_input_file(input_path);
-    let meshes: Vec<fds_input_parser::decode::Mesh> = fds_data.meshes;
+    let meshes: Vec<Mesh> = fds_data.meshes;
     let mut total_cells = 0;
     for mesh in meshes {
         total_cells += mesh.cells();

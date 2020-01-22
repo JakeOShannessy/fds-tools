@@ -9,7 +9,6 @@ clap = "2.33.0"
 csv = "1.1.1"
 env_logger = "0.6.2"
 log = "0.4.0"
-fds-input-parser = { git = "ssh://git@github.com/JakeOShannessy/fds-input-parser-rs.git" }
 fute-core = { path = "../fute-core-rs" }
 plotters = { git = "https://github.com/38/plotters.git" }
 prettytable-rs = "0.8.0"

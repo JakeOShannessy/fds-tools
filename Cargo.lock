@@ -359,7 +359,6 @@ dependencies = [
 [[package]]
 name = "fds-input-parser"
 version = "0.1.2"
-source = "git+ssh://git@github.com/JakeOShannessy/fds-input-parser-rs.git#2e38c2cf9a8adaec9dd6dbe2e342e91fbd848783"
 dependencies = [
  "namelist",
 ]
@@ -435,7 +434,6 @@ dependencies = [
  "clap",
  "csv",
  "env_logger",
- "fds-input-parser",
  "fute-core",
  "log",
  "num-format",
