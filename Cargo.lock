@@ -267,6 +267,7 @@ dependencies = [
 [[package]]
 name = "data-vector"
 version = "0.1.0"
+source = "git+https://github.com/JakeOShannessy/data-vector.git#b36051c7ef9c4d2303283c1bca5c95ddb04d7c3f"
 dependencies = [
  "serde",
 ]
