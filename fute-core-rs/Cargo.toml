@@ -5,7 +5,9 @@ authors = ["Jake O'Shannessy <joshannessy@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-# fds-input-parser = {version = "0.1.2", git = "ssh://git@github.com/JakeOShannessy/fds-input-parser-rs.git"}
-fds-input-parser = { path = "../../fds-input-parser-rs" }
+csv = "1.1.1"
+data-vector = { path = "../../data-vector"}
+fds-input-parser = {version = "^0.1.2", git = "ssh://git@github.com/JakeOShannessy/fds-input-parser-rs.git"}
+# fds-input-parser = { path = "../../fds-input-parser-rs" }
 nom = "5.0.1"
 version-compare = "0.0.10"

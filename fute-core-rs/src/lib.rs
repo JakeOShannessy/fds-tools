@@ -2,6 +2,7 @@
 extern crate nom;
 mod slice_parser;
 mod smv_parser;
+mod csv_parser;
 mod verification_tests;
 
 use std::io::Read;
@@ -12,8 +13,53 @@ pub use fds_input_parser::FDSFile;
 pub use fds_input_parser::parse_and_decode_fds_input_file;
 pub use fds_input_parser::decode;
 use fds_input_parser::decode::*;
+use std::path::PathBuf;
+use std::fs::File;
+use smv_parser::SMVFile;
+use data_vector::DataVector;
 
 const READ_BUFFER_SIZE: usize = 8192;
+
+pub struct Outputs {
+    pub smv_path: PathBuf,
+    pub smv: SMVFile,
+}
+
+impl Outputs {
+    pub fn new(smv_path: PathBuf) -> Self {
+        let mut file = File::open(&smv_path).expect("Could not open smv file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)
+            .expect("Could not read smv file");
+        let (_, smv) = parse_smv_file(&contents).expect("Could not parse smv file");
+        Self {
+            smv_path,
+            smv,
+        }
+    }
+
+    pub fn get_csv_vec(&mut self, csv_type: String, vec_name: String) -> DataVector {
+        // TODO: add caching
+
+        let hrr_csvf = self.smv
+            .csvfs
+            .iter()
+            .find(|csvf| csvf.type_ == csv_type.as_str())
+            .expect("No CSV file.");
+        // println!("csvfhrr: {:?}", hrr_csvf);
+        let smv_dir = PathBuf::from(self.smv_path.parent().unwrap());
+        let mut csv_file_path = PathBuf::new();
+        csv_file_path.push(smv_dir);
+        csv_file_path.push(hrr_csvf.filename.clone());
+        let csv_data = csv_parser::get_csv_data(&csv_file_path);
+        for dv in csv_data {
+            if dv.name == vec_name {
+                return dv.clone();
+            }
+        }
+        panic!("could not find dv")
+    }
+}
 
 fn read_slice_file() -> std::io::Result<()> {
     let mut file = std::fs::File::open("src/room_fire_01.sf")?;
