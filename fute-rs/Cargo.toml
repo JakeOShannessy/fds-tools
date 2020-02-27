@@ -13,3 +13,4 @@ fute-core = { path = "../fute-core-rs" }
 plotters = { git = "https://github.com/38/plotters.git" }
 prettytable-rs = "0.8.0"
 num-format = "0.4.0"
+data-vector = { git = "https://github.com/JakeOShannessy/data-vector.git"}

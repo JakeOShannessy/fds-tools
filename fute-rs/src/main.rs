@@ -111,7 +111,7 @@ fn main() {
                 .about("Plot information from the .out file"),
         )
         .subcommand(
-            SubCommand::with_name("quick-chart")
+            SubCommand::with_name("chart")
                 .arg(
                     Arg::with_name("SMV-FILE")
                         .required(true)
@@ -122,7 +122,7 @@ fn main() {
                         .long("open")
                         .short("o")
                         .takes_value(false)
-                        .help("Sets the level of verbosity"),
+                        .help("Open the results"),
                 )
                 .about("Compile a summary of information"),
         )
@@ -161,7 +161,7 @@ fn main() {
     } else if let Some(_new_rev_matches) = matches.subcommand_matches("new-rev") {
     } else if let Some(_current_progress_matches) = matches.subcommand_matches("current-progress") {
     } else if let Some(_plot_out_matches) = matches.subcommand_matches("plot-out") {
-    } else if let Some(quick_chart_matches) = matches.subcommand_matches("quick-chart") {
+    } else if let Some(quick_chart_matches) = matches.subcommand_matches("chart") {
         let smv_path = PathBuf::from(quick_chart_matches.value_of("SMV-FILE").unwrap());
         quick_chart(&smv_path);
     }

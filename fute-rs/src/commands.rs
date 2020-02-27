@@ -5,7 +5,8 @@ use fute_core::decode::*;
 use plotters::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use data_vector::DataVector;
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -434,6 +435,134 @@ pub fn plot_hrr(smv_path: &Path) {
 //                 toDouble (ValueInt i) = fromIntegral i
 //                 toDouble (ValueDouble d) = d
 
+pub struct ChartResult {
+    pub path: PathBuf,
+}
+
+pub fn chart_to_html(chart: ChartResult)  -> String {
+    format!("<img src=\"{}\"/>", chart.path.to_str().unwrap())
+}
+
+pub fn create_chart_page(path: &Path, charts: Vec<ChartResult>) {
+    // let mut html: String = String::new();
+    let cs: Vec<String> = charts.into_iter().map(chart_to_html).collect();
+    let html: String = cs.into_iter().collect();
+    let mut f = std::fs::File::create(&path).unwrap();
+    f.write_all(html.as_bytes());
+}
+
 pub fn quick_chart(smv_path: &Path) {
+    use std::process::Command;
     println!("quick-charting: {:?}", smv_path);
+    let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
+    let mut charts = Vec::new();
+    let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
+    for csvf in outputs.smv.csvfs.iter() {
+        println!("csvf: {:?}", csvf);
+        if csvf.type_ == "steps" {
+            continue;
+        }
+        let mut csv_file_path = PathBuf::new();
+        csv_file_path.push(smv_dir.clone());
+        csv_file_path.push(csvf.filename.clone());
+        let csv_data = fute_core::csv_parser::get_csv_data(&csv_file_path);
+        // TODO: combine charts with the same type.
+        for dv in csv_data {
+            let mut path = PathBuf::from(smv_dir.clone());
+            path.push("Charts");
+            path.push(format!("{}.png", dv.name));
+            println!("charting to: {:?}", path);
+            let xs = &dv.values().clone().into_iter().map(|p| p.x).collect();
+            let ys = &dv.values().clone().into_iter().map(|p| p.y).collect();
+            plot_dv(vec![&dv], &path, minimum(xs) as f32, maximum(xs) as f32, minimum(ys) as f32, maximum(ys) as f32);
+            charts.push(ChartResult {
+                path: path.clone(),
+            })
+        }
+    }
+    let mut chart_page_path = PathBuf::from(smv_dir);
+    chart_page_path.push(format!("Charts.html"));
+    create_chart_page(&chart_page_path, charts);
+}
+
+
+fn plot_dv(data_vectors: Vec<&DataVector>, path: &Path, x_min: f32, x_max: f32, y_min: f32, y_max: f32) {
+    let title = data_vectors[0].name.clone();
+    let y_min = if y_min < 0.0 { y_min } else { 0.0 };
+    // let y_max = if y_max > 1.0 { y_min } else { 1.0 };
+    let x_range = x_min..(x_max+x_max*0.2);
+    let y_range = if y_max - y_min == 0.0 {
+        (y_max-0.5)..(y_max+0.5)
+    } else {
+        (y_min-y_min*0.2)..(y_max+y_max*0.2)
+    };
+    println!("{:?}: x_range: {:?} y_range: {:?}", path, x_range, y_range);
+    let colors = vec![(62,43,88), (239,121,93), (255,0,0)].into_iter().cycle();
+    {
+        let root = BitMapBackend::new(path, (640, 480)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+        let mut chart = ChartBuilder::on(&root)
+            .caption(title, ("Arial", 16).into_font())
+            .margin(15)
+            .x_label_area_size(50)
+            .y_label_area_size(60)
+            .build_ranged(x_range, y_range)
+            .unwrap();
+
+        chart
+            .configure_mesh()
+            .x_desc(format!("{} ({})", data_vectors[0].x_name, data_vectors[0].x_units))
+            .y_desc(format!("{} ({})", data_vectors[0].y_name, data_vectors[0].y_units))
+            .y_label_formatter(&|x| format!("{:.2}", x))
+            .draw()
+            .unwrap();
+
+        for (data_vector, color) in data_vectors.into_iter().zip(colors) {
+            chart
+                .draw_series(LineSeries::new(
+                    data_vector.values()
+                        .iter()
+                        .map(|p| (p.x as f32, p.y as f32)),
+                    &RGBColor(color.0,color.1,color.2),
+                ))
+                .unwrap()
+                .label(data_vector.name.as_str())
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RGBColor(color.0,color.1,color.2)));
+        }
+
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .margin(20)
+            .draw()
+            .unwrap();
+    }
+}
+
+
+pub fn maximum(samples: &Vec<f64>) -> f64 {
+    if samples.len() == 0 {
+        panic!("Cannot find the max of empty vec");
+    }
+    let mut max: f64 = samples[0];
+    for s in samples {
+        if *s > max {
+            max = *s;
+        }
+    }
+    max
+}
+
+pub fn minimum(samples: &Vec<f64>) -> f64 {
+    if samples.len() == 0 {
+        panic!("Cannot find the min of empty vec");
+    }
+    let mut min: f64 = samples[0];
+    for s in samples {
+        if *s < min {
+            min = *s;
+        }
+    }
+    min
 }

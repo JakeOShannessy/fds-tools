@@ -2,7 +2,7 @@
 extern crate nom;
 mod slice_parser;
 mod smv_parser;
-mod csv_parser;
+pub mod csv_parser;
 mod verification_tests;
 
 use std::io::Read;
