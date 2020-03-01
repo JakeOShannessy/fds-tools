@@ -453,6 +453,7 @@ pub fn create_chart_page(path: &Path, charts: Vec<ChartResult>) {
 
 pub fn quick_chart(smv_path: &Path) {
     use std::process::Command;
+    let dir = "Charts";
     println!("quick-charting: {:?}", smv_path);
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
     let mut charts = Vec::new();
@@ -465,19 +466,23 @@ pub fn quick_chart(smv_path: &Path) {
         let mut csv_file_path = PathBuf::new();
         csv_file_path.push(smv_dir.clone());
         csv_file_path.push(csvf.filename.clone());
-        let csv_data = fute_core::csv_parser::get_csv_data(&csv_file_path);
-        // TODO: combine charts with the same type.
-        for dv in csv_data {
-            let mut path = PathBuf::from(smv_dir.clone());
-            path.push("Charts");
-            path.push(format!("{}.png", dv.name));
-            println!("charting to: {:?}", path);
-            let xs = &dv.values().clone().into_iter().map(|p| p.x).collect();
-            let ys = &dv.values().clone().into_iter().map(|p| p.y).collect();
-            plot_dv(vec![&dv], &path, minimum(xs) as f32, maximum(xs) as f32, minimum(ys) as f32, maximum(ys) as f32);
-            charts.push(ChartResult {
-                path: path.clone(),
-            })
+        if let Ok(csv_data) = fute_core::csv_parser::get_csv_data(&csv_file_path) {
+            // TODO: combine charts with the same type.
+            for dv in csv_data {
+                let mut path = PathBuf::from(smv_dir.clone());
+                path.push(dir);
+                std::fs::create_dir_all(&path).unwrap();
+                path.push(format!("{}.png", dv.name));
+                println!("charting to: {:?}", path);
+                let xs = &dv.values().clone().into_iter().map(|p| p.x).collect();
+                let ys = &dv.values().clone().into_iter().map(|p| p.y).collect();
+                plot_dv(vec![&dv], &path, minimum(xs) as f32, maximum(xs) as f32, minimum(ys) as f32, maximum(ys) as f32);
+                charts.push(ChartResult {
+                    path: path.clone(),
+                })
+            }
+        } else {
+            println!("{} could not be parsed", csvf.type_);
         }
     }
     let mut chart_page_path = PathBuf::from(smv_dir);

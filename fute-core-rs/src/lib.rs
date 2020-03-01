@@ -38,7 +38,7 @@ impl Outputs {
         }
     }
 
-    pub fn get_csv_vec(&mut self, csv_type: String, vec_name: String) -> DataVector {
+    pub fn get_csv_vec(&mut self, csv_type: String, vec_name: String) -> Result<DataVector, Box<dyn std::error::Error>> {
         // TODO: add caching
 
         let hrr_csvf = self.smv
@@ -51,10 +51,10 @@ impl Outputs {
         let mut csv_file_path = PathBuf::new();
         csv_file_path.push(smv_dir);
         csv_file_path.push(hrr_csvf.filename.clone());
-        let csv_data = csv_parser::get_csv_data(&csv_file_path);
+        let csv_data = csv_parser::get_csv_data(&csv_file_path)?;
         for dv in csv_data {
             if dv.name == vec_name {
-                return dv.clone();
+                return Ok(dv.clone());
             }
         }
         panic!("could not find dv")

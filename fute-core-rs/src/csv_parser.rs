@@ -23,19 +23,38 @@ use csv;
 //     csv_file_path.push(smv_dir);
 //     csv_file_path.push(hrr_csvf.filename.clone());
 
+#[derive(Clone)]
+pub enum GetCsvDataError {
+    CsvError
+}
+
+impl std::fmt::Display for GetCsvDataError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "A csv parsing error occurred.")
+	}
+}
+
+impl std::fmt::Debug for GetCsvDataError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		<GetCsvDataError as std::fmt::Display>::fmt(self, f)
+	}
+}
+
+impl std::error::Error for GetCsvDataError { }
+
 /// Parse all the information in the file and return a vector of DataVector.
 /// This relies on the first entry being time.
-pub fn get_csv_data(csv_path: &Path) -> Vec<DataVector> {
+pub fn get_csv_data(csv_path: &Path) -> Result<Vec<DataVector>, Box<dyn std::error::Error>> {
     use std::fs::File;
     use std::io::Read;
-    let mut csv_file = File::open(&csv_path).expect("Could not open CSV file");
+    let mut csv_file = File::open(&csv_path)?;
     // First we need to trim the first line from the csv
     // We start with a single byte buffer. This is a little hacky but it
     // works
     let mut buffer = [0; 1];
     loop {
         // Read a single byte off the start of the buffer
-        let _n: usize = csv_file.read(&mut buffer).unwrap();
+        let _n: usize = csv_file.read(&mut buffer)?;
 
         // We have reached the end of the line (works for CRLF and LF)
         // '\n' == 10
@@ -54,8 +73,8 @@ pub fn get_csv_data(csv_path: &Path) -> Vec<DataVector> {
     let mut data_vectors = Vec::new();
     let mut value_index_option: Option<usize> = None;
     let mut time_index_option: Option<usize> = None;
-    let mut headers = rdr.headers().unwrap().into_iter();
-    let first_header = headers.next().unwrap();
+    let mut headers = rdr.headers()?.into_iter();
+    let first_header = headers.next().ok_or(GetCsvDataError::CsvError)?;
     // let other_headers: Vec<String> = headers.collect();
     for header in headers {
         data_vectors.push(DataVector {
@@ -71,16 +90,16 @@ pub fn get_csv_data(csv_path: &Path) -> Vec<DataVector> {
     for result in rdr.deserialize() {
         // The iterator yields Result<StringRecord, Error>, so we check the
         // error here.
-        let record: Vec<f64> = result.unwrap();
+        let record: Vec<f64> = result?;
         let mut record_iter = record.into_iter();
-        let x_val = record_iter.next().unwrap();
+        let x_val = record_iter.next().ok_or(GetCsvDataError::CsvError)?;
         for (i, entry) in record_iter.enumerate() {
-            let dv = data_vectors.get_mut(i).unwrap();
+            let dv = data_vectors.get_mut(i).ok_or(GetCsvDataError::CsvError)?;
             dv.values.push(Point {
                 x: x_val,
                 y: entry,
             });
         }
     }
-    data_vectors
+    Ok(data_vectors)
 }
