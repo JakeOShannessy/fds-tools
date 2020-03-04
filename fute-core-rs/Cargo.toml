@@ -9,4 +9,5 @@ csv = "1.1.1"
 data-vector = { git = "https://github.com/JakeOShannessy/data-vector.git"}
 fds-input-parser = {version = "^0.1.3", git = "https://github.com/JakeOShannessy/fds-input-parser-rs.git"}
 nom = "5.0.1"
+regex = "1"
 version-compare = "0.0.10"
