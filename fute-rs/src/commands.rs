@@ -518,7 +518,7 @@ fn plot_dv(data_vectors: Vec<&DataVector>, path: &Path, x_min: f32, x_max: f32, 
             .configure_mesh()
             .x_desc(format!("{} ({})", data_vectors[0].x_name, data_vectors[0].x_units))
             .y_desc(format!("{} ({})", data_vectors[0].y_name, data_vectors[0].y_units))
-            .y_label_formatter(&|x| format!("{:.2}", x))
+            .y_label_formatter(&|x| format!("{:.2e}", x))
             .draw()
             .unwrap();
 
