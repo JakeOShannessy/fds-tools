@@ -86,9 +86,9 @@ fn main() {
         .subcommand(
             SubCommand::with_name("new-rev")
                 .arg(
-                    Arg::with_name("FDS-FILE")
+                    Arg::with_name("DIR")
                         .required(true)
-                        .help("Path to an FDS input file."),
+                        .help("Path to a directory holding an FDS file."),
                 )
                 .about("Create a new revision of a simulation"),
         )
@@ -158,7 +158,9 @@ fn main() {
         commands::peak_hrr(&fds_path)
     } else if let Some(_verify_input_matches) = matches.subcommand_matches("verify-input") {
     } else if let Some(_rename_matches) = matches.subcommand_matches("rename") {
-    } else if let Some(_new_rev_matches) = matches.subcommand_matches("new-rev") {
+    } else if let Some(new_rev_matches) = matches.subcommand_matches("new-rev") {
+        let dir_path = PathBuf::from(new_rev_matches.value_of("DIR").unwrap());
+        fute_core::new_rev::create_new_rev(&dir_path);
     } else if let Some(_current_progress_matches) = matches.subcommand_matches("current-progress") {
     } else if let Some(_plot_out_matches) = matches.subcommand_matches("plot-out") {
     } else if let Some(quick_chart_matches) = matches.subcommand_matches("chart") {

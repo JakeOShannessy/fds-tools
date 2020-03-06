@@ -1,25 +1,41 @@
+use std::path::{Path, PathBuf};
 
-// createNewRev path' = do
-// let path = dropTrailingPathSeparator path'
-// let dirName = takeBaseName path
-//     (projectNumber, mSpec, rSpec, name) = case parse parseDirName path dirName of
-//       Right x -> x
-//       Left e -> error $ show e
-//     newRevSpec = rSpec + 1
-//     newDirName = case name of
-//       Just nm -> projectNumber ++ "_M" ++ mSpec ++ "_R" ++ show newRevSpec ++ "_" ++ nm
-//       Nothing -> projectNumber ++ "_M" ++ mSpec ++ "_R" ++ show newRevSpec
-// -- create a directory of the new revision in working directory
-// exDir <- doesDirectoryExist newDirName
-// if exDir then error "directory already exists" else return ()
-// createDirectory newDirName
-// let oldFDSPath = (joinPath [path, dirName ++ ".fds"])
-// -- copy the fds file into the new directory with the new name
-// fdsScript <- readFile oldFDSPath
-// let newFDSScript = replace dirName newDirName fdsScript
-//     newFDSPath = (joinPath [".", newDirName, newDirName ++ ".fds"])
-// writeFile (joinPath [".", newDirName, newDirName ++ ".fds"]) newFDSScript
-// return ()
+pub fn create_new_rev(path: &Path) {
+    if !path.is_dir() {
+        panic!("path is not a directory");
+    }
+    let dir_name = path.file_name().unwrap().to_str().unwrap();
+    let containing_dir = path.parent().unwrap();
+    let mut current_rev = parse_dir_name(&dir_name).unwrap();
+    // Create a new directory for this revision after incrementing. If the
+    // directory already exists we just need to keep incrementing. TODO: warn
+    // about increased width.
+    loop {
+        current_rev.increment();
+        let new_dir_name = current_rev.to_dir_name();
+        let mut new_dir_path = PathBuf::from(containing_dir);
+        new_dir_path.push(&new_dir_name);
+        match std::fs::create_dir_all(&new_dir_path) {
+            Ok(_) => {
+                // TODO: modify new FDS file here.
+                let mut old_fds_path = PathBuf::from(path);
+                old_fds_path.push(format!("{}.fds", dir_name));
+                let mut new_fds_path = PathBuf::from(&new_dir_path);
+                new_fds_path.push(format!("{}.fds", new_dir_name));
+                // TODO: rather than just copy the file, we need to modify the
+                // CHID parameter. We want to stream it.
+                std::fs::copy(old_fds_path, new_fds_path).unwrap();
+                return;
+            },
+            Err(err) => if err.kind() == std::io::ErrorKind::AlreadyExists {
+                continue;
+            } else {
+                panic!("error creating dir: {:?}", err);
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct RevName {
     /// The base name without the revision number but including 'R' if there is
@@ -40,17 +56,24 @@ impl RevName {
             rev_num,
         }
     }
+
+    pub fn increment(&mut self) {
+        self.rev_num += 1;
+    }
+
+    pub fn to_dir_name(&self) -> String {
+        format!("{}{:0width$}", self.name, self.rev_num, width = self.rev_width)
+    }
 }
 
 /// Parse a directory and .fds file into something we understand as having a
 /// revision. This will comprise a string and either _N or _RN where N is a
 /// number, possibly padded with zeroes. This must occur at the end of a string
 /// and padding must be preserved.
-pub fn parse_dir_name(dir_name: String) -> Option<RevName> {
+pub fn parse_dir_name(dir_name: &str) -> Option<RevName> {
     use regex::Regex;
     let re = Regex::new(r"^(.*?_R??)(0?)(\d*)$").unwrap();
-    let captures = re.captures(&dir_name)?;
-    println!("captures: {:?}", captures);
+    let captures = re.captures(dir_name)?;
     if captures.len() != 4 {
         None
     } else {
@@ -74,9 +97,15 @@ mod tests {
 
     #[test]
     fn basic_example() {
-        assert_eq!(parse_dir_name("1234_M1_R01".to_string()), Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64)));
-        assert_eq!(parse_dir_name("1234_M1_R1".to_string()), Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64)));
-        assert_eq!(parse_dir_name("1234_M1R1".to_string()), None);
-        assert_eq!(parse_dir_name("1234_M1_R1x".to_string()), None);
+        assert_eq!(parse_dir_name("1234_M1_R01"), Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64)));
+        assert_eq!(parse_dir_name("1234_M1_R1"), Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64)));
+        assert_eq!(parse_dir_name("1234_M1R1"), None);
+        assert_eq!(parse_dir_name("1234_M1_R1x"), None);
+    }
+
+    #[test]
+    fn basic_example_string() {
+        let rev = parse_dir_name("1234_M1_R01").unwrap();
+        assert_eq!(rev.to_dir_name(), "1234_M1_R01".to_string());
     }
 }
