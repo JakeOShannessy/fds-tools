@@ -39,7 +39,7 @@ impl Outputs {
         }
     }
 
-    pub fn get_csv_vec(&mut self, csv_type: String, vec_name: String) -> Result<DataVector, Box<dyn std::error::Error>> {
+    pub fn get_csv_vec(&mut self, csv_type: String, vec_name: String) -> Result<DataVector<f64>, Box<dyn std::error::Error>> {
         // TODO: add caching
 
         let hrr_csvf = self.smv

@@ -491,7 +491,7 @@ pub fn quick_chart(smv_path: &Path) {
 }
 
 
-fn plot_dv(data_vectors: Vec<&DataVector>, path: &Path, x_min: f32, x_max: f32, y_min: f32, y_max: f32) {
+fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path, x_min: f32, x_max: f32, y_min: f32, y_max: f32) {
     let title = data_vectors[0].name.clone();
     let y_min = if y_min < 0.0 { y_min } else { 0.0 };
     // let y_max = if y_max > 1.0 { y_min } else { 1.0 };

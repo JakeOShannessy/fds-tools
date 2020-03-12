@@ -1,8 +1,10 @@
+use serde::{Serialize, Deserialize};
 use nom::number::streaming::le_u32;
 use nom::{multi::many0, IResult};
 use data_vector::{DataVector, Point};
 use std::path::{Path, PathBuf};
 use csv;
+use chrono::prelude::*;
 
 
 // println!("smv path: {:?}", smv_path);
@@ -42,63 +44,115 @@ impl std::fmt::Debug for GetCsvDataError {
 
 impl std::error::Error for GetCsvDataError { }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub enum SmvValue {
+    Float(f64),
+    // DateTime(DateTime<Utc>),
+    String(String),
+}
+
+impl SmvValue {
+    pub fn take_string(self) -> String {
+        match self {
+            SmvValue::String(s) => s,
+            _ => panic!("expected string"),
+        }
+    }
+
+    pub fn take_float(self) -> f64 {
+        match self {
+            SmvValue::Float(f) => f,
+            _ => panic!("expected string"),
+        }
+    }
+}
+
 /// Parse all the information in the file and return a vector of DataVector.
 /// This relies on the first entry being time.
-pub fn get_csv_data(csv_path: &Path) -> Result<Vec<DataVector>, Box<dyn std::error::Error>> {
+pub fn get_csv_data(csv_path: &Path) -> Result<Vec<DataVector<f64>>, Box<dyn std::error::Error>> {
     use std::fs::File;
     use std::io::Read;
     let mut csv_file = File::open(&csv_path)?;
     // First we need to trim the first line from the csv
     // We start with a single byte buffer. This is a little hacky but it
     // works
-    let mut buffer = [0; 1];
-    loop {
-        // Read a single byte off the start of the buffer
-        let _n: usize = csv_file.read(&mut buffer)?;
 
-        // We have reached the end of the line (works for CRLF and LF)
-        // '\n' == 10
-        if buffer[0] == 10 {
-            break;
-        }
-    }
     // let mut csv_contents = String::new();
     // file.read_to_string(&mut contents).unwrap();
     // Build the CSV reader and iterate over each record.
+
     let mut rdr = csv::ReaderBuilder::new()
-        .has_headers(true)
+        .has_headers(false)
         .trim(csv::Trim::All)
         .from_reader(csv_file);
+
+    let mut rdr: csv::DeserializeRecordsIter<'_, std::fs::File, Vec<String>> = rdr.deserialize();
+
 
     let mut data_vectors = Vec::new();
     let mut value_index_option: Option<usize> = None;
     let mut time_index_option: Option<usize> = None;
-    let mut headers = rdr.headers()?.into_iter();
-    let first_header = headers.next().ok_or(GetCsvDataError::CsvError)?;
-    // let other_headers: Vec<String> = headers.collect();
-    for header in headers {
-        data_vectors.push(DataVector {
-            name: header.to_string(),
-            x_units: "unknown".to_string(),
-            x_name: first_header.to_string(),
-            y_units: "unknown".to_string(),
-            y_name: header.to_string(),
-            values: Vec::new(),
-        });
-    }
+    // let mut headers = rdr.headers()?.into_iter();
 
-    for result in rdr.deserialize() {
+    {
+
+        let mut units_line = rdr.next().unwrap().unwrap().into_iter();
+        let x_units: Option<String> = units_line.next();
+        let x_units = x_units.unwrap();
+        // Get all the units
+        for units in units_line {
+            data_vectors.push(DataVector {
+                name: "unknown".to_string(),
+                x_units: x_units.clone(),
+                x_name: "unknown".to_string(),
+                y_units: units,
+                y_name: "unknown".to_string(),
+                values: Vec::new(),
+            });
+        }
+    }
+    {
+
+        let mut names_line = rdr.next().unwrap().unwrap().into_iter();
+        let x_name: Option<String> = names_line.next();
+        let x_name = x_name.unwrap();
+        // Get all the units
+        for (name, dv) in names_line.zip(data_vectors.iter_mut()) {
+            dv.name = name.clone();
+            dv.x_name = x_name.clone();
+            dv.y_name = name;
+        }
+    }
+    // let first_header = headers.next().ok_or(GetCsvDataError::CsvError)?;
+    // // let other_headers: Vec<String> = headers.collect();
+    // for header in headers {
+    //
+
+    for result in rdr {
         // The iterator yields Result<StringRecord, Error>, so we check the
         // error here.
-        let record: Vec<f64> = result?;
+        let record: Vec<String> = result?;
         let mut record_iter = record.into_iter();
-        let x_val = record_iter.next().ok_or(GetCsvDataError::CsvError)?;
-        for (i, entry) in record_iter.enumerate() {
-            let dv = data_vectors.get_mut(i).ok_or(GetCsvDataError::CsvError)?;
-            dv.values.push(Point {
-                x: x_val,
-                y: entry,
-            });
+        let x_val: f64 = record_iter.next().ok_or(GetCsvDataError::CsvError)?.parse().unwrap();
+        for (entry, dv) in record_iter.zip(data_vectors.iter_mut()) {
+            // Currently, we only support vectors of floats. We want to support
+            // dates and ctrls as well. In particular dates at the moment.
+            match dv.y_units.as_str() {
+                // We currently can't parse unknown units.
+                "" => continue,
+                // Anything else is assumed to be a float.
+                _ => match entry.parse::<f64>() {
+                    Err(_) => panic!("invalid float"),
+                    Ok(value) => {
+                        dv.values.push(Point {
+                            x: x_val,
+                            y: value,
+                        });
+                    }
+                }
+            }
+
+
         }
     }
     Ok(data_vectors)
