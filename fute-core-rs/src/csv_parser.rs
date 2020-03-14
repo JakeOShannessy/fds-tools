@@ -69,7 +69,7 @@ impl SmvValue {
 
 /// Parse all the information in the file and return a vector of DataVector.
 /// This relies on the first entry being time.
-pub fn get_csv_data(csv_path: &Path) -> Result<Vec<DataVector<f64>>, Box<dyn std::error::Error>> {
+pub fn get_csv_data<T: Clone + std::str::FromStr>(csv_path: &Path) -> Result<Vec<DataVector<T>>, Box<dyn std::error::Error>> {
     use std::fs::File;
     use std::io::Read;
     let mut csv_file = File::open(&csv_path)?;
@@ -141,7 +141,7 @@ pub fn get_csv_data(csv_path: &Path) -> Result<Vec<DataVector<f64>>, Box<dyn std
                 // We currently can't parse unknown units.
                 "" => continue,
                 // Anything else is assumed to be a float.
-                _ => match entry.parse::<f64>() {
+                _ => match entry.parse::<T>() {
                     Err(_) => panic!("invalid float"),
                     Ok(value) => {
                         dv.values.push(Point {

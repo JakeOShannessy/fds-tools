@@ -1,12 +1,15 @@
 use csv;
+use data_vector::DataVector;
+use fute_core::decode::*;
 use fute_core::parse_and_decode_fds_input_file;
 use fute_core::parse_smv_file;
-use fute_core::decode::*;
 use plotters::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{Path, PathBuf};
-use data_vector::DataVector;
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
@@ -46,8 +49,8 @@ pub fn count_cells(input_path: &Path) -> u64 {
     // putStrLn s
 }
 pub fn meshes(fds_path: &Path) {
-    use prettytable::{color, Attr, Cell, Row, Table};
     use fute_core::FDSFileExt;
+    use prettytable::{color, Attr, Cell, Row, Table};
     // use fute_core::FDSFile;
     use fute_core::parse_and_decode_fds_input_file;
     use num_format::{Locale, ToFormattedString};
@@ -67,15 +70,15 @@ pub fn meshes(fds_path: &Path) {
     for (i, mesh) in meshes.iter().enumerate() {
         let xb = mesh.xb;
         let ijk = mesh.ijk;
-        let n_cell = Cell::new(&format!("{}", i+1));
+        let n_cell = Cell::new(&format!("{}", i + 1));
         let id_cell = Cell::new(mesh.id.as_ref().unwrap_or(&"Unnamed MESH".to_string()));
-        let n_cells =  ijk.i*ijk.j*ijk.k;
+        let n_cells = ijk.i * ijk.j * ijk.k;
         let quantity_cell = Cell::new(&n_cells.to_formatted_string(&Locale::en));
-        let ijk_cell = Cell::new(&format!("{}-{}-{}", ijk.i,ijk.j,ijk.k));
-        let dx = (xb.x2-xb.x1)/(ijk.i as f64);
-        let dy = (xb.y2-xb.y1)/(ijk.j as f64);
-        let dz = (xb.z2-xb.z1)/(ijk.k as f64);
-        let dxyz_cell = Cell::new(&format!("{:.2}-{:.2}-{:.2}", dx,dy,dz));
+        let ijk_cell = Cell::new(&format!("{}-{}-{}", ijk.i, ijk.j, ijk.k));
+        let dx = (xb.x2 - xb.x1) / (ijk.i as f64);
+        let dy = (xb.y2 - xb.y1) / (ijk.j as f64);
+        let dz = (xb.z2 - xb.z1) / (ijk.k as f64);
+        let dxyz_cell = Cell::new(&format!("{:.2}-{:.2}-{:.2}", dx, dy, dz));
         let max_dx = if dx >= dy && dx >= dz {
             dx
         } else if dy >= dz {
@@ -90,7 +93,7 @@ pub fn meshes(fds_path: &Path) {
         } else {
             dz
         };
-        let aspect_ratio_cell = Cell::new(&format!("{:.2}", max_dx/min_dx));
+        let aspect_ratio_cell = Cell::new(&format!("{:.2}", max_dx / min_dx));
         table.add_row(Row::new(vec![
             n_cell,
             id_cell,
@@ -439,20 +442,27 @@ pub struct ChartResult {
     pub path: PathBuf,
 }
 
-pub fn chart_to_html(chart: ChartResult)  -> String {
-    format!("<img src=\"{}\"/>", chart.path.to_str().unwrap())
+pub fn chart_to_html(dir: &Path, chart: ChartResult) -> String {
+    println!("dir: {:?}, path: {:?}", dir, chart.path);
+    let p = chart.path.strip_prefix(dir).unwrap();
+    let p_str = p.to_str().unwrap();
+    // let url = url::Url::from_file_path(p).unwrap();
+    // let p_str = url.as_str();
+    format!("<img src=\"{}\"/>", p_str)
 }
 
 pub fn create_chart_page(path: &Path, charts: Vec<ChartResult>) {
     // let mut html: String = String::new();
-    let cs: Vec<String> = charts.into_iter().map(chart_to_html).collect();
+    let cs: Vec<String> = charts
+        .into_iter()
+        .map(|p| chart_to_html(path.parent().unwrap(), p))
+        .collect();
     let html: String = cs.into_iter().collect();
     let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(html.as_bytes());
+    f.write_all(html.as_bytes()).unwrap();
 }
 
 pub fn quick_chart(smv_path: &Path) {
-    use std::process::Command;
     let dir = "Charts";
     println!("quick-charting: {:?}", smv_path);
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
@@ -476,10 +486,15 @@ pub fn quick_chart(smv_path: &Path) {
                 println!("charting to: {:?}", path);
                 let xs = &dv.values().clone().into_iter().map(|p| p.x).collect();
                 let ys = &dv.values().clone().into_iter().map(|p| p.y).collect();
-                plot_dv(vec![&dv], &path, minimum(xs) as f32, maximum(xs) as f32, minimum(ys) as f32, maximum(ys) as f32);
-                charts.push(ChartResult {
-                    path: path.clone(),
-                })
+                plot_dv(
+                    vec![&dv],
+                    &path,
+                    minimum(xs) as f32,
+                    maximum(xs) as f32,
+                    minimum(ys) as f32,
+                    maximum(ys) as f32,
+                );
+                charts.push(ChartResult { path: path.clone() })
             }
         } else {
             println!("{} could not be parsed", csvf.type_);
@@ -488,21 +503,67 @@ pub fn quick_chart(smv_path: &Path) {
     let mut chart_page_path = PathBuf::from(smv_dir);
     chart_page_path.push(format!("Charts.html"));
     create_chart_page(&chart_page_path, charts);
+
+    #[cfg(windows)]
+    open_browser(&chart_page_path);
 }
 
+#[cfg(windows)]
+fn open_browser(path: &Path) -> std::io::Result<bool> {
+    {
+        use std::os::windows::ffi::OsStrExt;
+        fn to_u16s<S: AsRef<OsStr>>(s: S) -> std::io::Result<Vec<u16>> {
+            fn inner(s: &OsStr) -> std::io::Result<Vec<u16>> {
+                let mut maybe_result: Vec<u16> = s.encode_wide().collect();
+                if maybe_result.iter().any(|&u| u == 0) {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidInput,
+                        "strings passed to WinAPI cannot contain NULs",
+                    ));
+                }
+                maybe_result.push(0);
+                Ok(maybe_result)
+            }
+            inner(s.as_ref())
+        }
+        const SW_SHOW: winapi::ctypes::c_int = 5;
+        let path = to_u16s(path)?;
+        let operation = to_u16s("open")?;
+        let result = unsafe {
+            winapi::um::shellapi::ShellExecuteW(
+                std::ptr::null_mut(),
+                operation.as_ptr(),
+                path.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOW,
+            )
+        };
+        Ok(result as usize > 32)
+    }
+}
 
-fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path, x_min: f32, x_max: f32, y_min: f32, y_max: f32) {
+fn plot_dv(
+    data_vectors: Vec<&DataVector<f64>>,
+    path: &Path,
+    x_min: f32,
+    x_max: f32,
+    y_min: f32,
+    y_max: f32,
+) {
     let title = data_vectors[0].name.clone();
     let y_min = if y_min < 0.0 { y_min } else { 0.0 };
     // let y_max = if y_max > 1.0 { y_min } else { 1.0 };
-    let x_range = x_min..(x_max+x_max*0.2);
+    let x_range = x_min..(x_max + x_max * 0.2);
     let y_range = if y_max - y_min == 0.0 {
-        (y_max-0.5)..(y_max+0.5)
+        (y_max - 0.5)..(y_max + 0.5)
     } else {
-        (y_min-y_min*0.2)..(y_max+y_max*0.2)
+        (y_min - y_min * 0.2)..(y_max + y_max * 0.2)
     };
     println!("{:?}: x_range: {:?} y_range: {:?}", path, x_range, y_range);
-    let colors = vec![(62,43,88), (239,121,93), (255,0,0)].into_iter().cycle();
+    let colors = vec![(62, 43, 88), (239, 121, 93), (255, 0, 0)]
+        .into_iter()
+        .cycle();
     {
         let root = BitMapBackend::new(path, (640, 480)).into_drawing_area();
         root.fill(&WHITE).unwrap();
@@ -516,8 +577,14 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path, x_min: f32, x_max: 
 
         chart
             .configure_mesh()
-            .x_desc(format!("{} ({})", data_vectors[0].x_name, data_vectors[0].x_units))
-            .y_desc(format!("{} ({})", data_vectors[0].y_name, data_vectors[0].y_units))
+            .x_desc(format!(
+                "{} ({})",
+                data_vectors[0].x_name, data_vectors[0].x_units
+            ))
+            .y_desc(format!(
+                "{} ({})",
+                data_vectors[0].y_name, data_vectors[0].y_units
+            ))
             .y_label_formatter(&|x| format!("{:.2e}", x))
             .draw()
             .unwrap();
@@ -525,14 +592,20 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path, x_min: f32, x_max: 
         for (data_vector, color) in data_vectors.into_iter().zip(colors) {
             chart
                 .draw_series(LineSeries::new(
-                    data_vector.values()
+                    data_vector
+                        .values()
                         .iter()
                         .map(|p| (p.x as f32, p.y as f32)),
-                    &RGBColor(color.0,color.1,color.2),
+                    &RGBColor(color.0, color.1, color.2),
                 ))
                 .unwrap()
                 .label(data_vector.name.as_str())
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RGBColor(color.0,color.1,color.2)));
+                .legend(move |(x, y)| {
+                    PathElement::new(
+                        vec![(x, y), (x + 20, y)],
+                        &RGBColor(color.0, color.1, color.2),
+                    )
+                });
         }
 
         chart
@@ -544,7 +617,6 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path, x_min: f32, x_max: 
             .unwrap();
     }
 }
-
 
 pub fn maximum(samples: &Vec<f64>) -> f64 {
     if samples.len() == 0 {
