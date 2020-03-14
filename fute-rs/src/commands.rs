@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::{
     ffi::OsStr,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, borrow::Cow,
 };
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
@@ -463,10 +463,11 @@ pub fn create_chart_page(path: &Path, charts: Vec<ChartResult>) {
 }
 
 pub fn quick_chart(smv_path: &Path) {
+    use std::borrow::Cow;
     let dir = "Charts";
     println!("quick-charting: {:?}", smv_path);
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
-    let mut charts = Vec::new();
+    let mut charts: Vec<ChartResult> = Vec::new();
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     for csvf in outputs.smv.csvfs.iter() {
         println!("csvf: {:?}", csvf);
@@ -476,16 +477,22 @@ pub fn quick_chart(smv_path: &Path) {
         let mut csv_file_path = PathBuf::new();
         csv_file_path.push(smv_dir.clone());
         csv_file_path.push(csvf.filename.clone());
+        println!("about to get data");
         if let Ok(csv_data) = fute_core::csv_parser::get_csv_data(&csv_file_path) {
             // TODO: combine charts with the same type.
             for dv in csv_data {
                 let mut path = PathBuf::from(smv_dir.clone());
                 path.push(dir);
                 std::fs::create_dir_all(&path).unwrap();
-                path.push(format!("{}.png", dv.name));
-                println!("charting to: {:?}", path);
-                let xs = &dv.values().clone().into_iter().map(|p| p.x).collect();
-                let ys = &dv.values().clone().into_iter().map(|p| p.y).collect();
+                // Mangle the filenames to ensure there are no forbidden windows
+                // names.
+                let f_name: Cow<String> = mangle(&dv.name);
+                path.push(format!("{}.png", f_name));
+
+
+                // println!("charting to: {:?}", path);
+                let xs: &Vec<f64> = &dv.values().clone().into_iter().map(|p: data_vector::Point<f64>| p.x).collect();
+                let ys: &Vec<f64> = &dv.values().clone().into_iter().map(|p: data_vector::Point<f64>| p.y).collect();
                 plot_dv(
                     vec![&dv],
                     &path,
@@ -496,16 +503,28 @@ pub fn quick_chart(smv_path: &Path) {
                 );
                 charts.push(ChartResult { path: path.clone() })
             }
+            println!("chart created");
         } else {
             println!("{} could not be parsed", csvf.type_);
         }
     }
     let mut chart_page_path = PathBuf::from(smv_dir);
     chart_page_path.push(format!("Charts.html"));
+    println!("about to create chart page");
     create_chart_page(&chart_page_path, charts);
 
     #[cfg(windows)]
     open_browser(&chart_page_path);
+}
+
+fn mangle(s: &String) -> Cow<String> {
+    #[cfg(windows)]
+    match s.to_lowercase().as_str() {
+        "con" | "prn" | "aux"|"nul"|"com0"|"com1"|"com2"|"com3"|"com4"|"com5"|"com6"|"com7"|"com8"|"com9"|"lpt0"|"lpt1"|"lpt2"|"lpt3"|"lpt4"|"lpt5"|"lpt6"|"lpt7"|"lpt8"|"lpt9" => Cow::Owned(format!("{}_", s)),
+        _ => Cow::Borrowed(s),
+    }
+    #[cfg(not(windows))]
+    Cow::Borrowed(s)
 }
 
 #[cfg(windows)]
@@ -560,7 +579,7 @@ fn plot_dv(
     } else {
         (y_min - y_min * 0.2)..(y_max + y_max * 0.2)
     };
-    println!("{:?}: x_range: {:?} y_range: {:?}", path, x_range, y_range);
+    // println!("{:?}: x_range: {:?} y_range: {:?}", path, x_range, y_range);
     let colors = vec![(62, 43, 88), (239, 121, 93), (255, 0, 0)]
         .into_iter()
         .cycle();
