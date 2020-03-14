@@ -59,7 +59,7 @@ pub fn parse_data_set<'a, 'b>(
     if check != rec_length {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Permutation
+            nom::error::ErrorKind::Permutation,
         )));
     }
     let (i, values) = parse_slice_data(i_dim, j_dim, k_dim, i)?;
@@ -81,7 +81,7 @@ pub fn parse_slice_data<'a, 'b>(
     if check != rec_length {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::TakeWhileMN
+            nom::error::ErrorKind::TakeWhileMN,
         )));
     }
     Ok((i, data))
@@ -139,7 +139,7 @@ fn parse_dimensions(i: &[u8]) -> IResult<&[u8], Dimensions /*, ParseDimenionsErr
     if rec_length != 24 {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::CrLf
+            nom::error::ErrorKind::CrLf,
         )));
     }
     // Take the number of bytes specified by rec_length.
@@ -154,17 +154,20 @@ fn parse_dimensions(i: &[u8]) -> IResult<&[u8], Dimensions /*, ParseDimenionsErr
     if check != rec_length {
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::Fix
+            nom::error::ErrorKind::Fix,
         )));
     }
-    Ok((i, Dimensions {
-        i_min: i1,
-        i_max: i2,
-        j_min: j1,
-        j_max: j2,
-        k_min: k1,
-        k_max: k2,
-    }))
+    Ok((
+        i,
+        Dimensions {
+            i_min: i1,
+            i_max: i2,
+            j_min: j1,
+            j_max: j2,
+            k_min: k1,
+            k_max: k2,
+        },
+    ))
 }
 
 /// Parse the data from a record, ensuring the record length tags at the start
@@ -180,7 +183,7 @@ fn parse_record(i: &[u8]) -> IResult<&[u8], &[u8]> {
         panic!("bad rec_length start: {} end: {}", rec_length, check);
         return Err(nom::Err::Failure(nom::error::make_error(
             i,
-            nom::error::ErrorKind::ManyMN
+            nom::error::ErrorKind::ManyMN,
         )));
     }
     Ok((i, &b_string))
@@ -199,23 +202,29 @@ mod tests {
         assert_eq!(result.header.quantity.trim(), "TEMPERATURE".to_string());
         assert_eq!(result.header.units.trim(), "C".to_string());
         assert_eq!(result.header.short_name.trim(), "temp".to_string());
-        assert_eq!(result.header.dimensions, Dimensions {
-            i_min: 14,
-            i_max: 14,
-            j_min: 0,
-            j_max: 10,
-            k_min: 0,
-            k_max: 24,
-        });
+        assert_eq!(
+            result.header.dimensions,
+            Dimensions {
+                i_min: 14,
+                i_max: 14,
+                j_min: 0,
+                j_max: 10,
+                k_min: 0,
+                k_max: 24,
+            }
+        );
         assert_eq!(result.frames.len(), 945);
     }
 
     #[test]
     fn parse_slice_simple_bad01() {
         let result = parse_slice_file(include_bytes!("room_fire_01_bad01.sf"));
-        assert_eq!(result.map_err(|e| match e {
-            nom::Err::Failure(e) => e.1,
-            _ => panic!("bad result"),
-        }), Err(nom::error::ErrorKind::RegexpMatch));
+        assert_eq!(
+            result.map_err(|e| match e {
+                nom::Err::Failure(e) => e.1,
+                _ => panic!("bad result"),
+            }),
+            Err(nom::error::ErrorKind::RegexpMatch)
+        );
     }
 }

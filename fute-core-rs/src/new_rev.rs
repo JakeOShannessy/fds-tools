@@ -26,11 +26,13 @@ pub fn create_new_rev(path: &Path) {
                 // CHID parameter. We want to stream it.
                 std::fs::copy(old_fds_path, new_fds_path).unwrap();
                 return;
-            },
-            Err(err) => if err.kind() == std::io::ErrorKind::AlreadyExists {
-                continue;
-            } else {
-                panic!("error creating dir: {:?}", err);
+            }
+            Err(err) => {
+                if err.kind() == std::io::ErrorKind::AlreadyExists {
+                    continue;
+                } else {
+                    panic!("error creating dir: {:?}", err);
+                }
             }
         }
     }
@@ -62,7 +64,12 @@ impl RevName {
     }
 
     pub fn to_dir_name(&self) -> String {
-        format!("{}{:0width$}", self.name, self.rev_num, width = self.rev_width)
+        format!(
+            "{}{:0width$}",
+            self.name,
+            self.rev_num,
+            width = self.rev_width
+        )
     }
 }
 
@@ -97,8 +104,14 @@ mod tests {
 
     #[test]
     fn basic_example() {
-        assert_eq!(parse_dir_name("1234_M1_R01"), Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64)));
-        assert_eq!(parse_dir_name("1234_M1_R1"), Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64)));
+        assert_eq!(
+            parse_dir_name("1234_M1_R01"),
+            Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64))
+        );
+        assert_eq!(
+            parse_dir_name("1234_M1_R1"),
+            Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64))
+        );
         assert_eq!(parse_dir_name("1234_M1R1"), None);
         assert_eq!(parse_dir_name("1234_M1_R1x"), None);
     }
