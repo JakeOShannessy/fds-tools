@@ -1,16 +1,17 @@
+use chrono::prelude::*;
 use csv;
 use data_vector::DataVector;
 use fute_core::decode::*;
-use chrono::prelude::*;
 use fute_core::parse_and_decode_fds_input_file;
-use fute_core::parse_smv_file;
+use fute_core::{csv_parser::SmvValue, parse_smv_file};
 use plotters::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
 use std::{
     borrow::Cow,
     ffi::OsStr,
-    path::{Path, PathBuf}, ops::Range,
+    ops::Range,
+    path::{Path, PathBuf},
 };
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
@@ -453,61 +454,71 @@ pub fn chart_to_html(dir: &Path, chart: ChartResult) -> String {
     format!("<img src=\"{}\"/>", p_str)
 }
 
-pub fn create_chart_page(path: &Path, charts: Vec<ChartResult>) {
+pub fn create_chart_page(path: &Path, charts: Charts) {
     // let mut html: String = String::new();
-    let cs: Vec<String> = charts
-        .into_iter()
-        .map(|p| chart_to_html(path.parent().unwrap(), p))
-        .collect();
-    let html: String = cs.into_iter().collect();
+    let mut chart_strings = Vec::new();
+    let run_chart = charts
+        .run_chart_path
+        .map(|rc| chart_to_html(path.parent().unwrap(), rc));
+    if let Some(rc_string) = run_chart {
+        chart_strings.push(rc_string);
+    }
+    for cr in charts.various.into_iter() {
+        chart_strings.push(chart_to_html(path.parent().unwrap(), cr));
+    }
+    let html: String = chart_strings.into_iter().collect();
     let mut f = std::fs::File::create(&path).unwrap();
     f.write_all(html.as_bytes()).unwrap();
 }
 
-pub fn quick_chart(smv_path: &Path) {
-    use fute_core::csv_parser::SmvVec;
-    use std::borrow::Cow;
+pub struct Charts {
+    pub run_chart_path: Option<ChartResult>,
+    pub various: Vec<ChartResult>,
+}
+
+impl Charts {
+    pub fn new() -> Self {
+        Self {
+            run_chart_path: None,
+            various: Vec::new(),
+        }
+    }
+}
+
+pub fn read_out(out_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let out_file = std::fs::File::open(out_path)?;
+    let dv = fute_core::out_parser::read_out(out_file);
+    println!("{}", serde_json::to_string_pretty(&dv).unwrap());
+    Ok(())
+}
+
+pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let dir = "Charts";
     println!("quick-charting: {:?}", smv_path);
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
-    let mut charts: Vec<ChartResult> = Vec::new();
+    let mut charts: Charts = Charts::new();
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     for csvf in outputs.smv.csvfs.iter() {
         println!("csvf: {:?}", csvf);
-        // if csvf.type_ == "steps" {
-        //     continue;
-        // }
+
         let mut csv_file_path = PathBuf::new();
         csv_file_path.push(smv_dir.clone());
         csv_file_path.push(csvf.filename.clone());
         println!("about to get data");
-        if let Ok(csv_data) = fute_core::csv_parser::get_csv_data(&csv_file_path) {
-            // TODO: combine charts with the same type.
-            println!("{} vectors", csv_data.len());
-            for dv in csv_data {
-                let mut path = PathBuf::from(smv_dir.clone());
-                path.push(dir);
-                std::fs::create_dir_all(&path).unwrap();
-                // Mangle the filenames to ensure there are no forbidden windows
-                // names.
-                let f_name: Cow<String> = mangle(&dv.name());
-                path.push(format!("{}.png", f_name));
-
-                println!("charting to: {:?}", path);
-                // Try sequential downcasts.
-                if let Some(dv) = dv.downcast_ref::<DataVector<f64>>() {
-                    plot_dv(vec![dv], &path);
-                }else if let Some(dv) = dv.downcast_ref::<DataVector<DateTime<Utc>>>() {
-                    plot_runtime(dv, &path);
-                } else {
-                    println!("not f64");
+        let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path)?;
+        if csvf.type_ == "steps" {
+            match csv_data.make_data_vector("Simulation Time", "Wall Time") {
+                Some(mut run_vec) => {
+                    // panic!("x_name: {:?}, {:?}", run_vec.x_name, run_vec.y_name);
+                    run_vec.name = "Run Chart".to_string();
+                    plot(&smv_dir, dir, &mut charts, run_vec)
                 }
-
-                charts.push(ChartResult { path: path.clone() })
+                None => panic!("could not make run chart"),
             }
-            println!("chart created");
-        } else {
-            println!("{} could not be parsed", csvf.type_);
+        }
+
+        for dv in csv_data.default_vecs() {
+            plot(&smv_dir, dir, &mut charts, dv);
         }
     }
     let mut chart_page_path = PathBuf::from(smv_dir);
@@ -517,6 +528,65 @@ pub fn quick_chart(smv_path: &Path) {
 
     #[cfg(windows)]
     open_browser(&chart_page_path);
+    Ok(())
+}
+
+fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, dv: DataVector<SmvValue>) {
+    let mut path = PathBuf::from(smv_dir.clone());
+    path.push(dir);
+    std::fs::create_dir_all(&path).unwrap();
+    // Mangle the filenames to ensure there are no forbidden windows
+    // names.
+    let f_name: Cow<String> = mangle(&dv.name);
+    path.push(format!("{}.png", f_name));
+    match dv.values[0].y {
+        SmvValue::Float(f) => {
+            let vec = dv
+                .values
+                .into_iter()
+                .map(|v| match v.y {
+                    SmvValue::Float(d) => data_vector::Point { x: v.x, y: d },
+                    _ => panic!("type changes part way through vector"),
+                })
+                .collect();
+            let new_dv = DataVector {
+                name: dv.name,
+                x_name: dv.x_name,
+                y_name: dv.y_name,
+                x_units: dv.x_units,
+                y_units: dv.y_units,
+                values: vec,
+            };
+            plot_dv(vec![&new_dv], &path);
+            charts.various.push(ChartResult { path: path.clone() })
+        }
+        SmvValue::DateTime(f) => {
+            let vec = dv
+                .values
+                .into_iter()
+                .map(|v| match v.y {
+                    SmvValue::DateTime(d) => data_vector::Point { x: v.x, y: d },
+                    _ => panic!("type changes part way through vector"),
+                })
+                .collect();
+            let new_dv = DataVector {
+                name: dv.name,
+                x_name: dv.x_name,
+                y_name: dv.y_name,
+                x_units: dv.x_units,
+                y_units: dv.y_units,
+                values: vec,
+            };
+            plot_runtime(&new_dv, &path);
+            if new_dv.name.as_str() == "Run Chart" {
+                charts.run_chart_path = Some(ChartResult { path: path.clone() })
+            } else {
+                charts.various.push(ChartResult { path: path.clone() })
+            }
+        }
+        // Nothing to plot
+        SmvValue::String(_) => (),
+    }
 }
 
 fn mangle(s: &String) -> Cow<String> {
@@ -598,7 +668,6 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path) {
     } else {
         (y_min - y_min * 0.2)..(y_max + y_max * 0.2)
     };
-    // println!("{:?}: x_range: {:?} y_range: {:?}", path, x_range, y_range);
     let colors = vec![(62, 43, 88), (239, 121, 93), (255, 0, 0)]
         .into_iter()
         .cycle();
@@ -656,16 +725,14 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path) {
     }
 }
 
-
 fn plot_runtime(dv: &DataVector<DateTime<Utc>>, path: &Path) {
-    println!("run vec: {:?}", dv);
     let mut x_min = dv.values[0].x;
     let mut x_max = dv.values[0].x;
     let mut y_min: DateTime<Utc> = dv.values[0].y;
     let mut y_max: DateTime<Utc> = dv.values[0].y;
 
     for p in dv.values().iter() {
-        if (p.x ) < x_min {
+        if (p.x) < x_min {
             x_min = p.x;
         }
         if (p.x) > x_max {
@@ -678,7 +745,6 @@ fn plot_runtime(dv: &DataVector<DateTime<Utc>>, path: &Path) {
             y_max = p.y;
         }
     }
-
 
     let title = dv.name.clone();
     // let y_min = if y_min < 0.0 { y_min } else { 0.0 };
@@ -702,40 +768,35 @@ fn plot_runtime(dv: &DataVector<DateTime<Utc>>, path: &Path) {
             .build_ranged(y_range, x_range)
             .unwrap();
 
-        let x_label_style = plotters::style::FontDesc::new(plotters::style::FontFamily::SansSerif,12.0,plotters::style::FontStyle::Normal) .transform(plotters::style::FontTransform::Rotate270);
+        let x_label_style = plotters::style::FontDesc::new(
+            plotters::style::FontFamily::SansSerif,
+            12.0,
+            plotters::style::FontStyle::Normal,
+        )
+        .transform(plotters::style::FontTransform::Rotate270);
 
         chart
             .configure_mesh()
-            .x_desc(format!(
-                "{} ({})",
-                dv.y_name, dv.y_units
-            ))
+            .x_desc(format!("{} ({})", dv.y_name, dv.y_units))
             .x_label_style(x_label_style)
-            .y_desc(format!(
-                "{} ({})",
-                dv.x_name, dv.x_units
-            ))
+            .y_desc(format!("{} ({})", dv.x_name, dv.x_units))
             // .y_label_formatter(&|x| format!("{:.2e}", x))
             .draw()
             .unwrap();
-            let color = colors.next().unwrap();
-            chart
-                .draw_series(LineSeries::new(
-                    dv
-                        .values()
-                        .iter()
-                        .map(|p| (p.y, p.x)),
+        let color = colors.next().unwrap();
+        chart
+            .draw_series(LineSeries::new(
+                dv.values().iter().map(|p| (p.y, p.x)),
+                &RGBColor(color.0, color.1, color.2),
+            ))
+            .unwrap()
+            .label(dv.name.as_str())
+            .legend(move |(x, y)| {
+                PathElement::new(
+                    vec![(x, y), (x + 20, y)],
                     &RGBColor(color.0, color.1, color.2),
-                ))
-                .unwrap()
-                .label(dv.name.as_str())
-                .legend(move |(x, y)| {
-                    PathElement::new(
-                        vec![(x, y), (x + 20, y)],
-                        &RGBColor(color.0, color.1, color.2),
-                    )
-                });
-
+                )
+            });
 
         chart
             .configure_series_labels()
@@ -745,30 +806,4 @@ fn plot_runtime(dv: &DataVector<DateTime<Utc>>, path: &Path) {
             .draw()
             .unwrap();
     }
-}
-
-pub fn maximum(samples: &Vec<f64>) -> f64 {
-    if samples.len() == 0 {
-        panic!("Cannot find the max of empty vec");
-    }
-    let mut max: f64 = samples[0];
-    for s in samples {
-        if *s > max {
-            max = *s;
-        }
-    }
-    max
-}
-
-pub fn minimum(samples: &Vec<f64>) -> f64 {
-    if samples.len() == 0 {
-        panic!("Cannot find the min of empty vec");
-    }
-    let mut min: f64 = samples[0];
-    for s in samples {
-        if *s < min {
-            min = *s;
-        }
-    }
-    min
 }

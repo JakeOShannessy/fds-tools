@@ -126,6 +126,15 @@ fn main() {
                 )
                 .about("Compile a summary of information"),
         )
+        .subcommand(
+            SubCommand::with_name("read-out")
+                .arg(
+                    Arg::with_name("OUT-FILE")
+                        .required(true)
+                        .help("Path to a .out file."),
+                )
+                .about("Read .out info"),
+        )
         .get_matches();
 
     if let Some(count_cells_matches) = matches.subcommand_matches("count-cells") {
@@ -166,5 +175,8 @@ fn main() {
     } else if let Some(quick_chart_matches) = matches.subcommand_matches("chart") {
         let smv_path = PathBuf::from(quick_chart_matches.value_of("SMV-FILE").unwrap());
         quick_chart(&smv_path);
+    } else if let Some(read_out_matches) = matches.subcommand_matches("read-out") {
+        let out_path = PathBuf::from(read_out_matches.value_of("OUT-FILE").unwrap());
+        read_out(&out_path);
     }
 }

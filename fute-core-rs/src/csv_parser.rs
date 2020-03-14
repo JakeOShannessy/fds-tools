@@ -1,31 +1,8 @@
 use chrono::prelude::*;
 use csv;
 use data_vector::{DataVector, Point};
-use nom::number::streaming::le_u32;
-use nom::{multi::many0, IResult};
 use serde::{Deserialize, Serialize};
-use std::{
-    path::{Path, PathBuf},
-    rc::Rc,
-};
-
-// println!("smv path: {:?}", smv_path);
-//     let mut file = File::open(&smv_path).expect("Could not open smv file");
-//     let mut contents = String::new();
-//     file.read_to_string(&mut contents)
-//         .expect("Could not read smv file");
-//     let (_, smv_file) = parse_smv_file(&contents).expect("Could not parse smv file");
-//     let hrr_csvf = smv_file
-//         .csvfs
-//         .iter()
-//         .find(|csvf| csvf.type_ == "hrr")
-//         .expect("No HRR CSV file.");
-//     // println!("csvfhrr: {:?}", hrr_csvf);
-//     let smv_dir = PathBuf::from(smv_path.parent().unwrap());
-//     let value = "HRR";
-//     let mut csv_file_path = PathBuf::new();
-//     csv_file_path.push(smv_dir);
-//     csv_file_path.push(hrr_csvf.filename.clone());
+use std::{path::Path, str::FromStr};
 
 #[derive(Clone)]
 pub enum GetCsvDataError {
@@ -49,21 +26,21 @@ impl std::error::Error for GetCsvDataError {}
 #[derive(Clone, Serialize, Deserialize)]
 pub enum SmvValue {
     Float(f64),
-    // DateTime(DateTime<Utc>),
+    DateTime(DateTime<Utc>),
     String(String),
 }
 
 impl SmvValue {
-    pub fn take_string(self) -> String {
+    pub fn take_string(&self) -> String {
         match self {
-            SmvValue::String(s) => s,
+            SmvValue::String(s) => s.clone(),
             _ => panic!("expected string"),
         }
     }
 
-    pub fn take_float(self) -> f64 {
+    pub fn take_float(&self) -> f64 {
         match self {
-            SmvValue::Float(f) => f,
+            SmvValue::Float(f) => *f,
             _ => panic!("expected string"),
         }
     }
@@ -83,54 +60,133 @@ pub trait SmvVec: downcast_rs::Downcast {
 }
 downcast_rs::impl_downcast!(SmvVec);
 
-// impl<T: 'static + std::str::FromStr> SmvVec for DataVector<T> {
-//     fn name(&self) -> &String {
-//         &self.name
-//     }
-//     fn set_name(&mut self, name: String) {
-//         self.name = name;
-//     }
-//     fn x_name(&self) -> &String {
-//         &self.x_name
-//     }
-//     fn set_x_name(&mut self, name: String) {
-//         self.x_name = name;
-//     }
-//     fn y_name(&self) -> &String {
-//         &self.y_name
-//     }
-//     fn set_y_name(&mut self, name: String) {
-//         self.y_name = name;
-//     }
-//     fn x_units(&self) -> &String {
-//         &self.x_units
-//     }
-//     fn set_x_units(&mut self, units: String) {
-//         self.x_name = units;
-//     }
-//     fn y_units(&self) -> &String {
-//         &self.y_units
-//     }
-//     fn set_y_units(&mut self, units: String) {
-//         self.y_units = units;
-//     }
-//     fn push_value(&mut self, x: f64, y_string: &str) {
-//         match self.y_units().as_str() {
-//             // We currently can't parse unknown units.
-//             "" => (),
-//             // Anything else is assumed to be a float.
-//             _ => match y_string.parse::<T>() {
-//                 Err(_) => panic!("invalid float"),
-//                 Ok(value) => {
-//                     self.values.push(Point {
-//                         x: x,
-//                         y: value,
-//                     });
-//                 }
-//             }
-//         }
-//     }
-// }
+/// This struct contains all the data from a single csv file, preserving all of
+/// the structural information. [`DataVector`]s, which compare two vectors can
+/// be pulled from these data blocks. The safe usage of this data structure
+/// relies on its vectors having matching lengths, so the fields are therefore
+/// not directly modifiable.
+pub struct CsvDataBlock {
+    units: Vec<String>,
+    names: Vec<String>,
+    values: Vec<Vec<SmvValue>>,
+}
+
+impl CsvDataBlock {
+    pub fn new() -> Self {
+        Self {
+            units: Vec::new(),
+            names: Vec::new(),
+            values: Vec::new(),
+        }
+    }
+
+    /// Return the number of data vectors in the block.
+    pub fn n_vectors(&self) -> usize {
+        self.names.len()
+    }
+    /// Return the length of the vectors (they all share the same length).
+    /// Return zero if there are no vectors.
+    pub fn vec_len(&self) -> usize {
+        self.values.get(0).map(|x| x.len()).unwrap_or(0)
+    }
+    /// Build data vectors from two vectors. Only takes the first vector if
+    /// there are duplicates. Return None if no such vectors exist.
+    pub fn make_data_vector(&self, x_name: &str, y_name: &str) -> Option<DataVector<SmvValue>> {
+        // First find the index of the first vector.
+        let x_index = self.names.iter().position(|x| x == x_name)?;
+        let y_index = self.names.iter().position(|x| x == y_name)?;
+        let mut dv: DataVector<SmvValue> = DataVector {
+            name: y_name.to_string(),
+            x_name: x_name.to_string(),
+            y_name: y_name.to_string(),
+            x_units: self.units.get(x_index).cloned()?.to_string(),
+            y_units: self.units.get(y_index).cloned()?.to_string(),
+            values: Vec::with_capacity(self.vec_len()),
+        };
+        let x_vec = self.values.get(x_index)?.iter();
+        let y_vec = self.values.get(y_index)?.iter();
+        for (x_val, y_val) in x_vec.zip(y_vec) {
+            dv.values.push(Point {
+                x: x_val.take_float(),
+                y: y_val.clone(),
+            });
+        }
+        Some(dv)
+    }
+
+    pub fn default_vecs(&self) -> Vec<DataVector<SmvValue>> {
+        let mut names = self.names.iter();
+        // The first name is our default x name.
+        let x_name: &String = names.next().unwrap();
+        let mut vecs = Vec::new();
+        for y_name in names {
+            let vec = self
+                .make_data_vector(x_name.as_str(), y_name.as_str())
+                .unwrap();
+            vecs.push(vec);
+        }
+        vecs
+    }
+
+    pub fn from_file(csv_path: &Path) -> Result<CsvDataBlock, Box<dyn std::error::Error>> {
+        let csv_file = std::fs::File::open(&csv_path)?;
+
+        // First we need to trim the first line from the csv
+        // We start with a single byte buffer. This is a little hacky but it
+        // works
+
+        // let mut csv_contents = String::new();
+        // file.read_to_string(&mut contents).unwrap();
+        // Build the CSV reader and iterate over each record.
+
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .trim(csv::Trim::All)
+            .from_reader(csv_file);
+
+        let mut rdr: csv::DeserializeRecordsIter<'_, std::fs::File, Vec<String>> =
+            rdr.deserialize();
+
+        let units_line = rdr.next().unwrap().unwrap().into_iter();
+        let units: Vec<String> = units_line.collect();
+
+        let names_line = rdr.next().unwrap().unwrap().into_iter();
+        let names: Vec<String> = names_line.collect();
+        let mut values = Vec::with_capacity(names.len());
+        values.resize(names.len(), Vec::new());
+        for result in rdr {
+            // The iterator yields Result<StringRecord, Error>, so we check the
+            // error here.
+            let record: Vec<String> = result?;
+            let record_iter = record.into_iter();
+            for (((entry, vec), units), name) in record_iter
+                .zip(values.iter_mut())
+                .zip(units.iter())
+                .zip(names.iter())
+            {
+                // Currently, we only support vectors of floats. We want to support
+                // dates and ctrls as well. In particular dates at the moment.
+                let value = match units.as_str() {
+                    "" => {
+                        if name == "Wall Time" {
+                            // println!("entry")
+                            SmvValue::DateTime(entry.parse().unwrap())
+                        } else {
+                            SmvValue::Float(entry.parse().unwrap())
+                        }
+                    }
+                    _ => SmvValue::Float(entry.parse().unwrap()),
+                };
+                vec.push(value);
+            }
+        }
+        Ok(CsvDataBlock {
+            units,
+            names,
+            values,
+        })
+    }
+}
 
 impl SmvVec for DataVector<f64> {
     fn name(&self) -> &String {
@@ -178,7 +234,6 @@ impl SmvVec for DataVector<f64> {
     }
 }
 
-
 impl SmvVec for DataVector<DateTime<Utc>> {
     fn name(&self) -> &String {
         &self.name
@@ -221,7 +276,6 @@ impl SmvVec for DataVector<DateTime<Utc>> {
     }
 }
 
-
 /// Parse all the information in the file and return a vector of DataVector.
 /// This relies on the first entry being time.
 pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std::error::Error>> {
@@ -255,29 +309,37 @@ pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std
         // Get all the units
         for units in units_line {
             match units.as_str() {
-                "" => if csv_path.file_name().unwrap().to_str().unwrap().ends_with("_steps.csv") {
-                    let vec: DataVector<DateTime<Utc>> = DataVector {
-                        name: "unknown".to_string(),
-                        x_units: x_units.clone(),
-                        x_name: "unknown".to_string(),
-                        y_units: units,
-                        y_name: "unknown".to_string(),
-                        values: Vec::new(),
-                    };
-                    let dv = Box::new(vec);
-                    data_vectors.push(dv);
-                } else {
-                    let vec: DataVector<f64> = DataVector {
-                        name: "unknown".to_string(),
-                        x_units: x_units.clone(),
-                        x_name: "unknown".to_string(),
-                        y_units: units,
-                        y_name: "unknown".to_string(),
-                        values: Vec::new(),
-                    };
-                    let dv = Box::new(vec);
-                    data_vectors.push(dv);
-                },
+                "" => {
+                    if csv_path
+                        .file_name()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .ends_with("_steps.csv")
+                    {
+                        let vec: DataVector<DateTime<Utc>> = DataVector {
+                            name: "unknown".to_string(),
+                            x_units: x_units.clone(),
+                            x_name: "unknown".to_string(),
+                            y_units: units,
+                            y_name: "unknown".to_string(),
+                            values: Vec::new(),
+                        };
+                        let dv = Box::new(vec);
+                        data_vectors.push(dv);
+                    } else {
+                        let vec: DataVector<f64> = DataVector {
+                            name: "unknown".to_string(),
+                            x_units: x_units.clone(),
+                            x_name: "unknown".to_string(),
+                            y_units: units,
+                            y_name: "unknown".to_string(),
+                            values: Vec::new(),
+                        };
+                        let dv = Box::new(vec);
+                        data_vectors.push(dv);
+                    }
+                }
                 _ => {
                     let vec: DataVector<f64> = DataVector {
                         name: "unknown".to_string(),

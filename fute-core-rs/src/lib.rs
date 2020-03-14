@@ -2,6 +2,7 @@
 extern crate nom;
 pub mod csv_parser;
 pub mod new_rev;
+pub mod out_parser;
 mod slice_parser;
 mod smv_parser;
 mod verification_tests;
