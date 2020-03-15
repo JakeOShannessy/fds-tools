@@ -224,7 +224,7 @@ mod tests {
                 nom::Err::Failure(e) => e.1,
                 _ => panic!("bad result"),
             }),
-            Err(nom::error::ErrorKind::RegexpMatch)
+            Err(nom::error::ErrorKind::CrLf)
         );
     }
 }

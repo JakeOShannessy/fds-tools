@@ -67,21 +67,24 @@ impl Outputs {
 
 fn read_slice_file() -> std::io::Result<()> {
     let mut file = std::fs::File::open("src/room_fire_01.sf")?;
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf);
     // let mut buf_reader = std::io::BufReader::new(file);
-    let mut read_buffer: Vec<u8> = vec![0; READ_BUFFER_SIZE];
-    loop {
-        let read = file.read(&mut read_buffer)?;
-        println!("read {} bytes", read);
-        match parse_slice_file(&read_buffer) {
-            Ok(slice_file) => break,
-            Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
-            Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
-            Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
-        }
-        if read == 0 {
-            break;
-        }
-    }
+    // let mut read_buffer: Vec<u8> = vec![0; READ_BUFFER_SIZE];
+    parse_slice_file(&buf).unwrap();
+    // loop {
+    //     let read = file.read(&mut read_buffer)?;
+    //     println!("read {} bytes", read);
+    //     match parse_slice_file(&read_buffer) {
+    //         Ok(slice_file) => break,
+    //         Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
+    //         Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
+    //         Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+    //     }
+    //     if read == 0 {
+    //         break;
+    //     }
+    // }
     // assert_eq!(contents, "Hello, world!");
     Ok(())
 }
