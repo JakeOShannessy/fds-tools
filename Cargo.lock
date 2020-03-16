@@ -263,6 +263,7 @@ dependencies = [
 [[package]]
 name = "data-vector"
 version = "0.1.1"
+source = "git+https://github.com/JakeOShannessy/data-vector.git#892f38d6687dc886d6187adca7046bb66959b29d"
 dependencies = [
  "chrono",
  "serde",
