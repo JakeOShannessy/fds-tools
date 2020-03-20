@@ -20,27 +20,17 @@ impl RunData {
         Ok(Self::from_out_reader(out_file))
     }
     pub fn from_out_reader<R: Read>(out_file: R) -> Self {
-        let parser = ReadOutParser::new(out_file);
-        let mut data_vector = DataVector {
-            name: "Run Time".to_string(),
-            x_name: "Simulation Time".to_string(),
-            y_name: "Wall Time".to_string(),
-            x_units: "s".to_string(),
-            y_units: "datetime".to_string(),
-            values: Vec::new(),
-        };
+        let mut parser = ReadOutParser::new(out_file);
+
+        parser.parse();
+
         let start_time = parser.sim_start;
         let end_time = parser.sim_end;
-        for entry in parser {
-            data_vector.values.push(data_vector::Point {
-                x: entry.total_time,
-                y: entry.datetime,
-            })
-        }
+
         Self {
             start_time,
             end_time,
-            time_steps: data_vector,
+            time_steps: parser.time_step_vec,
         }
     }
 }
@@ -54,6 +44,7 @@ pub struct ReadOutParser<R> {
     step_line_re: Regex,
     sim_start_re: Regex,
     sim_end_re: Regex,
+    time_step_vec: DataVector<NaiveDateTime>,
 }
 
 impl<R: Read> ReadOutParser<R> {
@@ -80,17 +71,22 @@ impl<R: Read> ReadOutParser<R> {
             sim_end_re,
             sim_start: None,
             sim_end: None,
+            time_step_vec: DataVector {
+                name: "Run Time".to_string(),
+                x_name: "Simulation Time".to_string(),
+                y_name: "Wall Time".to_string(),
+                x_units: "s".to_string(),
+                y_units: "datetime".to_string(),
+                values: Vec::new(),
+            },
         }
     }
-}
 
-impl<R: Read> Iterator for ReadOutParser<R> {
-    type Item = TimeStep;
-    fn next(&mut self) -> Option<Self::Item> {
+    fn parse(&mut self) {
         loop {
             let line = match self.reader.next() {
                 Some(line) => line,
-                None => return None,
+                None => return,
             };
             let line = match line {
                 Err(_) => continue,
@@ -102,13 +98,16 @@ impl<R: Read> Iterator for ReadOutParser<R> {
             }
 
             if line.starts_with("Simulation Start Time") {
+                println!("found start: {}", line);
                 for cap in self.sim_start_re.captures_iter(line) {
+                    println!("cap: {:?}", cap);
                     match cap.get(1) {
                         None => (),
                         Some(sim_start_string) => {
                             match sim_start_string.as_str().parse() {
                                 Err(_) => (),
                                 Ok(time) => {
+                                    println!("start time: {:?}", time);
                                     self.sim_start = Some(time)
                                 },
                             }
@@ -195,29 +194,30 @@ impl<R: Read> Iterator for ReadOutParser<R> {
                     }) = self.time_step_entry
                     {
                         if let (Some(step_size), Some(total_time)) = (step_size, total_time) {
-                            let r = Some(TimeStep {
+                            let r = TimeStep {
                                 time_step,
                                 datetime,
                                 step_size,
                                 total_time,
-                            });
+                            };
                             self.time_step_entry = None;
-                            return r;
+                            self.time_step_vec.values.push(data_vector::Point {
+                                x: r.total_time,
+                                y: r.datetime,
+                            })
                         } else {
                             self.time_step_entry = None;
                             continue;
                         }
-                    } else {
-                        return None;
                     }
                 }
             } else {
                 continue;
             }
         }
-        None
     }
 }
+
 
 pub enum RuntimeEntry {
     TimeStep {
@@ -235,4 +235,42 @@ pub struct TimeStep {
     datetime: NaiveDateTime,
     step_size: f64,
     total_time: f64,
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[ignore]
+    #[test]
+    fn out_parse_test() {
+        let run_data = RunData::from_out_file(&PathBuf::from("room_fire.out")).unwrap();
+        println!("run_data: {:?}", run_data);
+    }
+
+    #[test]
+    fn start_regex() {
+        let sim_start_re =
+            Regex::new(r"Simulation Start Time \(s\)\s+(?P<start_time_string>.+)$").unwrap();
+        let line = "Simulation Start Time (s)          0.0";
+        assert!(line.starts_with("Simulation Start Time"));
+        for cap in sim_start_re.captures_iter(line) {
+            match cap.get(1) {
+                None => (),
+                Some(sim_start_string) => {
+                    match sim_start_string.as_str().parse() {
+                        Err(_) => (),
+                        Ok(time) => {
+                            let time: f64 = time;
+                            println!("time: {:?}", time);
+                            // self.sim_start = Some(time)
+                        },
+                    }
+                }
+            }
+            continue;
+        }
+    }
 }
