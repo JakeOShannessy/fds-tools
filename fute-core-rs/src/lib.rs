@@ -19,6 +19,7 @@ pub use smv_parser::parse_smv_file;
 use smv_parser::SMVFile;
 use std::fs::File;
 use std::path::PathBuf;
+use csv_parser::{SmvValue, CsvDataBlock};
 
 const READ_BUFFER_SIZE: usize = 8192;
 
@@ -37,32 +38,57 @@ impl Outputs {
         Self { smv_path, smv }
     }
 
-    pub fn get_csv_vec<T: Clone + std::str::FromStr>(
+    pub fn get_csv_vec(
         &mut self,
         csv_type: String,
         vec_name: String,
-    ) -> Result<Box<dyn csv_parser::SmvVec>, Box<dyn std::error::Error>> {
+    ) -> Result<DataVector<SmvValue>, Box<dyn std::error::Error>> {
         // TODO: add caching
-
         let hrr_csvf = self
             .smv
             .csvfs
             .iter()
             .find(|csvf| csvf.type_ == csv_type.as_str())
             .expect("No CSV file.");
-        // println!("csvfhrr: {:?}", hrr_csvf);
         let smv_dir = PathBuf::from(self.smv_path.parent().unwrap());
         let mut csv_file_path = PathBuf::new();
         csv_file_path.push(smv_dir);
         csv_file_path.push(hrr_csvf.filename.clone());
-        let csv_data: Vec<Box<dyn csv_parser::SmvVec>> = csv_parser::get_csv_data(&csv_file_path)?;
-        for dv in csv_data {
-            if dv.name() == &vec_name {
-                return Ok(dv);
-            }
-        }
-        panic!("could not find dv")
+        let data_block = CsvDataBlock::from_file(&csv_file_path)?;
+        let vec = data_block.make_data_vector("Time", &vec_name).ok_or("no vector")?;
+        Ok(vec)
     }
+
+    pub fn get_csv_vec_f64(
+        &mut self,
+        csv_type: String,
+        vec_name: String,
+    ) -> Result<DataVector<f64>, Box<dyn std::error::Error>> {
+        let vec = self.get_csv_vec(csv_type, vec_name)?;
+        Ok(take_f64_vec(vec)?)
+    }
+}
+
+fn take_f64_vec(vec: DataVector<SmvValue>) -> Result<DataVector<f64>, Box<dyn std::error::Error>> {
+    let mut new_dv = DataVector {
+        name: vec.name,
+        x_name: vec.x_name,
+        y_name: vec.y_name,
+        x_units: vec.x_units,
+        y_units: vec.y_units,
+        values: Vec::with_capacity(vec.values.len()),
+    };
+    for value in vec.values.into_iter() {
+        let x = value.x;
+        let y = match value.y {
+            SmvValue::Float(y) => y,
+            _ => return Err("not float")?,
+        };
+        new_dv.values.push(data_vector::Point {
+            x,y
+        });
+    }
+    Ok(new_dv)
 }
 
 fn read_slice_file() -> std::io::Result<()> {
