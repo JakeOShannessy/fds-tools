@@ -487,8 +487,8 @@ impl Charts {
 
 pub fn read_out(out_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let out_file = std::fs::File::open(out_path)?;
-    let dv = fute_core::out_parser::read_out(out_file);
-    println!("{}", serde_json::to_string_pretty(&dv).unwrap());
+    let run_data = fute_core::out_parser::RunData::from_out_reader(out_file);
+    println!("{}", serde_json::to_string_pretty(&run_data).unwrap());
     Ok(())
 }
 

@@ -9,6 +9,7 @@ mod verification_tests;
 
 use std::io::Read;
 
+use csv_parser::{CsvDataBlock, SmvValue};
 use data_vector::DataVector;
 pub use fds_input_parser::decode;
 use fds_input_parser::decode::*;
@@ -19,7 +20,6 @@ pub use smv_parser::parse_smv_file;
 use smv_parser::SMVFile;
 use std::fs::File;
 use std::path::PathBuf;
-use csv_parser::{SmvValue, CsvDataBlock};
 
 const READ_BUFFER_SIZE: usize = 8192;
 
@@ -55,7 +55,9 @@ impl Outputs {
         csv_file_path.push(smv_dir);
         csv_file_path.push(hrr_csvf.filename.clone());
         let data_block = CsvDataBlock::from_file(&csv_file_path)?;
-        let vec = data_block.make_data_vector("Time", &vec_name).ok_or("no vector")?;
+        let vec = data_block
+            .make_data_vector("Time", &vec_name)
+            .ok_or("no vector")?;
         Ok(vec)
     }
 
@@ -84,9 +86,7 @@ fn take_f64_vec(vec: DataVector<SmvValue>) -> Result<DataVector<f64>, Box<dyn st
             SmvValue::Float(y) => y,
             _ => return Err("not float")?,
         };
-        new_dv.values.push(data_vector::Point {
-            x,y
-        });
+        new_dv.values.push(data_vector::Point { x, y });
     }
     Ok(new_dv)
 }

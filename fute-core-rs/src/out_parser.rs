@@ -1,4 +1,5 @@
 use chrono::{DateTime, FixedOffset, NaiveDateTime, NaiveTime, Utc};
+use serde::{Serialize, Deserialize};
 use data_vector::DataVector;
 use regex::Regex;
 use std::{
@@ -7,34 +8,60 @@ use std::{
     path::PathBuf,
 };
 
-pub fn read_out<R: Read>(out_file: R) -> DataVector<NaiveDateTime> {
-    let parser = ReadOutParser::new(out_file);
-    let mut data_vector = DataVector {
-        name: "Run Time".to_string(),
-        x_name: "Simulation Time".to_string(),
-        y_name: "Wall Time".to_string(),
-        x_units: "s".to_string(),
-        y_units: "datetime".to_string(),
-        values: Vec::new(),
-    };
-    for entry in parser {
-        data_vector.values.push(data_vector::Point {
-            x: entry.total_time,
-            y: entry.datetime,
-        })
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RunData {
+    pub start_time: Option<f64>,
+    pub end_time: Option<f64>,
+    pub time_steps: DataVector<NaiveDateTime>,
+}
+
+impl RunData {
+    pub fn from_out_reader<R: Read>(out_file: R) -> Self {
+        let parser = ReadOutParser::new(out_file);
+        let mut data_vector = DataVector {
+            name: "Run Time".to_string(),
+            x_name: "Simulation Time".to_string(),
+            y_name: "Wall Time".to_string(),
+            x_units: "s".to_string(),
+            y_units: "datetime".to_string(),
+            values: Vec::new(),
+        };
+        let start_time = parser.sim_start;
+        let end_time = parser.sim_end;
+        for entry in parser {
+            data_vector.values.push(data_vector::Point {
+                x: entry.total_time,
+                y: entry.datetime,
+            })
+        }
+        Self {
+            start_time,
+            end_time,
+            time_steps: data_vector,
+        }
     }
-    data_vector
 }
 
 pub struct ReadOutParser<R> {
     reader: std::io::Lines<BufReader<R>>,
     time_step_entry: Option<RuntimeEntry>,
+    sim_start: Option<f64>,
+    sim_end: Option<f64>,
     time_line_re: Regex,
     step_line_re: Regex,
+    sim_start_re: Regex,
+    sim_end_re: Regex,
 }
 
 impl<R: Read> ReadOutParser<R> {
     pub fn new(input: R) -> Self {
+        // Simulation Start Time (s)          0.0
+        let sim_start_re =
+            Regex::new(r"Simulation Start Time \(s\)\s+(?P<start_time_string>.+)$").unwrap();
+        // Simulation End Time (s)         2000.0
+        let sim_end_re =
+            Regex::new(r"Simulation End Time \(s\)\s+(?P<start_time_string>.+)$").unwrap();
         // Time Step   42800   March 13, 2020  22:28:11
         let time_line_re =
             Regex::new(r"Time Step\s*(?P<time_step>\d+)\s+(?P<date_string>.+)$").unwrap();
@@ -47,6 +74,10 @@ impl<R: Read> ReadOutParser<R> {
             time_step_entry: None,
             time_line_re,
             step_line_re,
+            sim_start_re,
+            sim_end_re,
+            sim_start: None,
+            sim_end: None,
         }
     }
 }
@@ -65,7 +96,19 @@ impl<R: Read> Iterator for ReadOutParser<R> {
                 continue;
             }
 
-            if line.starts_with("Time Step") {
+            if line.starts_with("Simulation Start Time") {
+                for cap in self.sim_start_re.captures_iter(line) {
+                    let sim_start: f64 = cap["sim_start_time"].parse().unwrap();
+                    self.sim_start = Some(sim_start);
+                    continue;
+                }
+            } else if line.starts_with("Simulation End Time") {
+                for cap in self.sim_end_re.captures_iter(line) {
+                    let sim_end: f64 = cap["sim_end_time"].parse().unwrap();
+                    self.sim_end = Some(sim_end);
+                    continue;
+                }
+            } else if line.starts_with("Time Step") {
                 //   Time Step   42800   March 13, 2020  22:28:11
                 for cap in self.time_line_re.captures_iter(line) {
                     let time_step: u64 = cap["time_step"].parse().unwrap();
