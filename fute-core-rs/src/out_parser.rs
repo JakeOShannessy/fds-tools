@@ -92,7 +92,10 @@ impl<R: Read> Iterator for ReadOutParser<R> {
                 Some(line) => line,
                 None => return None,
             };
-            let line = line.unwrap();
+            let line = match line {
+                Err(_) => continue,
+                Ok(line) => line,
+            };
             let line = line.trim();
             if line.len() == 0 {
                 continue;
@@ -100,47 +103,110 @@ impl<R: Read> Iterator for ReadOutParser<R> {
 
             if line.starts_with("Simulation Start Time") {
                 for cap in self.sim_start_re.captures_iter(line) {
-                    let sim_start: f64 = cap["sim_start_time"].parse().unwrap();
-                    self.sim_start = Some(sim_start);
+                    match cap.get(1) {
+                        None => (),
+                        Some(sim_start_string) => {
+                            match sim_start_string.as_str().parse() {
+                                Err(_) => (),
+                                Ok(time) => {
+                                    self.sim_start = Some(time)
+                                },
+                            }
+                        }
+                    }
                     continue;
                 }
             } else if line.starts_with("Simulation End Time") {
                 for cap in self.sim_end_re.captures_iter(line) {
-                    let sim_end: f64 = cap["sim_end_time"].parse().unwrap();
-                    self.sim_end = Some(sim_end);
+                    match cap.get(1) {
+                        None => (),
+                        Some(sim_end_string) => {
+                            match sim_end_string.as_str().parse() {
+                                Err(_) => (),
+                                Ok(time) => {
+                                    self.sim_end = Some(time)
+                                },
+                            }
+                        }
+                    }
                     continue;
                 }
             } else if line.starts_with("Time Step") {
                 //   Time Step   42800   March 13, 2020  22:28:11
                 for cap in self.time_line_re.captures_iter(line) {
-                    let time_step: u64 = cap["time_step"].parse().unwrap();
-                    let datetime: NaiveDateTime =
-                        NaiveDateTime::parse_from_str(&cap["date_string"], "%B %e, %Y  %H:%M:%S")
-                            .unwrap();
-                    self.time_step_entry = Some(RuntimeEntry::TimeStep {
-                        time_step,
-                        datetime,
-                    });
+                    let time_step: Option<u64> = match cap.get(1) {
+                        None => None,
+                        Some(string) => {
+                            match string.as_str().parse() {
+                                Err(_) => None,
+                                Ok(x) => {
+                                    Some(x)
+                                },
+                            }
+                        }
+                    };
+                    let datetime: Option<NaiveDateTime> = match cap.get(2) {
+                        None => None,
+                        Some(match_val) => {
+                            match NaiveDateTime::parse_from_str(match_val.as_str(), "%B %e, %Y  %H:%M:%S") {
+                                Err(_) => None,
+                                Ok(x) => {
+                                    Some(x)
+                                },
+                            }
+                        }
+                    };
+                    if let (Some(time_step), Some(datetime)) = (time_step, datetime) {
+                        self.time_step_entry = Some(RuntimeEntry::TimeStep {
+                            time_step,
+                            datetime,
+                        });
+                    }
                     continue;
                 }
             } else if line.starts_with("Step Size") {
                 // Step Size:    0.592E-02 s, Total Time:     520.76 s
                 for cap in self.step_line_re.captures_iter(line) {
-                    let step_size: f64 = cap["step_size"].parse().unwrap();
-                    let total_time: f64 = cap["total_time"].parse().unwrap();
+                    let step_size: Option<f64> = match cap.get(1) {
+                        None => None,
+                        Some(string) => {
+                            match string.as_str().parse() {
+                                Err(_) => None,
+                                Ok(x) => {
+                                    Some(x)
+                                },
+                            }
+                        }
+                    };
+                    let total_time: Option<f64> = match cap.get(2) {
+                        None => None,
+                        Some(string) => {
+                            match string.as_str().parse() {
+                                Err(_) => None,
+                                Ok(x) => {
+                                    Some(x)
+                                },
+                            }
+                        }
+                    };
                     if let Some(RuntimeEntry::TimeStep {
                         time_step,
                         datetime,
                     }) = self.time_step_entry
                     {
-                        let r = Some(TimeStep {
-                            time_step,
-                            datetime,
-                            step_size,
-                            total_time,
-                        });
-                        self.time_step_entry = None;
-                        return r;
+                        if let (Some(step_size), Some(total_time)) = (step_size, total_time) {
+                            let r = Some(TimeStep {
+                                time_step,
+                                datetime,
+                                step_size,
+                                total_time,
+                            });
+                            self.time_step_entry = None;
+                            return r;
+                        } else {
+                            self.time_step_entry = None;
+                            continue;
+                        }
                     } else {
                         return None;
                     }
