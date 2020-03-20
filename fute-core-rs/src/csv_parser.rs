@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use csv;
 use data_vector::{DataVector, Point};
 use serde::{Deserialize, Serialize};
-use std::{path::Path, str::FromStr};
+use std::{path::Path};
 
 #[derive(Clone)]
 pub enum GetCsvDataError {
@@ -281,7 +281,7 @@ impl SmvVec for DataVector<DateTime<Utc>> {
 pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std::error::Error>> {
     use std::fs::File;
 
-    let mut csv_file = File::open(&csv_path)?;
+    let csv_file = File::open(&csv_path)?;
     // First we need to trim the first line from the csv
     // We start with a single byte buffer. This is a little hacky but it
     // works

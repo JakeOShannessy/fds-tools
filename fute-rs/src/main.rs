@@ -1,18 +1,10 @@
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate clap;
-use clap::{App, AppSettings, Arg, SubCommand};
-// use rustc_hex::ToHex;
+use clap::{App, AppSettings, Arg, SubCommand, crate_version, crate_authors};
 use env_logger;
-use std::fs::create_dir;
-use std::fs::File;
-use std::io::prelude::*;
 use std::path::PathBuf;
 mod commands;
 use commands::*;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     let matches = App::new("fute")
         .setting(AppSettings::ArgRequiredElseHelp)
@@ -174,9 +166,10 @@ fn main() {
     } else if let Some(_plot_out_matches) = matches.subcommand_matches("plot-out") {
     } else if let Some(quick_chart_matches) = matches.subcommand_matches("chart") {
         let smv_path = PathBuf::from(quick_chart_matches.value_of("SMV-FILE").unwrap());
-        quick_chart(&smv_path);
+        quick_chart(&smv_path)?;
     } else if let Some(read_out_matches) = matches.subcommand_matches("read-out") {
         let out_path = PathBuf::from(read_out_matches.value_of("OUT-FILE").unwrap());
-        read_out(&out_path);
+        read_out(&out_path)?;
     }
+    Ok(())
 }

@@ -1,11 +1,9 @@
-use chrono::{DateTime, FixedOffset, NaiveDateTime, NaiveTime, Utc};
+use chrono::{NaiveDateTime};
 use serde::{Serialize, Deserialize};
 use data_vector::DataVector;
 use regex::Regex;
 use std::{
-    ffi::OsString,
-    io::{BufRead, BufReader, Read},
-    path::PathBuf,
+    io::{BufRead, BufReader, Read}, path::Path
 };
 
 
@@ -17,6 +15,10 @@ pub struct RunData {
 }
 
 impl RunData {
+    pub fn from_out_file(out_path: &Path) -> Result<Self, std::io::Error> {
+        let out_file = std::fs::File::open(out_path)?;
+        Ok(Self::from_out_reader(out_file))
+    }
     pub fn from_out_reader<R: Read>(out_file: R) -> Self {
         let parser = ReadOutParser::new(out_file);
         let mut data_vector = DataVector {
