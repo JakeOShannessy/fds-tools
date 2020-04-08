@@ -5,6 +5,7 @@ pub mod new_rev;
 pub mod out_parser;
 mod slice_parser;
 mod smv_parser;
+pub mod rename;
 mod verification_tests;
 
 use std::io::Read;
