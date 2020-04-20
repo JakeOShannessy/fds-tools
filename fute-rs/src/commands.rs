@@ -557,7 +557,11 @@ fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, dv: DataVector<SmvValue>
                 y_units: dv.y_units,
                 values: vec,
             };
-            plot_dv(vec![&new_dv], &path);
+            if &new_dv.name == "HRR" {
+                plot_dv_hrr(vec![&new_dv], &path);
+            } else {
+                plot_dv(vec![&new_dv], &path);
+            }
             charts.various.push(ChartResult { path: path.clone() })
         }
         SmvValue::DateTime(f) => {
@@ -714,6 +718,209 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path) {
                     )
                 });
         }
+
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE.mix(0.8))
+            .border_style(&BLACK)
+            .margin(20)
+            .draw()
+            .unwrap();
+    }
+}
+
+
+// TODO: needs more const functions
+// const MEDIUM_ALPHA4: f64 = 1055.0 / 300.0_f64.powi(2);
+
+pub struct GrowthAlphas {
+    pub slow: f64,
+    pub medium: f64,
+    pub fast: f64,
+    pub ultrafast: f64,
+}
+
+const SLOW_COLOR: (u8, u8, u8) = (0x00, 0x80, 0x00);
+const MEDIUM_COLOR: (u8, u8, u8) = (0xFF, 0x00, 0x00);
+const FAST_COLOR: (u8, u8, u8) = (0x00, 0xBF, 0xBF);
+const ULTRAFAST_COLOR: (u8, u8, u8) = (0xBF, 0x80, 0xBF);
+
+lazy_static::lazy_static! {
+    static ref EUROCODE_GROWTH_RATES: GrowthAlphas = GrowthAlphas {
+        slow: 1000.0 / 600.0_f64.powi(2),
+        medium: 1000.0 / 300.0_f64.powi(2),
+        fast: 1000.0 / 150.0_f64.powi(2),
+        ultrafast: 1000.0 / 75.0_f64.powi(2),
+    };
+    static ref NFPA_GROWTH_RATES: GrowthAlphas = GrowthAlphas {
+        slow: 1055.0 / 600.0_f64.powi(2),
+        medium: 1055.0 / 300.0_f64.powi(2),
+        fast: 1055.0 / 150.0_f64.powi(2),
+        ultrafast: 1055.0 / 75.0_f64.powi(2),
+    };
+}
+
+fn make_standard_curve(vector: &DataVector<f64>, alpha: f64, name: String) -> DataVector<f64> {
+    let mut vector = vector.clone();
+    for p in vector.values.iter_mut() {
+        p.y = alpha * p.x.powi(2);
+    }
+    vector.name = name;
+    vector
+}
+
+fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64>>, path: &Path) {
+    let mut x_min = data_vectors[0].values[0].x as f32;
+    let mut x_max = data_vectors[0].values[0].x as f32;
+    let mut y_min = data_vectors[0].values[0].y as f32;
+    let mut y_max = data_vectors[0].values[0].y as f32;
+
+    let slow = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.slow, "Slow".to_string());
+    let medium = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.medium, "Medium".to_string());
+    let fast = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.fast, "Fast".to_string());
+    let ultrafast = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.ultrafast, "Ultrafast".to_string());
+
+
+    for vec in data_vectors.iter() {
+        for p in vec.values().iter() {
+            if (p.x as f32) < x_min {
+                x_min = p.x as f32;
+            }
+            if (p.x as f32) > x_max {
+                x_max = p.x as f32;
+            }
+            if (p.y as f32) < y_min {
+                y_min = p.y as f32;
+            }
+            if (p.y as f32) > y_max {
+                y_max = p.y as f32;
+            }
+        }
+    }
+
+    let title = data_vectors[0].name.clone();
+    let y_min = if y_min < 0.0 { y_min } else { 0.0 };
+    // let y_max = if y_max > 1.0 { y_min } else { 1.0 };
+    let x_range = x_min..(x_max + x_max * 0.2);
+    let y_range = if y_max - y_min == 0.0 {
+        (y_max - 0.5)..(y_max + 0.5)
+    } else {
+        (y_min - y_min * 0.2)..(y_max + y_max * 0.2)
+    };
+    let colors = vec![(62, 43, 88), (239, 121, 93), (255, 0, 0)]
+        .into_iter()
+        .cycle();
+    {
+        let root = BitMapBackend::new(path, (640, 480)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+        let mut chart = ChartBuilder::on(&root)
+            .caption(title, ("Arial", 16).into_font())
+            .margin(15)
+            .x_label_area_size(50)
+            .y_label_area_size(60)
+            .build_ranged(x_range, y_range)
+            .unwrap();
+
+        chart
+            .configure_mesh()
+            .x_desc(format!(
+                "{} ({})",
+                data_vectors[0].x_name, data_vectors[0].x_units
+            ))
+            .y_desc(format!(
+                "{} ({})",
+                data_vectors[0].y_name, data_vectors[0].y_units
+            ))
+            .y_label_formatter(&|x| format!("{:.2e}", x))
+            .draw()
+            .unwrap();
+
+        for (data_vector, color) in data_vectors.into_iter().zip(colors) {
+            chart
+                .draw_series(LineSeries::new(
+                    data_vector
+                        .values()
+                        .iter()
+                        .map(|p| (p.x as f32, p.y as f32)),
+                    &RGBColor(color.0, color.1, color.2),
+                ))
+                .unwrap()
+                .label(data_vector.name.as_str())
+                .legend(move |(x, y)| {
+                    PathElement::new(
+                        vec![(x, y), (x + 20, y)],
+                        &RGBColor(color.0, color.1, color.2),
+                    )
+                });
+        }
+
+        chart
+            .draw_series(LineSeries::new(
+                slow
+                    .values()
+                    .iter()
+                    .map(|p| (p.x as f32, p.y as f32)),
+                &RGBColor(SLOW_COLOR.0, SLOW_COLOR.1, SLOW_COLOR.2),
+            ))
+            .unwrap()
+            .label(slow.name.as_str())
+            .legend(move |(x, y)| {
+                PathElement::new(
+                    vec![(x, y), (x + 20, y)],
+                    &RGBColor(SLOW_COLOR.0, SLOW_COLOR.1, SLOW_COLOR.2),
+                )
+            });
+
+        chart
+            .draw_series(LineSeries::new(
+                medium
+                    .values()
+                    .iter()
+                    .map(|p| (p.x as f32, p.y as f32)),
+                &RGBColor(MEDIUM_COLOR.0, MEDIUM_COLOR.1, MEDIUM_COLOR.2),
+            ))
+            .unwrap()
+            .label(medium.name.as_str())
+            .legend(move |(x, y)| {
+                PathElement::new(
+                    vec![(x, y), (x + 20, y)],
+                    &RGBColor(MEDIUM_COLOR.0, MEDIUM_COLOR.1, MEDIUM_COLOR.2),
+                )
+            });
+
+        chart
+            .draw_series(LineSeries::new(
+                fast
+                    .values()
+                    .iter()
+                    .map(|p| (p.x as f32, p.y as f32)),
+                &RGBColor(FAST_COLOR.0, FAST_COLOR.1, FAST_COLOR.2),
+            ))
+            .unwrap()
+            .label(fast.name.as_str())
+            .legend(move |(x, y)| {
+                PathElement::new(
+                    vec![(x, y), (x + 20, y)],
+                    &RGBColor(FAST_COLOR.0, FAST_COLOR.1, FAST_COLOR.2),
+                )
+            });
+
+        chart
+            .draw_series(LineSeries::new(
+                ultrafast
+                    .values()
+                    .iter()
+                    .map(|p| (p.x as f32, p.y as f32)),
+                &RGBColor(ULTRAFAST_COLOR.0, ULTRAFAST_COLOR.1, ULTRAFAST_COLOR.2),
+            ))
+            .unwrap()
+            .label(ultrafast.name.as_str())
+            .legend(move |(x, y)| {
+                PathElement::new(
+                    vec![(x, y), (x + 20, y)],
+                    &RGBColor(ULTRAFAST_COLOR.0, ULTRAFAST_COLOR.1, ULTRAFAST_COLOR.2),
+                )
+            });
 
         chart
             .configure_series_labels()
