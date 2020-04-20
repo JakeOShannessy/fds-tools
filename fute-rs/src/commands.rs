@@ -670,7 +670,7 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path) {
     let y_range = if y_max - y_min == 0.0 {
         (y_max - 0.5)..(y_max + 0.5)
     } else {
-        (y_min - y_min * 0.2)..(y_max + y_max * 0.2)
+        (y_min - y_min.abs() * 0.2)..(y_max + y_max.abs() * 0.2)
     };
     let colors = vec![(62, 43, 88), (239, 121, 93), (255, 0, 0)]
         .into_iter()
