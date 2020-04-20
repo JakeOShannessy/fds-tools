@@ -1,3 +1,4 @@
+use data_vector::Point;
 use chrono::prelude::*;
 use csv;
 use data_vector::DataVector;
@@ -250,7 +251,7 @@ pub fn plot_hrr(smv_path: &Path) {
     }
     let value_index = value_index_option.expect("value index");
     let time_index = time_index_option.expect("time index");
-    let mut svg = Vec::new();
+    let mut svg = String::new();
     let mut x_data = Vec::new();
     let mut y_data = Vec::new();
 
@@ -266,7 +267,7 @@ pub fn plot_hrr(smv_path: &Path) {
 
     let title = "HRR".to_string();
     {
-        let root = SVGBackend::with_buffer(&mut svg, (640, 480)).into_drawing_area();
+        let root = SVGBackend::with_string(&mut svg, (640, 480)).into_drawing_area();
         root.fill(&WHITE).unwrap();
         let mut chart = ChartBuilder::on(&root)
             .caption(title, ("Arial", 16).into_font())
@@ -307,7 +308,7 @@ pub fn plot_hrr(smv_path: &Path) {
     }
     std::fs::create_dir_all("verification").expect("could not create dir");
     let mut file = File::create("verification/hrr.svg").expect("Could not create file");
-    file.write_all(&svg).expect("write failed");
+    file.write_all(&svg.as_bytes()).expect("write failed");
 }
 
 // createHRRPlots :: FilePath -> IO [FilePath]
@@ -530,6 +531,117 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     open_browser(&chart_page_path);
     Ok(())
 }
+
+pub fn compare(vector_name: String, smv_path_a: PathBuf, smv_path_b: PathBuf) {
+    let dir = "Charts";
+    println!("comparing: {:?} and {:?}", smv_path_a, smv_path_b);
+    let vector_a = {
+        let smv_path = smv_path_a;
+        let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
+        let mut charts: Charts = Charts::new();
+        let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
+        let mut vector = None;
+        for csvf in outputs.smv.csvfs.iter() {
+            println!("csvf: {:?}", csvf);
+
+            let mut csv_file_path = PathBuf::new();
+            csv_file_path.push(smv_dir.clone());
+            csv_file_path.push(csvf.filename.clone());
+            println!("about to get data");
+            let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path).unwrap();
+
+
+            for dv in csv_data.default_vecs() {
+                if dv.name == vector_name {
+                    vector = Some(dv);
+                    break;
+                }
+            }
+            if vector.is_some() {
+                break;
+            }
+        }
+        vector.unwrap()
+    };
+    let vector_b = {
+        let smv_path = smv_path_b;
+        let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
+        let mut charts: Charts = Charts::new();
+        let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
+        let mut vector = None;
+        for csvf in outputs.smv.csvfs.iter() {
+            println!("csvf: {:?}", csvf);
+
+            let mut csv_file_path = PathBuf::new();
+            csv_file_path.push(smv_dir.clone());
+            csv_file_path.push(csvf.filename.clone());
+            println!("about to get data");
+            let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path).unwrap();
+
+
+            for dv in csv_data.default_vecs() {
+                if dv.name == vector_name {
+                    vector = Some(dv);
+                    break;
+                }
+            }
+            if vector.is_some() {
+                break;
+            }
+        }
+        vector.unwrap()
+    };
+    let mut chart_page_path = PathBuf::from(".");
+    chart_page_path.push(format!("Comparison-{}.html", vector_name));
+    println!("about to create chart page");
+    let mut charts = Charts {
+        run_chart_path: None,
+        various: Vec::new(),
+    };
+    plot_multiple(&PathBuf::from("."), format!("Comparison-{}", vector_name), ".", &mut charts, vec![vector_a, vector_b]);
+    create_chart_page(&chart_page_path, charts);
+    #[cfg(windows)]
+    open_browser(&chart_page_path);
+    // Ok(())
+}
+
+
+fn plot_multiple(smv_dir: &Path, chart_name: String, dir: &str, charts: &mut Charts, dvs: Vec<DataVector<SmvValue>>) {
+    let mut path = PathBuf::from(smv_dir.clone());
+    path.push(dir);
+    std::fs::create_dir_all(&path).unwrap();
+    // Mangle the filenames to ensure there are no forbidden windows
+    // names.
+    let f_name: Cow<String> = mangle(&chart_name);
+    path.push(format!("{}.png", f_name));
+    let cleaned_vecs: Vec<DataVector<f64>> = dvs.into_iter().map(clean_f64_vec).collect();
+    plot_dv(cleaned_vecs.iter().map(|x|x).collect(), &path);
+    charts.various.push(ChartResult { path: path.clone() });
+}
+
+fn clean_f64_vec(dv: DataVector<SmvValue>) -> DataVector<f64> {
+    let new_values: Vec<Point<f64>> = dv.values.into_iter().map(|point| {
+        let new_y = match point.y {
+            SmvValue::Float(f) => {
+                f
+            },
+            _ => panic!("not float"),
+        };
+        Point {
+            x: point.x,
+            y: new_y,
+        }
+    }).collect();
+    DataVector {
+        name: dv.name,
+        values: new_values,
+        x_name: dv.x_name,
+        y_name: dv.y_name,
+        x_units: dv.x_units,
+        y_units: dv.y_units,
+    }
+}
+
 
 fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, dv: DataVector<SmvValue>) {
     let mut path = PathBuf::from(smv_dir.clone());
