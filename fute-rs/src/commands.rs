@@ -667,10 +667,11 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64>>, path: &Path) {
     let y_min = if y_min < 0.0 { y_min } else { 0.0 };
     // let y_max = if y_max > 1.0 { y_min } else { 1.0 };
     let x_range = x_min..(x_max + x_max * 0.2);
-    let y_range = if y_max - y_min == 0.0 {
+    let y_diff = y_max - y_min;
+    let y_range = if y_diff == 0.0 {
         (y_max - 0.5)..(y_max + 0.5)
     } else {
-        (y_min - y_min.abs() * 0.2)..(y_max + y_max.abs() * 0.2)
+        (y_min - y_diff.abs() * 0.2)..(y_max + y_diff.abs() * 0.2)
     };
     let colors = vec![(62, 43, 88), (239, 121, 93), (255, 0, 0)]
         .into_iter()
