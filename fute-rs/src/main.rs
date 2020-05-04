@@ -96,16 +96,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("The value we will compare."),
                 )
                 .arg(
-                    Arg::with_name("SMV-FILE-A")
-                        .required(true)
-                        .help("The first smv file to compare."),
+                    Arg::with_name("SMV-FILES")
+                    .required(true)
+                    .min_values(1)
+                    .help("Path to SMV files."),
                 )
-                .arg(
-                    Arg::with_name("SMV-FILE-B")
-                        .required(true)
-                        .help("The second smv file to compare."),
-                )
-                .about("Compare data vectors from two different simulations"),
+                .about("Compare data vectors from multiple different simulations"),
         )
         .subcommand(
             SubCommand::with_name("new-rev")
@@ -185,17 +181,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let vector_name = compare_matches
                 .value_of("ITEM")
                 .expect("Invalid arguments").to_string();
-        let smv_path_a = PathBuf::from(
+        let smv_paths: Vec<PathBuf> =
             compare_matches
-                .value_of("SMV-FILE-A")
-                .expect("Invalid arguments"),
-        );
-        let smv_path_b = PathBuf::from(
-            compare_matches
-                .value_of("SMV-FILE-B")
-                .expect("Invalid arguments"),
-        );
-        commands::compare(vector_name, smv_path_a, smv_path_b);
+                .values_of("SMV-FILES")
+                .expect("Invalid arguments").into_iter().map(|path| PathBuf::from(path)).collect();
+        commands::compare(vector_name, smv_paths);
     } else if let Some(_show_hrr_matches) = matches.subcommand_matches("show-hrr") {
     } else if let Some(peak_hrr_matches) = matches.subcommand_matches("peak-hrr") {
         let fds_path = PathBuf::from(
