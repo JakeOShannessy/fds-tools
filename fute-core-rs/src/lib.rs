@@ -3,13 +3,11 @@ extern crate nom;
 pub mod csv_parser;
 pub mod new_rev;
 pub mod out_parser;
+pub mod rename;
 mod slice_parser;
 mod smv_parser;
-pub mod rename;
 mod verification_tests;
-
-use std::io::Read;
-
+use arrayvec::ArrayString;
 use csv_parser::{CsvDataBlock, SmvValue};
 use data_vector::DataVector;
 pub use fds_input_parser::decode;
@@ -20,9 +18,68 @@ pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
 use smv_parser::SMVFile;
 use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 const READ_BUFFER_SIZE: usize = 8192;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Chid(ArrayString<[u8; 50]>);
+
+impl std::fmt::Display for Chid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum ParseChidError {
+    InvalidChar { position: usize, character: char },
+    TooLong,
+}
+
+impl std::fmt::Display for ParseChidError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::InvalidChar {
+                position,
+                character,
+            } => write!(
+                f,
+                "Invalid character {} at position {}",
+                character, position
+            ),
+            Self::TooLong => write!(f, "CHID too long"),
+        }
+    }
+}
+
+impl std::error::Error for ParseChidError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            Self::InvalidChar { .. } => None,
+            Self::TooLong => None,
+        }
+    }
+}
+
+impl FromStr for Chid {
+    type Err = ParseChidError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let array_string = ArrayString::<[_; 50]>::from(s).unwrap();
+        // Check that there are no invalid characters.
+        match array_string.find(|c: char| c == '.' || c == ' ') {
+            Some(position) => return Err(ParseChidError::InvalidChar{
+                position,
+                character: array_string.chars().nth(position).unwrap(),
+            }),
+            None => (),
+        }
+        Ok(Chid(array_string))
+    }
+}
 
 pub struct Outputs {
     pub smv_path: PathBuf,
@@ -234,5 +291,10 @@ mod tests {
     #[test]
     fn read_buffered_slice() {
         read_slice_file().unwrap();
+    }
+
+    #[test]
+    fn parse_chid() {
+        assert_eq!(Err(ParseChidError::TooLong), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>())
     }
 }

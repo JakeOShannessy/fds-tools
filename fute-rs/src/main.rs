@@ -198,7 +198,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(rename_matches) = matches.subcommand_matches("rename") {
         let path = PathBuf::from(rename_matches.value_of("PATH").unwrap());
         let new_chid = rename_matches.value_of("NEW-CHID").unwrap();
-        fute_core::rename::rename_simulation(&path, new_chid);
+        fute_core::rename::rename_simulation(&path, new_chid).unwrap();
     } else if let Some(new_rev_matches) = matches.subcommand_matches("new-rev") {
         let dir_path = PathBuf::from(new_rev_matches.value_of("DIR").unwrap());
         fute_core::new_rev::create_new_rev(&dir_path);
