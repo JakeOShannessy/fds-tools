@@ -512,14 +512,14 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
                 Some(mut run_vec) => {
                     // panic!("x_name: {:?}, {:?}", run_vec.x_name, run_vec.y_name);
                     run_vec.name = "Run Chart".to_string();
-                    plot(&smv_dir, dir, &mut charts, outputs.smv.chid.clone(), run_vec)
+                    plot(&smv_dir, dir, &mut charts, outputs.smv.chid.to_string().clone(), run_vec)
                 }
                 None => panic!("could not make run chart"),
             }
         }
 
         for dv in csv_data.default_vecs() {
-            plot(&smv_dir, dir, &mut charts, outputs.smv.chid.clone(), dv);
+            plot(&smv_dir, dir, &mut charts, outputs.smv.chid.to_string().clone(), dv);
         }
     }
     let mut chart_page_path = PathBuf::from(smv_dir);
@@ -552,7 +552,7 @@ pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
 fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVector<SmvValue> {
     let outputs = fute_core::Outputs::new(smv_path);
     let chid = outputs.smv.chid.clone();
-    let mut charts: Charts = Charts::new();
+    let charts: Charts = Charts::new();
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     let mut vector = None;
     for csvf in outputs.smv.csvfs.iter() {
@@ -567,7 +567,7 @@ fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVect
 
         for mut dv in csv_data.default_vecs() {
             if dv.name == vector_name {
-                dv.name = chid.clone();
+                dv.name = chid.to_string();
                 vector = Some(dv);
                 break;
             }

@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+use crate::Chid;
 use nom::error::ErrorKind;
 use nom::error::ParseError;
 use nom::lib::std::ops::{Range, RangeFrom, RangeTo};
@@ -24,7 +25,7 @@ use version_compare::version::Version;
 #[derive(Clone, Debug, PartialEq)]
 pub struct SMVFile {
     pub title: String,
-    pub chid: String,
+    pub chid: Chid,
     pub csvfs: Vec<CSVEntry>,
     // , fds_version    : Version
     // , nMeshes       : u64
@@ -98,7 +99,7 @@ impl Into<SMVFile> for RawSMVFile {
     fn into(self) -> SMVFile {
         SMVFile {
             title: self.title.unwrap(),
-            chid: self.chid.unwrap(),
+            chid: self.chid.unwrap().parse().unwrap(),
             csvfs: self.csvfs,
         }
     }
@@ -1876,7 +1877,7 @@ mod tests {
             .expect("smv parsing failed")
             .1;
         assert_eq!(result.title, "Single Couch Test Case".to_string());
-        assert_eq!(result.chid, "room_fire".to_string());
+        assert_eq!(result.chid.as_str(), "room_fire");
     }
 
     #[test]
