@@ -27,6 +27,12 @@ const READ_BUFFER_SIZE: usize = 8192;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Chid(ArrayString<[u8; 50]>);
 
+impl Chid {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 impl std::fmt::Display for Chid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
@@ -68,7 +74,10 @@ impl FromStr for Chid {
     type Err = ParseChidError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let array_string = ArrayString::<[_; 50]>::from(s).unwrap();
+        let array_string = match ArrayString::<[_; 50]>::from(s) {
+            Ok(s) => s,
+            Err(_) => return Err(ParseChidError::TooLong),
+        };
         // Check that there are no invalid characters.
         match array_string.find(|c: char| c == '.' || c == ' ') {
             Some(position) => return Err(ParseChidError::InvalidChar{
@@ -295,6 +304,11 @@ mod tests {
 
     #[test]
     fn parse_chid() {
-        assert_eq!(Err(ParseChidError::TooLong), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>())
+        assert_eq!(Err(ParseChidError::TooLong), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>());
+        assert_eq!("hello", "hello".parse::<Chid>().unwrap().as_str());
+        assert_eq!(Err(ParseChidError::InvalidChar {
+            position: 3,
+            character: '.',
+        }), "hel.lo".parse::<Chid>());
     }
 }

@@ -1,3 +1,4 @@
+use fute_core::Chid;
 use clap::{App, AppSettings, Arg, SubCommand, crate_version, crate_authors};
 use env_logger;
 use std::path::PathBuf;
@@ -197,7 +198,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(_verify_input_matches) = matches.subcommand_matches("verify-input") {
     } else if let Some(rename_matches) = matches.subcommand_matches("rename") {
         let path = PathBuf::from(rename_matches.value_of("PATH").unwrap());
-        let new_chid = rename_matches.value_of("NEW-CHID").unwrap();
+        let new_chid: Chid = rename_matches.value_of("NEW-CHID").unwrap().parse().unwrap();
         fute_core::rename::rename_simulation(&path, new_chid).unwrap();
     } else if let Some(new_rev_matches) = matches.subcommand_matches("new-rev") {
         let dir_path = PathBuf::from(new_rev_matches.value_of("DIR").unwrap());
