@@ -28,7 +28,9 @@ pub fn rename_simulation(path: &Path, new_chid: Chid) -> Result<(), Box<dyn std:
 fn rename_smv(smv_path: &Path, new_chid: Chid) -> Result<(), Box<dyn std::error::Error>> {
     // Rename all the references within the SMV file.
     rename_smv_internal(smv_path, new_chid)?;
-    // Rename all the files within the folder that matcTODO: we are just
+    // Rename all the files within the folder that match
+    //
+    // TODO: we are just
     // assuming that the .fds file is named appropriately. That is not
     // necessarily the case.
     let dir_name = smv_path.parent().expect("no parent");
@@ -46,6 +48,8 @@ fn rename_smv(smv_path: &Path, new_chid: Chid) -> Result<(), Box<dyn std::error:
             }
         }
     }
+    // Modify the CHID in the FDS file.
+
     Ok(())
 }
 

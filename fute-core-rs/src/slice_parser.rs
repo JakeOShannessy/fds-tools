@@ -1,3 +1,5 @@
+use std::io::Read;
+use std::io::BufReader;
 use nom::number::streaming::le_u32;
 use nom::{multi::many0, IResult};
 
@@ -29,6 +31,80 @@ pub struct Dimensions {
     pub j_max: u32,
     pub k_min: u32,
     pub k_max: u32,
+}
+
+
+#[derive(Debug)]
+pub struct SliceParser<R> {
+    reader: BufReader<R>,
+    pub header: SliceHeader,
+    pub buf: Vec<u8>,
+}
+
+impl<R: Read> SliceParser<R> {
+    pub fn new(mut input: R) -> Self {
+        let mut read_buffer: Vec<u8> = vec![0; 8000];
+    // parse_slice_file(&buf).unwrap();
+        // let read = input.read(&mut read_buffer).unwrap();
+        let (rem, header) = loop {
+            let read = input.read(&mut read_buffer).unwrap();
+            println!("read {} bytes", read);
+            match parse_slice_header(&read_buffer) {
+                Ok(header) => break header,
+                Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
+                Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
+                Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+            }
+            if read == 0 {
+                panic!("no header")
+            }
+        };
+        let mut buf = Vec::new();
+        buf.extend_from_slice(rem);
+        SliceParser {
+            reader: BufReader::new(input),
+            header: header,
+            buf,
+        }
+    }
+}
+
+impl<R: Read> Iterator for SliceParser<R> {
+    type Item = Frame;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (rem, frame) = loop {
+            let i_dim = self.header.dimensions.i_max - self.header.dimensions.i_min + 1;
+            let j_dim = self.header.dimensions.j_max - self.header.dimensions.j_min + 1;
+            let k_dim = self.header.dimensions.k_max - self.header.dimensions.k_min + 1;
+            // First we try and read a frame from what we have in the buffer.
+            match parse_data_set(i_dim, j_dim, k_dim, &self.buf) {
+                Ok(x) => {
+                    break x;
+                },
+                Err(nom::Err::Incomplete(n)) => {
+                    println!("Needed: {:?}", n);
+                    match n {
+                        nom::Needed::Size(n) => self.buf.reserve(n),
+                        _ => panic!("extra buffer size not known"),
+                    }
+                    let l = self.buf.len();
+                    let read = self.reader.read(&mut self.buf[l..]).unwrap();
+                    if read == 0 {
+                        panic!("no data frame")
+                    }
+                    println!("read {}", read);
+                },
+                Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
+                Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+            }
+        };
+        let mut new_buf = Vec::new();
+        new_buf.extend_from_slice(rem);
+        drop(rem);
+        self.buf = new_buf;
+        Some(frame)
+    }
 }
 
 pub fn parse_slice_file<'a, 'b>(i: &'b [u8]) -> IResult<&'b [u8], SliceFile> {
