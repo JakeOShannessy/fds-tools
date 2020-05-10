@@ -98,16 +98,13 @@ impl<R: Read> ReadOutParser<R> {
             }
 
             if line.starts_with("Simulation Start Time") {
-                println!("found start: {}", line);
                 for cap in self.sim_start_re.captures_iter(line) {
-                    println!("cap: {:?}", cap);
                     match cap.get(1) {
                         None => (),
                         Some(sim_start_string) => {
                             match sim_start_string.as_str().parse() {
                                 Err(_) => (),
                                 Ok(time) => {
-                                    println!("start time: {:?}", time);
                                     self.sim_start = Some(time)
                                 },
                             }

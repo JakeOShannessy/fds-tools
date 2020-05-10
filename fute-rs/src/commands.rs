@@ -531,6 +531,30 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+
+pub fn hrr_vector(smv_path: &Path) -> Result<DataVector<SmvValue>, Box<dyn std::error::Error>> {
+    let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
+    let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
+    for csvf in outputs.smv.csvfs.iter() {
+        if csvf.type_ != "hrr" {
+            break;
+        }
+
+        let mut csv_file_path = PathBuf::new();
+        csv_file_path.push(smv_dir.clone());
+        csv_file_path.push(csvf.filename.clone());
+        let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path)?;
+
+        for dv in csv_data.default_vecs() {
+            if dv.name == "HRR" {
+                return Ok(dv);
+            }
+        }
+    }
+    panic!("no HRR")
+}
+
+
 fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, dv: DataVector<SmvValue>) {
     let mut path = PathBuf::from(smv_dir.clone());
     path.push(dir);
