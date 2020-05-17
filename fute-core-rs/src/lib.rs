@@ -21,6 +21,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str::FromStr;
+use serde::{Serialize, Deserialize, de::{self, Visitor}, Serializer, Deserializer};
 
 const READ_BUFFER_SIZE: usize = 8192;
 
@@ -87,6 +88,42 @@ impl FromStr for Chid {
             None => (),
         }
         Ok(Chid(array_string))
+    }
+}
+
+
+impl Serialize for Chid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+struct ChidVisitor;
+
+impl<'de> Visitor<'de> for ChidVisitor {
+    type Value = Chid;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a run id beginning with \"scr-\"")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        value.parse().map_err(de::Error::custom)
+    }
+}
+
+impl<'de> Deserialize<'de> for Chid {
+    fn deserialize<D>(deserializer: D) -> Result<Chid, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ChidVisitor)
     }
 }
 
