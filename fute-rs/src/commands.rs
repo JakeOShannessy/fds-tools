@@ -53,10 +53,10 @@ pub fn count_cells(input_path: &Path) -> u64 {
     // putStrLn s
 }
 pub fn meshes(fds_path: &Path) {
-    use fute_core::FDSFileExt;
-    use prettytable::{color, Attr, Cell, Row, Table};
+    // use fute_core::FDSFileExt;
+    use prettytable::{Attr, Cell, Row, Table};
     // use fute_core::FDSFile;
-    use fute_core::parse_and_decode_fds_input_file;
+    // use fute_core::parse_and_decode_fds_input_file;
     use num_format::{Locale, ToFormattedString};
 
     let fds_file = parse_and_decode_fds_input_file(fds_path);
@@ -190,7 +190,7 @@ pub fn meshes(fds_path: &Path) {
 pub fn peak_hrr(fds_path: &Path) {
     use fute_core::FDSFileExt;
     // use fute_core::FDSFile;
-    use fute_core::parse_and_decode_fds_input_file;
+    // use fute_core::parse_and_decode_fds_input_file;
     let fds_file = parse_and_decode_fds_input_file(fds_path);
     let hrr: f64 = fds_file.burners().iter().map(|burner| burner.hrr).sum();
     println!("{:.2} kW/m²", hrr);
@@ -534,7 +534,7 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
 
 pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
-    let dir = "Charts";
+    // let dir = "Charts";
     // println!("comparing: {:?} and {:?}", smv_path_a, smv_path_b);
     let vectors: Vec<DataVector<SmvValue>> = smv_paths.into_iter().map(|smv_path| get_vector_for_comparison(vector_name.clone(), smv_path)).collect();
     let mut chart_page_path = PathBuf::from(".");
@@ -553,7 +553,7 @@ pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
 fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVector<SmvValue> {
     let outputs = fute_core::Outputs::new(smv_path);
     let chid = outputs.smv.chid.clone();
-    let charts: Charts = Charts::new();
+    // let charts: Charts = Charts::new();
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     let mut vector = None;
     for csvf in outputs.smv.csvfs.iter() {
@@ -650,7 +650,7 @@ fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVe
     let f_name: Cow<String> = mangle(&dv.name);
     path.push(format!("{}.png", f_name));
     match dv.values[0].y {
-        SmvValue::Float(f) => {
+        SmvValue::Float(_) => {
             let vec = dv
                 .values
                 .into_iter()
@@ -674,7 +674,7 @@ fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVe
             }
             charts.various.push(ChartResult { path: path.clone() })
         }
-        SmvValue::DateTime(f) => {
+        SmvValue::DateTime(_) => {
             let vec = dv
                 .values
                 .into_iter()
