@@ -434,6 +434,7 @@ dependencies = [
 name = "fute-core"
 version = "0.1.1"
 dependencies = [
+ "arrayvec 0.5.1",
  "chrono",
  "csv",
  "data-vector",
@@ -455,6 +456,7 @@ dependencies = [
  "data-vector",
  "env_logger",
  "fute-core",
+ "lazy_static",
  "log",
  "num-format",
  "plotters",

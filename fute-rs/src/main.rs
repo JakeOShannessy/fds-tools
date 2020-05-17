@@ -1,3 +1,4 @@
+use fute_core::Chid;
 use clap::{App, AppSettings, Arg, SubCommand, crate_version, crate_authors};
 use env_logger;
 use std::path::PathBuf;
@@ -75,7 +76,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .help("Path to FDS input file."),
                 ),
         )
-        .subcommand(SubCommand::with_name("rename").about("Rename a simulation"))
+        .subcommand(
+            SubCommand::with_name("rename")
+                .arg(
+                    Arg::with_name("PATH")
+                        .required(true)
+                        .help("Path to SMV file or directory."),
+                )
+                .arg(
+                    Arg::with_name("NEW-CHID")
+                        .required(true)
+                        .help("Thenew CHID to use."),
+                )
+                .about("Rename a simulation"),
+        )
+        .subcommand(
+            SubCommand::with_name("compare")
+                .arg(
+                    Arg::with_name("ITEM")
+                        .required(true)
+                        .help("The value we will compare."),
+                )
+                .arg(
+                    Arg::with_name("SMV-FILES")
+                    .required(true)
+                    .min_values(1)
+                    .help("Path to SMV files."),
+                )
+                .about("Compare data vectors from multiple different simulations"),
+        )
         .subcommand(
             SubCommand::with_name("new-rev")
                 .arg(
@@ -159,6 +188,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .expect("Invalid arguments"),
         );
         commands::plot_hrr(&smv_path)
+    } else if let Some(compare_matches) = matches.subcommand_matches("compare") {
+        let vector_name = compare_matches
+                .value_of("ITEM")
+                .expect("Invalid arguments").to_string();
+        let smv_paths: Vec<PathBuf> =
+            compare_matches
+                .values_of("SMV-FILES")
+                .expect("Invalid arguments").into_iter().map(|path| PathBuf::from(path)).collect();
+        commands::compare(vector_name, smv_paths);
     } else if let Some(_show_hrr_matches) = matches.subcommand_matches("show-hrr") {
     } else if let Some(peak_hrr_matches) = matches.subcommand_matches("peak-hrr") {
         let fds_path = PathBuf::from(
@@ -168,7 +206,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         commands::peak_hrr(&fds_path)
     } else if let Some(_verify_input_matches) = matches.subcommand_matches("verify-input") {
-    } else if let Some(_rename_matches) = matches.subcommand_matches("rename") {
+    } else if let Some(rename_matches) = matches.subcommand_matches("rename") {
+        let path = PathBuf::from(rename_matches.value_of("PATH").unwrap());
+        let new_chid: Chid = rename_matches.value_of("NEW-CHID").unwrap().parse().unwrap();
+        fute_core::rename::rename_simulation(&path, new_chid).unwrap();
     } else if let Some(new_rev_matches) = matches.subcommand_matches("new-rev") {
         let dir_path = PathBuf::from(new_rev_matches.value_of("DIR").unwrap());
         fute_core::new_rev::create_new_rev(&dir_path);

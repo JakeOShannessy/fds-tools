@@ -3,12 +3,11 @@ extern crate nom;
 pub mod csv_parser;
 pub mod new_rev;
 pub mod out_parser;
+pub mod rename;
 mod slice_parser;
 mod smv_parser;
 mod verification_tests;
-
-use std::io::Read;
-
+use arrayvec::ArrayString;
 use csv_parser::{CsvDataBlock, SmvValue};
 use data_vector::DataVector;
 pub use fds_input_parser::decode;
@@ -19,9 +18,136 @@ pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
 use smv_parser::SMVFile;
 use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 const READ_BUFFER_SIZE: usize = 8192;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Chid(ArrayString<[u8; 50]>);
+
+impl Chid {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl std::fmt::Display for Chid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum ParseChidError {
+    InvalidChar { position: usize, character: char },
+    TooLong,
+}
+
+impl std::fmt::Display for ParseChidError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::InvalidChar {
+                position,
+                character,
+            } => write!(
+                f,
+                "Invalid character {} at position {}",
+                character, position
+            ),
+            Self::TooLong => write!(f, "CHID too long"),
+        }
+    }
+}
+
+impl std::error::Error for ParseChidError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            Self::InvalidChar { .. } => None,
+            Self::TooLong => None,
+        }
+    }
+}
+
+impl FromStr for Chid {
+    type Err = ParseChidError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let array_string = match ArrayString::<[_; 50]>::from(s) {
+            Ok(s) => s,
+            Err(_) => return Err(ParseChidError::TooLong),
+        };
+        // Check that there are no invalid characters.
+        match array_string.find(|c: char| c == '.' || c == ' ') {
+            Some(position) => return Err(ParseChidError::InvalidChar{
+                position,
+                character: array_string.chars().nth(position).unwrap(),
+            }),
+            None => (),
+        }
+        Ok(Chid(array_string))
+    }
+}
+
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Title(ArrayString<[u8; 256]>);
+
+impl Title {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl std::fmt::Display for Title {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum ParseTitleError {
+    // InvalidChar { position: usize, character: char },
+    TooLong,
+}
+
+impl std::fmt::Display for ParseTitleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            // Self::InvalidChar {
+            //     position,
+            //     character,
+            // } => write!(
+            //     f,
+            //     "Invalid character {} at position {}",
+            //     character, position
+            // ),
+            Self::TooLong => write!(f, "Title too long"),
+        }
+    }
+}
+
+impl std::error::Error for ParseTitleError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match *self {
+            // Self::InvalidChar { .. } => None,
+            Self::TooLong => None,
+        }
+    }
+}
+
+impl FromStr for Title {
+    type Err = ParseTitleError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let array_string = match ArrayString::<[_; 256]>::from(s) {
+            Ok(s) => s,
+            Err(_) => return Err(ParseTitleError::TooLong),
+        };
+        Ok(Title(array_string))
+    }
+}
 
 pub struct Outputs {
     pub smv_path: PathBuf,
@@ -92,25 +218,25 @@ fn take_f64_vec(vec: DataVector<SmvValue>) -> Result<DataVector<f64>, Box<dyn st
 }
 
 fn read_slice_file() -> std::io::Result<()> {
-    let mut file = std::fs::File::open("src/room_fire_01.sf")?;
-    let mut buf = Vec::new();
-    file.read_to_end(&mut buf);
-    // let mut buf_reader = std::io::BufReader::new(file);
-    // let mut read_buffer: Vec<u8> = vec![0; READ_BUFFER_SIZE];
-    parse_slice_file(&buf).unwrap();
-    // loop {
-    //     let read = file.read(&mut read_buffer)?;
-    //     println!("read {} bytes", read);
-    //     match parse_slice_file(&read_buffer) {
-    //         Ok(slice_file) => break,
-    //         Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
-    //         Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
-    //         Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
-    //     }
-    //     if read == 0 {
-    //         break;
-    //     }
-    // }
+    let file = std::fs::File::open("src/room_fire_01.sf")?;
+    // let mut buf = Vec::new();
+    // file.read_to_end(&mut buf)?;
+    let mut buf_reader = std::io::BufReader::new(file);
+    let mut read_buffer: Vec<u8> = vec![0; READ_BUFFER_SIZE];
+    // parse_slice_file(&buf).unwrap();
+    loop {
+        let read = buf_reader.read(&mut read_buffer)?;
+        println!("read {} bytes", read);
+        match parse_slice_file(&read_buffer) {
+            Ok(slice_file) => break,
+            Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
+            Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
+            Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+        }
+        if read == 0 {
+            break;
+        }
+    }
     // assert_eq!(contents, "Hello, world!");
     Ok(())
 }
@@ -233,5 +359,25 @@ mod tests {
     #[test]
     fn read_buffered_slice() {
         read_slice_file().unwrap();
+    }
+
+    #[test]
+    fn read_buffered_header() {
+        let file = std::fs::File::open("src/room_fire_01.sf").unwrap();
+        let mut sp = slice_parser::SliceParser::new(file);
+        println!("{:?}", sp.header);
+        println!("{:?}", sp.next());
+        println!("{:?}", sp.next());
+        // read_slice_file().unwrap();
+    }
+
+    #[test]
+    fn parse_chid() {
+        assert_eq!(Err(ParseChidError::TooLong), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>());
+        assert_eq!("hello", "hello".parse::<Chid>().unwrap().as_str());
+        assert_eq!(Err(ParseChidError::InvalidChar {
+            position: 3,
+            character: '.',
+        }), "hel.lo".parse::<Chid>());
     }
 }
