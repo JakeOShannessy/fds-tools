@@ -48,14 +48,17 @@ pub struct RevName {
     pub rev_width: usize,
     /// The revision number.
     pub rev_num: u64,
+    /// The notes trailing the CHID.
+    pub tail_string: String,
 }
 
 impl RevName {
-    pub fn new(name: String, rev_width: usize, rev_num: u64) -> Self {
+    pub fn new(name: String, rev_width: usize, rev_num: u64, tail_string: String) -> Self {
         Self {
             name: name,
             rev_width,
             rev_num,
+            tail_string,
         }
     }
 
@@ -65,10 +68,11 @@ impl RevName {
 
     pub fn to_dir_name(&self) -> String {
         format!(
-            "{}{:0width$}",
+            "{}{:0width$}{}",
             self.name,
             self.rev_num,
-            width = self.rev_width
+            self.tail_string,
+            width = self.rev_width,
         )
     }
 }
@@ -79,9 +83,9 @@ impl RevName {
 /// and padding must be preserved.
 pub fn parse_dir_name(dir_name: &str) -> Option<RevName> {
     use regex::Regex;
-    let re = Regex::new(r"^(.*?_R??)(0?)(\d*)$").unwrap();
+    let re = Regex::new(r"^(.*_R)(0?)(\d*)(.*)$").unwrap();
     let captures = re.captures(dir_name)?;
-    if captures.len() != 4 {
+    if captures.len() != 5 {
         None
     } else {
         let name = &captures[1];
@@ -89,11 +93,13 @@ pub fn parse_dir_name(dir_name: &str) -> Option<RevName> {
         let rev_num_str: &str = &captures[3];
         let rev_width: usize = zero_padding.len() + rev_num_str.len();
         let rev_num: u64 = rev_num_str.parse().ok()?;
+        let tail_str: &str = &captures[4];
 
         Some(RevName {
             name: name.to_string(),
             rev_width,
             rev_num,
+            tail_string: tail_str.to_string(),
         })
     }
 }
@@ -106,11 +112,11 @@ mod tests {
     fn basic_example() {
         assert_eq!(
             parse_dir_name("1234_M1_R01"),
-            Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64))
+            Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64, "".to_string()))
         );
         assert_eq!(
             parse_dir_name("1234_M1_R1"),
-            Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64))
+            Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64, "".to_string()))
         );
         assert_eq!(parse_dir_name("1234_M1R1"), None);
         assert_eq!(parse_dir_name("1234_M1_R1x"), None);

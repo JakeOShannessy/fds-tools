@@ -11,7 +11,7 @@ use std::{
 pub struct RunData {
     pub start_time: Option<f64>,
     pub end_time: Option<f64>,
-    pub time_steps: DataVector<NaiveDateTime>,
+    pub time_steps: DataVector<f64,NaiveDateTime>,
 }
 
 impl RunData {
@@ -44,7 +44,7 @@ pub struct ReadOutParser<R> {
     step_line_re: Regex,
     sim_start_re: Regex,
     sim_end_re: Regex,
-    time_step_vec: DataVector<NaiveDateTime>,
+    time_step_vec: DataVector<f64,NaiveDateTime>,
 }
 
 impl<R: Read> ReadOutParser<R> {
@@ -71,14 +71,14 @@ impl<R: Read> ReadOutParser<R> {
             sim_end_re,
             sim_start: None,
             sim_end: None,
-            time_step_vec: DataVector {
-                name: "Run Time".to_string(),
-                x_name: "Simulation Time".to_string(),
-                y_name: "Wall Time".to_string(),
-                x_units: "s".to_string(),
-                y_units: "datetime".to_string(),
-                values: Vec::new(),
-            },
+            time_step_vec: DataVector::new(
+               "Run Time".to_string(),
+               "Simulation Time".to_string(),
+               "Wall Time".to_string(),
+               "s".to_string(),
+               "datetime".to_string(),
+               Vec::new(),
+            ),
         }
     }
 
@@ -201,7 +201,7 @@ impl<R: Read> ReadOutParser<R> {
                                 total_time,
                             };
                             self.time_step_entry = None;
-                            self.time_step_vec.values.push(data_vector::Point {
+                            self.time_step_vec.insert(data_vector::Point {
                                 x: r.total_time,
                                 y: r.datetime,
                             })

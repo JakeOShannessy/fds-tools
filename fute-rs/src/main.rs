@@ -76,6 +76,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
         )
         .subcommand(
+            SubCommand::with_name("verify")
+                .about("Verify both the input and the output")
+                .arg(
+                    Arg::with_name("SMV-FILE")
+                        .required(true)
+                        .help("Path to an SMV file."),
+                ),
+        )
+        .subcommand(
             SubCommand::with_name("rename")
                 .arg(
                     Arg::with_name("PATH")
@@ -195,7 +204,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .expect("Invalid arguments"),
         );
         commands::peak_hrr(&fds_path)
-    } else if let Some(_verify_input_matches) = matches.subcommand_matches("verify-input") {
+    // } else if let Some(opts) = matches.subcommand_matches("verify-input") {
+    //     let fds_path = PathBuf::from(opts.value_of("FDS-FILE").unwrap());
+    //     commands::verify_input(&fds_path);
+    } else if let Some(opts) = matches.subcommand_matches("verify") {
+        let smv_path = PathBuf::from(opts.value_of("SMV-FILE").unwrap());
+        commands::verify(&smv_path);
     } else if let Some(rename_matches) = matches.subcommand_matches("rename") {
         let path = PathBuf::from(rename_matches.value_of("PATH").unwrap());
         let new_chid: Chid = rename_matches.value_of("NEW-CHID").unwrap().parse().unwrap();

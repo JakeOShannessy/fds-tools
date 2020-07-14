@@ -23,7 +23,7 @@ impl std::fmt::Debug for GetCsvDataError {
 
 impl std::error::Error for GetCsvDataError {}
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialOrd, PartialEq)]
 pub enum SmvValue {
     Float(f64),
     DateTime(DateTime<Utc>),
@@ -91,22 +91,22 @@ impl CsvDataBlock {
     }
     /// Build data vectors from two vectors. Only takes the first vector if
     /// there are duplicates. Return None if no such vectors exist.
-    pub fn make_data_vector(&self, x_name: &str, y_name: &str) -> Option<DataVector<SmvValue>> {
+    pub fn make_data_vector(&self, x_name: &str, y_name: &str) -> Option<DataVector<f64,SmvValue>> {
         // First find the index of the first vector.
         let x_index = self.names.iter().position(|x| x == x_name)?;
         let y_index = self.names.iter().position(|x| x == y_name)?;
-        let mut dv: DataVector<SmvValue> = DataVector {
-            name: y_name.to_string(),
-            x_name: x_name.to_string(),
-            y_name: y_name.to_string(),
-            x_units: self.units.get(x_index).cloned()?.to_string(),
-            y_units: self.units.get(y_index).cloned()?.to_string(),
-            values: Vec::with_capacity(self.vec_len()),
-        };
+        let mut dv: DataVector<f64,SmvValue> = DataVector::new(
+            y_name.to_string(),
+            x_name.to_string(),
+            y_name.to_string(),
+            self.units.get(x_index).cloned()?.to_string(),
+            self.units.get(y_index).cloned()?.to_string(),
+            Vec::with_capacity(self.vec_len()),
+        );
         let x_vec = self.values.get(x_index)?.iter();
         let y_vec = self.values.get(y_index)?.iter();
         for (x_val, y_val) in x_vec.zip(y_vec) {
-            dv.values.push(Point {
+            dv.insert(Point {
                 x: x_val.take_float(),
                 y: y_val.clone(),
             });
@@ -114,7 +114,7 @@ impl CsvDataBlock {
         Some(dv)
     }
 
-    pub fn default_vecs(&self) -> Vec<DataVector<SmvValue>> {
+    pub fn default_vecs(&self) -> Vec<DataVector<f64,SmvValue>> {
         let mut names = self.names.iter();
         // The first name is our default x name.
         let x_name: &String = names.next().unwrap();
@@ -188,7 +188,7 @@ impl CsvDataBlock {
     }
 }
 
-impl SmvVec for DataVector<f64> {
+impl SmvVec for DataVector<f64,f64> {
     fn name(&self) -> &String {
         &self.name
     }
@@ -227,14 +227,14 @@ impl SmvVec for DataVector<f64> {
             _ => match y_string.parse::<f64>() {
                 Err(_) => panic!("invalid float"),
                 Ok(value) => {
-                    self.values.push(Point { x: x, y: value });
+                    self.insert(Point { x: x, y: value });
                 }
             },
         }
     }
 }
 
-impl SmvVec for DataVector<DateTime<Utc>> {
+impl SmvVec for DataVector<f64,DateTime<Utc>> {
     fn name(&self) -> &String {
         &self.name
     }
@@ -270,7 +270,7 @@ impl SmvVec for DataVector<DateTime<Utc>> {
             Err(e) => panic!("invalid datetime for \"{}\": {}", y_string, e),
             Ok(value) => {
                 println!("adding: {:?}", y_string);
-                self.values.push(Point { x: x, y: value });
+                self.insert(Point { x: x, y: value });
             }
         }
     }
@@ -317,38 +317,38 @@ pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std
                         .unwrap()
                         .ends_with("_steps.csv")
                     {
-                        let vec: DataVector<DateTime<Utc>> = DataVector {
-                            name: "unknown".to_string(),
-                            x_units: x_units.clone(),
-                            x_name: "unknown".to_string(),
-                            y_units: units,
-                            y_name: "unknown".to_string(),
-                            values: Vec::new(),
-                        };
+                        let vec: DataVector<f64,DateTime<Utc>> = DataVector::new(
+                            "unknown".to_string(),
+                            x_units.clone(),
+                            "unknown".to_string(),
+                            units,
+                            "unknown".to_string(),
+                            Vec::new(),
+                        );
                         let dv = Box::new(vec);
                         data_vectors.push(dv);
                     } else {
-                        let vec: DataVector<f64> = DataVector {
-                            name: "unknown".to_string(),
-                            x_units: x_units.clone(),
-                            x_name: "unknown".to_string(),
-                            y_units: units,
-                            y_name: "unknown".to_string(),
-                            values: Vec::new(),
-                        };
+                        let vec: DataVector<f64,f64> = DataVector::new(
+                            "unknown".to_string(),
+                            x_units.clone(),
+                            "unknown".to_string(),
+                            units,
+                            "unknown".to_string(),
+                            Vec::new(),
+                        );
                         let dv = Box::new(vec);
                         data_vectors.push(dv);
                     }
                 }
                 _ => {
-                    let vec: DataVector<f64> = DataVector {
-                        name: "unknown".to_string(),
-                        x_units: x_units.clone(),
-                        x_name: "unknown".to_string(),
-                        y_units: units,
-                        y_name: "unknown".to_string(),
-                        values: Vec::new(),
-                    };
+                    let vec: DataVector<f64,f64> = DataVector::new(
+                        "unknown".to_string(),
+                        x_units.clone(),
+                        "unknown".to_string(),
+                        units,
+                        "unknown".to_string(),
+                        Vec::new(),
+                    );
                     let dv = Box::new(vec);
                     data_vectors.push(dv);
                 }

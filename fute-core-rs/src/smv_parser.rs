@@ -27,6 +27,7 @@ use version_compare::version::Version;
 pub struct SMVFile {
     pub title: Title,
     pub chid: Chid,
+    pub input_filename: String,
     pub csvfs: Vec<CSVEntry>,
     // , fds_version    : Version
     // , nMeshes       : u64
@@ -46,6 +47,7 @@ pub struct RawSMVFile {
     title: Option<String>,
     chid: Option<String>,
     csvfs: Vec<CSVEntry>,
+    inpfs: Vec<String>,
     // , fds_version    : Version
     // , nMeshes       : u64
     // , surfs         : Vec<SMVSurf>
@@ -80,6 +82,10 @@ impl RawSMVFile {
                 let (_i, s) = parse_csvf(&block.content).unwrap();
                 self.csvfs.push(s);
             }
+            "INPF" => {
+                let (_i, s) = parse_string_block(&block.content).unwrap();
+                self.inpfs.push(s);
+            }
             _ => self.unknown_blocks.push(block),
         }
     }
@@ -91,6 +97,7 @@ impl Default for RawSMVFile {
             title: Default::default(),
             chid: Default::default(),
             csvfs: Default::default(),
+            inpfs: Default::default(),
             unknown_blocks: Default::default(),
         }
     }
@@ -102,6 +109,7 @@ impl Into<SMVFile> for RawSMVFile {
             title: self.title.unwrap().parse().unwrap(),
             chid: self.chid.unwrap().parse().unwrap(),
             csvfs: self.csvfs,
+            input_filename: self.inpfs.get(0).unwrap().clone(),
         }
     }
 }
@@ -456,6 +464,17 @@ fn parse_csvf(i: &str) -> IResult<&str, CSVEntry> {
             type_: type_.to_string(),
             filename: filename.to_string(),
         },
+    ))
+}
+
+fn parse_string_block(i: &str) -> IResult<&str, String> {
+    let (i, _) = char(' ')(i)?;
+    let (i, string) = not_line_ending(i)?;
+    let (i, _) = line_ending(i)?;
+    let (i, _) = line_ending(i)?;
+    Ok((
+        i,
+        string.to_string(),
     ))
 }
 

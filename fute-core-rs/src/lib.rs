@@ -16,6 +16,7 @@ pub use fds_input_parser::parse_and_decode_fds_input_file;
 pub use fds_input_parser::FDSFile;
 pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
+pub use verification_tests::verify;
 use smv_parser::SMVFile;
 use std::fs::File;
 use std::io::Read;
@@ -108,21 +109,12 @@ impl std::fmt::Display for Title {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ParseTitleError {
-    // InvalidChar { position: usize, character: char },
     TooLong,
 }
 
 impl std::fmt::Display for ParseTitleError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            // Self::InvalidChar {
-            //     position,
-            //     character,
-            // } => write!(
-            //     f,
-            //     "Invalid character {} at position {}",
-            //     character, position
-            // ),
             Self::TooLong => write!(f, "Title too long"),
         }
     }
@@ -131,7 +123,6 @@ impl std::fmt::Display for ParseTitleError {
 impl std::error::Error for ParseTitleError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match *self {
-            // Self::InvalidChar { .. } => None,
             Self::TooLong => None,
         }
     }
@@ -156,7 +147,7 @@ pub struct Outputs {
 
 impl Outputs {
     pub fn new(smv_path: PathBuf) -> Self {
-        let mut file = File::open(&smv_path).expect("Could not open smv file");
+        let mut file = File::open(&smv_path).expect(&format!("Could not open smv file: {:?}", smv_path));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .expect("Could not read smv file");
@@ -168,7 +159,7 @@ impl Outputs {
         &mut self,
         csv_type: String,
         vec_name: String,
-    ) -> Result<DataVector<SmvValue>, Box<dyn std::error::Error>> {
+    ) -> Result<DataVector<f64,SmvValue>, Box<dyn std::error::Error>> {
         // TODO: add caching
         let hrr_csvf = self
             .smv
@@ -191,28 +182,30 @@ impl Outputs {
         &mut self,
         csv_type: String,
         vec_name: String,
-    ) -> Result<DataVector<f64>, Box<dyn std::error::Error>> {
+    ) -> Result<DataVector<f64,f64>, Box<dyn std::error::Error>> {
         let vec = self.get_csv_vec(csv_type, vec_name)?;
         Ok(take_f64_vec(vec)?)
     }
 }
 
-fn take_f64_vec(vec: DataVector<SmvValue>) -> Result<DataVector<f64>, Box<dyn std::error::Error>> {
-    let mut new_dv = DataVector {
-        name: vec.name,
-        x_name: vec.x_name,
-        y_name: vec.y_name,
-        x_units: vec.x_units,
-        y_units: vec.y_units,
-        values: Vec::with_capacity(vec.values.len()),
-    };
-    for value in vec.values.into_iter() {
+fn take_f64_vec(vec: DataVector<f64,SmvValue>) -> Result<DataVector<f64,f64>, Box<dyn std::error::Error>> {
+    let n = vec.values().len();
+    let values = vec.values();
+    let mut new_dv = DataVector::new(
+        vec.name.clone(),
+        vec.x_name.clone(),
+        vec.y_name.clone(),
+        vec.x_units.clone(),
+        vec.y_units.clone(),
+        Vec::with_capacity(n),
+    );
+    for value in values.into_iter() {
         let x = value.x;
         let y = match value.y {
             SmvValue::Float(y) => y,
             _ => return Err("not float")?,
         };
-        new_dv.values.push(data_vector::Point { x, y });
+        new_dv.insert(data_vector::Point { x, y });
     }
     Ok(new_dv)
 }

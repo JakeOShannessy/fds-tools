@@ -1,6 +1,33 @@
 use fds_input_parser::decode::*;
 use fds_input_parser::xb::HasXB;
 use fds_input_parser::FDSFile;
+use std::{io::Read, path::{PathBuf, Path}};
+use crate::parse_smv_file;
+
+/// Verify both the input and the output and perform tests to see if the output
+/// matches the input.
+pub fn verify(smv_path: &Path) -> Result<(),Box<dyn std::error::Error>>{
+    let mut smv_contents = String::new();
+    let mut f = std::fs::File::open(smv_path)?;
+    f.read_to_string(&mut smv_contents)?;
+    let smv_file = parse_smv_file(&smv_contents).expect("smv parsing failed").1;
+    // Find the input file from the SMV file.
+    let mut input_path = PathBuf::from(smv_path.parent().unwrap());
+    input_path.push(smv_file.input_filename);
+    verify_input(&input_path);
+    Ok(())
+}
+
+/// Verify an input file.
+pub fn verify_input(input_path: &Path) {
+    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(input_path);
+    let intersections = meshes_overlap_test(&fds_data);
+    if intersections.len() == 0 {
+        println!("No mesh intersections");
+    } else {
+        println!("Mesh intersections");
+    }
+}
 
 // /// Check that the appropriate files are present.
 // validateFilePresence :: [FilePath] -> [FilePath] -> [FilePath] -> IO Bool
@@ -168,8 +195,8 @@ impl MeshIntersection {
     }
 }
 
-/// Do any of the meshes overlap. TOOD: report the actual meshes intersections.
-fn meshes_overlap_test(fds_data: FDSFile) -> Vec<MeshIntersection> {
+/// Do any of the meshes overlap.
+fn meshes_overlap_test(fds_data: &FDSFile) -> Vec<MeshIntersection> {
     // Clone a list of meshes.
     let mut meshes = fds_data.meshes.clone();
     let mut intersections = Vec::new();
