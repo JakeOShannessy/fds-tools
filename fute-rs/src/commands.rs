@@ -623,7 +623,7 @@ fn clean_f64_vec(dv: DataVector<f64,SmvValue>) -> DataVector<f64,f64> {
 }
 
 
-pub fn hrr_vector(smv_path: &Path) -> Result<DataVector<SmvValue>, Box<dyn std::error::Error>> {
+pub fn hrr_vector(smv_path: &Path) -> Result<DataVector<f64,SmvValue>, Box<dyn std::error::Error>> {
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     for csvf in outputs.smv.csvfs.iter() {
@@ -646,7 +646,7 @@ pub fn hrr_vector(smv_path: &Path) -> Result<DataVector<SmvValue>, Box<dyn std::
 }
 
 
-fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVector<SmvValue>) {
+fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVector<f64,SmvValue>) {
     let mut path = PathBuf::from(smv_dir.clone());
     path.push(dir);
     std::fs::create_dir_all(&path).unwrap();

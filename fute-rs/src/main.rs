@@ -238,24 +238,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(hrr_vector_matches) = matches.subcommand_matches("hrr-vector") {
         let smv_path = PathBuf::from(hrr_vector_matches.value_of("SMV-FILE").unwrap());
         let mut hrr_vector = hrr_vector(&smv_path)?;
-        let new_dv: data_vector::DataVector<f64> = match hrr_vector.values[0].y {
+        let new_dv: data_vector::DataVector<f64,f64> = match hrr_vector.values()[0].y {
             SmvValue::Float(f) => {
                 let vec = hrr_vector
-                    .values
+                    .values()
                     .into_iter()
                     .map(|v| match v.y {
                         SmvValue::Float(d) => data_vector::Point { x: v.x, y: d },
                         _ => panic!("type changes part way through vector"),
                     })
                     .collect();
-                let new_dv = data_vector::DataVector {
-                    name: hrr_vector.name,
-                    x_name: hrr_vector.x_name,
-                    y_name: hrr_vector.y_name,
-                    x_units: hrr_vector.x_units,
-                    y_units: hrr_vector.y_units,
-                    values: vec,
-                };
+                let new_dv = data_vector::DataVector::new(
+                    hrr_vector.name.clone(),
+                    hrr_vector.x_name.clone(),
+                    hrr_vector.y_name.clone(),
+                    hrr_vector.x_units.clone(),
+                    hrr_vector.y_units.clone(),
+                    vec,
+                );
                 new_dv
             }
             _ => panic!("incorrect type"),
