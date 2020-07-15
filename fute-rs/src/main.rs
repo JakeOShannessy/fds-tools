@@ -4,6 +4,7 @@ use env_logger;
 use std::path::PathBuf;
 mod commands;
 use commands::*;
+use fute_core::csv_parser::SmvValue;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -165,6 +166,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 )
                 .about("Read .out info"),
         )
+        .subcommand(
+            SubCommand::with_name("hrr-vector")
+                .arg(
+                    Arg::with_name("SMV-FILE")
+                        .required(true)
+                        .help("Path to a .smv file."),
+                )
+                .about("Read .out info"),
+        )
         .get_matches();
 
     if let Some(count_cells_matches) = matches.subcommand_matches("count-cells") {
@@ -225,6 +235,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(read_out_matches) = matches.subcommand_matches("read-out") {
         let out_path = PathBuf::from(read_out_matches.value_of("OUT-FILE").unwrap());
         read_out(&out_path)?;
+    } else if let Some(hrr_vector_matches) = matches.subcommand_matches("hrr-vector") {
+        let smv_path = PathBuf::from(hrr_vector_matches.value_of("SMV-FILE").unwrap());
+        let mut hrr_vector = hrr_vector(&smv_path)?;
+        let new_dv: data_vector::DataVector<f64> = match hrr_vector.values[0].y {
+            SmvValue::Float(f) => {
+                let vec = hrr_vector
+                    .values
+                    .into_iter()
+                    .map(|v| match v.y {
+                        SmvValue::Float(d) => data_vector::Point { x: v.x, y: d },
+                        _ => panic!("type changes part way through vector"),
+                    })
+                    .collect();
+                let new_dv = data_vector::DataVector {
+                    name: hrr_vector.name,
+                    x_name: hrr_vector.x_name,
+                    y_name: hrr_vector.y_name,
+                    x_units: hrr_vector.x_units,
+                    y_units: hrr_vector.y_units,
+                    values: vec,
+                };
+                new_dv
+            }
+            _ => panic!("incorrect type"),
+        };
+        println!("{}", serde_json::to_string_pretty(&new_dv)?);
     }
     Ok(())
 }
