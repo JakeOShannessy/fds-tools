@@ -27,6 +27,10 @@ pub fn verify_input(input_path: &Path) {
     } else {
         println!("Mesh intersections");
     }
+    let reaction_result = reaction_tests(&fds_data);
+    println!("{:?}", reaction_result);
+    let burners_result =  burners_test(&fds_data);
+    println!("{:?}", burners_result);
 }
 
 // /// Check that the appropriate files are present.
@@ -219,7 +223,7 @@ fn meshes_overlap_test(fds_data: &FDSFile) -> Vec<MeshIntersection> {
 #[derive(Copy, Clone, Debug)]
 pub struct ReacTests {
     pub soot_yield: Result<SootYieldTestSuccess, SootYieldTestFailure>,
-    pub co_yield: Result<SootYieldTestSuccess, SootYieldTestFailure>,
+    pub co_yield: Result<COYieldTestSuccess, COYieldTestFailure>,
 }
 
 /// Test that the REAC properties are reasonable.
@@ -242,18 +246,23 @@ pub enum SootYieldTestFailure {
     NoReac,
     MultipleReacs,
     BadValue(f64),
+    NoValue,
 }
 
 fn soot_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess, SootYieldTestFailure> {
-    let sy = match fds_data.reacs.len() {
+    let value = match fds_data.reacs.len() {
         0 => Err(SootYieldTestFailure::NoReac),
         1 => Ok(fds_data.reacs[0].soot_yield),
         _ => Err(SootYieldTestFailure::MultipleReacs),
     }?;
-    if sy == 0.07 || sy == 0.1 {
-        Ok(SootYieldTestSuccess::GoodValue(sy))
+    if let Some(value) = value {
+        if value == 0.1 || value == 0.07 {
+            Ok(SootYieldTestSuccess::GoodValue(value))
+        } else {
+            Err(SootYieldTestFailure::BadValue(value))
+        }
     } else {
-        Err(SootYieldTestFailure::BadValue(sy))
+        Err(SootYieldTestFailure::NoValue)
     }
 }
 
@@ -267,18 +276,23 @@ pub enum COYieldTestFailure {
     NoReac,
     MultipleReacs,
     BadValue(f64),
+    NoValue,
 }
 
-fn co_yield_test(fds_data: &FDSFile) -> Result<SootYieldTestSuccess, SootYieldTestFailure> {
-    let sy = match fds_data.reacs.len() {
-        0 => Err(SootYieldTestFailure::NoReac),
-        1 => Ok(fds_data.reacs[0].soot_yield),
-        _ => Err(SootYieldTestFailure::MultipleReacs),
+fn co_yield_test(fds_data: &FDSFile) -> Result<COYieldTestSuccess, COYieldTestFailure> {
+    let value = match fds_data.reacs.len() {
+        0 => Err(COYieldTestFailure::NoReac),
+        1 => Ok(fds_data.reacs[0].co_yield),
+        _ => Err(COYieldTestFailure::MultipleReacs),
     }?;
-    if sy == 0.05 {
-        Ok(SootYieldTestSuccess::GoodValue(sy))
+    if let Some(value) = value {
+        if value == 0.05 {
+            Ok(COYieldTestSuccess::GoodValue(value))
+        } else {
+            Err(COYieldTestFailure::BadValue(value))
+        }
     } else {
-        Err(SootYieldTestFailure::BadValue(sy))
+        Err(COYieldTestFailure::NoValue)
     }
 }
 
@@ -381,8 +395,12 @@ fn nframes_test(fds_data: &FDSFile) {
 }
 
 /// Test all burners.
-fn burners_test(fds_data: &FDSFile) {
-    unimplemented!()
+fn burners_test(fds_data: &FDSFile) -> Vec<BurnerTestResults> {
+    let burners = burners(fds_data);
+    let burner_test_results = burners.iter().map(|burner| {
+        burner_test(fds_data, &burner)
+    }).collect();
+    burner_test_results
     // burnerTestsGroup :: FDSFile -> Tree CompletedTest
     // burnerTestsGroup = \fdsData ->
     //   let
@@ -396,26 +414,58 @@ fn burners_test(fds_data: &FDSFile) {
 }
 
 /// Test a burner
-fn burner_test(fds_data: &FDSFile, burner: &Burner) {
-    let source_froude_result = source_froude_test(burner);
-    let ndr_result = ndr_test(fds_data, burner);
-    let growth_rate_result = growth_rate_test(fds_data);
-    let intersection_result = intersection_test(fds_data, burner);
-    unimplemented!()
+fn burner_test(fds_data: &FDSFile, burner: &Burner) -> BurnerTestResults {
+    let source_froude = source_froude_test(burner);
+    let ndr = ndr_test(fds_data, burner);
+    let growth_rate = growth_rate_test(fds_data);
+    let intersection = intersection_test(fds_data, burner);
+    BurnerTestResults {
+        source_froude,
+        ndr,
+        growth_rate,
+        intersection,
+    }
 }
 
+#[derive(Clone,Debug)]
+pub struct BurnerTestResults {
+    source_froude: Result<SourceFroudeTestSuccess, SourceFroudeTestFailure>,
+    ndr: Result<NDRTestSuccess, NDRTestFailure>,
+    growth_rate: (),
+    intersection: (),
+}
+
+fn burners<'a>(fds_data: &'a FDSFile) -> Vec<Burner<'a>> {
+    // Iterate through all the OBSTs and VENTs and determine which ones are
+    // burners.
+    let mut burners = Vec::new();
+    for obst in fds_data.obsts.iter() {
+        if obst.is_burner(fds_data) {
+            burners.push(Burner::from_obst(fds_data, obst))
+        }
+    }
+    for vent in fds_data.vents.iter() {
+        if vent.is_burner(fds_data) {
+            burners.push(Burner::from_vent(fds_data, vent))
+        }
+    }
+    burners
+}
+
+/// A burner is a VENT or OBST that has a HRRPUA or an MLRPUA. That is, it
+/// produces fuel. Each Burner is a collection of panels. For example, an OBST
+/// which has a burner surface applied to its top and sides (but not bottom)
+/// would be comprised of 5 panels. Each of the panels potentially has a
+/// different surface.
 #[derive(Clone, Debug)]
-pub struct Burner {
-    pub object: BurnerObject,
-    pub surf: Surf,
-    /// Copies of the meshes the burner lies within.
-    pub meshes: Vec<Mesh>,
+pub struct Burner<'a> {
+    pub panels: Vec<BurnerPanel<'a>>,
 }
 
-impl Burner {
+impl<'a> Burner<'a> {
     /// Return the maximum HRR of the burner.
     pub fn max_hrr(&self) -> f64 {
-        unimplemented!()
+        self.panels.iter().map(|panel| panel.max_hrr()).sum()
     }
 
     /// Return the source froude number of the burner.
@@ -427,7 +477,245 @@ impl Burner {
 
     /// Return the fuel area of the burner.
     pub fn fuel_area(&self) -> f64 {
+        self.panels.iter().map(|panel| panel.fuel_area()).sum()
+    }
+
+    /// Return the non-dimensionalised ratio of the burner.
+    pub fn ndr(&self) -> f64 {
+        todo!()
+    }
+
+    pub fn from_obst(fds_data: &'a FDSFile, obst: &'a Obst) -> Self {
+        let mut panels = Vec::new();
+        if let Some(surf_id) = &obst.surf_id {
+            // The OBST has been given a single surf_id, therefore this value
+            // will be applied to all surfaces.
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(surf_id)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegI(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    // Max X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosI(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    // Min Y
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegJ(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    // Max Y
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosJ(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    // Min Z
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegK(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    // Max Z
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosK(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+        } else if let Some((surf_id_top, surf_id_sides, surf_id_bottom)) = &obst.surf_ids {
+            // The OBST has been given three surf_ids, on for top, one for
+            // sides, and one for bottom.
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(surf_id_top)) {
+                if surf.is_burner() {
+                    // Top
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosK(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(surf_id_sides)) {
+                if surf.is_burner() {
+                    // Sides
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegI(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosI(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegJ(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosJ(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(surf_id_bottom)) {
+                if surf.is_burner() {
+                    // Top
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegK(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+        } else if let Some((min_x,max_x,min_y, max_y, min_z, max_z)) = &obst.surf_id6 {
+            // The OBST has been given a separate surf_id for each side.
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(min_x)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegI(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(max_x)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosI(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(min_y)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegJ(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(max_y)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosJ(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(min_z)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstNegK(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(max_z)) {
+                if surf.is_burner() {
+                    // Min X
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::ObstPosK(obst),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    });
+                }
+            }
+        }
+        Burner{panels}
+    }
+
+    pub fn from_vent(fds_data: &'a FDSFile, vent: &'a Vent) -> Self {
+        let mut panels = Vec::new();
+        if let Some(surf_id) = &vent.surf_id {
+            // The OBST has been given a single surf_id, therefore this value
+            // will be applied to all surfaces.
+            if let Some(surf) = fds_data.surfs.iter().find(|surf| surf.id.as_ref() == Some(surf_id)) {
+                if surf.is_burner() {
+                    todo!("Not sure how to deal with vent burner direction yet")
+                    // // Min X
+                    // panels.push(BurnerPanel {
+                    //     object: BurnerObject::ObstNegI(obst),
+                    //     surf,
+                    //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    // });
+                    // // Max X
+                    // panels.push(BurnerPanel {
+                    //     object: BurnerObject::ObstPosI(obst),
+                    //     surf,
+                    //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    // });
+                }
+            }
+        }
+        Burner{panels}
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BurnerPanel<'a> {
+    /// The object on which this panel is based.
+    pub object: BurnerObject<'a>,
+    /// The surface of this panel. TODO: we could probably compute this on
+    /// demand.
+    pub surf: &'a Surf,
+    /// References to the meshes the burner lies within.
+    pub meshes: Vec<&'a Mesh>,
+}
+
+impl<'a> BurnerPanel<'a> {
+    /// Return the maximum HRR of the burner, i.e. once any ramp up time has
+    /// completed. TODO: does not currently account for ramps.
+    pub fn max_hrr(&self) -> f64 {
+        self.fuel_area()*self.hrrpua()
+    }
+
+    pub fn hrrpua(&self) -> f64 {
+        if let Some(hrrpua) = self.surf.hrrpua {
+            hrrpua
+        } else if let Some(mlrpua) = self.surf.mlrpua {
+            todo!("Cannot handle MLRPUA")
+        } else {
+            0.0
+        }
+    }
+
+    /// Return the source froude number of the burner.
+    pub fn source_froude(&self) -> f64 {
+        let max_hrr = self.max_hrr();
+        let fuel_area = self.fuel_area();
         unimplemented!()
+    }
+
+    /// Return the fuel area of the burner panel.
+    pub fn fuel_area(&self) -> f64 {
+        self.object.area().unwrap_or(0.0)
     }
 
     /// Return the non-dimensionalised ratio of the burner.
@@ -473,9 +761,28 @@ fn max(a: f64, b: f64) -> f64 {
 }
 
 #[derive(Clone, Debug)]
-pub enum BurnerObject {
-    Vent(Vent),
-    Obst(Obst),
+pub enum BurnerObject<'a> {
+    Vent(&'a Vent),
+    ObstNegI(&'a Obst),
+    ObstPosI(&'a Obst),
+    ObstNegJ(&'a Obst),
+    ObstPosJ(&'a Obst),
+    ObstNegK(&'a Obst),
+    ObstPosK(&'a Obst),
+}
+
+impl<'a> BurnerObject<'a> {
+    pub fn area(&self) -> Option<f64> {
+        match self {
+            BurnerObject::Vent(vent) => vent.area(),
+            BurnerObject::ObstNegI(obst) => obst.area_x(),
+            BurnerObject::ObstPosI(obst) => obst.area_x(),
+            BurnerObject::ObstNegJ(obst) => obst.area_y(),
+            BurnerObject::ObstPosJ(obst) => obst.area_y(),
+            BurnerObject::ObstNegK(obst) => obst.area_z(),
+            BurnerObject::ObstPosK(obst) => obst.area_z(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -526,7 +833,7 @@ fn intersection_test(fds_data: &FDSFile, burner: &Burner) {
 fn growth_rate_test(fds_data: &FDSFile) {
     // TODO: This requires understanding the burner and it's exposed surfaces
     // TODO: allow steady state curves
-    unimplemented!()
+    todo!()
     //           testName = "Growth Rate"
     //           surfs = getBurnerSurf fdsData burner
     //       in case surfs of

@@ -347,8 +347,9 @@ pub fn plot_hrr(smv_path: &Path) {
 //         // Right a  -> T.putStrLn $ renderVerificationConsoleText a
 
 
-pub fn verify(smv_path: &Path) {
-    fute_core::verify(smv_path);
+pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    fute_core::verify(smv_path)?;
+    Ok(())
 }
 // showInputVerification path = do
 //     let
