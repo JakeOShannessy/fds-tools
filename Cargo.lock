@@ -367,6 +367,7 @@ dependencies = [
 [[package]]
 name = "fds-input-parser"
 version = "0.1.3"
+source = "git+https://github.com/JakeOShannessy/fds-input-parser-rs.git#588e56cd38745c78c2798478799ea2f9e849c800"
 dependencies = [
  "namelist",
 ]
