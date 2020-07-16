@@ -12,7 +12,7 @@ jobs:
             - "6d:16:f7:77:f9:88:08:a0:86:e4:80:24:1d:63:25:69"
       - run:
           name: Install git
-          command: yum install -y git
+          command: yum install -y git cmake gcc
       - checkout
       - run:
           name: Install rustup
@@ -57,7 +57,7 @@ jobs:
             - "6d:16:f7:77:f9:88:08:a0:86:e4:80:24:1d:63:25:69"
       - run:
           name: Install git
-          command: yum install -y git
+          command: yum install -y git cmake gcc
       - checkout
       - run:
           name: Install rustup
