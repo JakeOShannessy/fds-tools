@@ -57,7 +57,7 @@ jobs:
             - "6d:16:f7:77:f9:88:08:a0:86:e4:80:24:1d:63:25:69"
       - run:
           name: Install git
-          command: yum install -y git cmake gcc
+          command: yum install -y git cmake gcc-c++ make
       - checkout
       - run:
           name: Install rustup
@@ -84,7 +84,7 @@ jobs:
           command: |
             echo "[net]" > ~/.cargo/config
             echo "git-fetch-with-cli = true" >> ~/.cargo/config
-            yum install -y gcc make
+            yum install -y gcc-c++ make cmake
             ~/.cargo/bin/rustup default stable
             ~/.cargo/bin/cargo test
       - save_cache:
