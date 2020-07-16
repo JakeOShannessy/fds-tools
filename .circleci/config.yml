@@ -1,0 +1,101 @@
+version: 2.1
+orbs:
+  aws-cli: circleci/aws-cli@0.1.13
+jobs:
+  build:
+    docker:
+      - image: amazonlinux:latest
+    # working_directory: /tmp/my-project
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "6d:16:f7:77:f9:88:08:a0:86:e4:80:24:1d:63:25:69"
+      - run:
+          name: Install git
+          command: yum install -y git
+      - checkout
+      - run:
+          name: Install rustup
+          command: |
+            # TODO: don't reinstall rustup if it's not necessary, it will
+            # invalidate all the cache.
+            yum install -y wget tar
+            if [ ! -d /root/.rustup ]
+            then
+              echo "Installing rustup"
+              curl -f -L https://static.rust-lang.org/rustup.sh -O
+              chmod 755 rustup.sh
+              ./rustup.sh -y
+              ~/.cargo/bin/rustup default stable
+            else
+              echo "rustup already installed"
+            fi
+      - restore_cache:
+          keys:
+            - deps6-cargo-{{ checksum "Cargo.toml" }}
+            - deps6-cargo
+      - run:
+          name: Build
+          command: |
+            echo "[net]" > ~/.cargo/config
+            echo "git-fetch-with-cli = true" >> ~/.cargo/config
+            yum install -y gcc make
+            ~/.cargo/bin/rustup default stable
+            ~/.cargo/bin/cargo build --release
+      - save_cache:
+          key: deps6-cargo-{{ checksum "Cargo.toml" }}
+          paths:
+            - "target"
+            - "~/.cargo"
+  test:
+    docker:
+      - image: amazonlinux:latest
+    # working_directory: /tmp/my-project
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "6d:16:f7:77:f9:88:08:a0:86:e4:80:24:1d:63:25:69"
+      - run:
+          name: Install git
+          command: yum install -y git
+      - checkout
+      - run:
+          name: Install rustup
+          command: |
+            # TODO: don't reinstall rustup if it's not necessary, it will
+            # invalidate all the cache.
+            yum install -y wget tar
+            if [ ! -d /root/.rustup ]
+            then
+              echo "Installing rustup"
+              curl -f -L https://static.rust-lang.org/rustup.sh -O
+              chmod 755 rustup.sh
+              ./rustup.sh -y
+              ~/.cargo/bin/rustup default stable
+            else
+              echo "rustup already installed"
+            fi
+      - restore_cache:
+          keys:
+            - deps6-cargo-{{ checksum "Cargo.toml" }}
+            - deps6-cargo
+      - run:
+          name: Test
+          command: |
+            echo "[net]" > ~/.cargo/config
+            echo "git-fetch-with-cli = true" >> ~/.cargo/config
+            yum install -y gcc make
+            ~/.cargo/bin/rustup default stable
+            ~/.cargo/bin/cargo test
+      - save_cache:
+          key: deps6-cargo-{{ checksum "Cargo.toml" }}
+          paths:
+            - "target"
+            - "~/.cargo"
+
+workflows:
+  version: 2
+  build-test:
+    jobs:
+      - build
+      - test
