@@ -129,8 +129,20 @@ impl VerificationResult {
         let mut li = HtmlElement::new("li".to_string());
         match self {
             VerificationResult::Result(name, res) => {
-                let s = match res {
+                let mut title = HtmlElement::new("strong".to_string());
+                title.children.push(HtmlChild::String(name.to_string()));
+                li.children.push(HtmlChild::Element(title));
+                let mut category = HtmlElement::new("span".to_string());
+                let colon = HtmlChild::String(":".to_string());
+                match res {
                     TestResult::Failure(s) => {
+                        category
+                            .attributes
+                            .insert("class".to_string(), "failure".to_string());
+                        "[Failure]".to_string();
+                        category
+                            .children
+                            .push(HtmlChild::String("[Failure]".to_string()));
                         li.attributes.insert(
                             "class".to_string(),
                             "test failureTest shown-test".to_string(),
@@ -139,9 +151,18 @@ impl VerificationResult {
                             "onclick".to_string(),
                             "toggle_visibility(arguments[0],this);".to_string(),
                         );
-                        format!("{} [{}]: {}", name, "Failure", s)
+                        li.children.push(HtmlChild::Element(category));
+                        li.children.push(colon);
+                        li.children.push(HtmlChild::String(s.to_string()));
                     }
                     TestResult::Warning(s) => {
+                        category
+                            .attributes
+                            .insert("class".to_string(), "warning".to_string());
+                        "[Warning]".to_string();
+                        category
+                            .children
+                            .push(HtmlChild::String("[Warning]".to_string()));
                         li.attributes.insert(
                             "class".to_string(),
                             "test warningTest shown-test".to_string(),
@@ -150,9 +171,17 @@ impl VerificationResult {
                             "onclick".to_string(),
                             "toggle_visibility(arguments[0],this);".to_string(),
                         );
-                        format!("{} [{}]: {}", name, "Warning", s)
+                        li.children.push(HtmlChild::Element(category));
+                        li.children.push(colon);
+                        li.children.push(HtmlChild::String(s.to_string()));
                     }
                     TestResult::Success(s) => {
+                        category
+                            .attributes
+                            .insert("class".to_string(), "success".to_string());
+                        category
+                            .children
+                            .push(HtmlChild::String("[Success]".to_string()));
                         li.attributes.insert(
                             "class".to_string(),
                             "test successTest hidden-test".to_string(),
@@ -161,11 +190,11 @@ impl VerificationResult {
                             "onclick".to_string(),
                             "toggle_visibility(arguments[0],this);".to_string(),
                         );
-                        format!("{} [{}]: {}", name, "Success", s)
+                        li.children.push(HtmlChild::Element(category));
+                        li.children.push(colon);
+                        li.children.push(HtmlChild::String(s.to_string()));
                     }
-                };
-
-                li.children.push(HtmlChild::String(s));
+                }
             }
             VerificationResult::Tree(name, sub_tree) => {
                 // First we want to know if any of our children are failures, if so, the root is also a failure
@@ -240,18 +269,6 @@ impl VerificationResult {
         li
     }
 }
-
-// <div>
-//                                     <strong>
-//                                         Burners
-//                                     </strong>
-//                                     <span class="failure">
-//                                         [Failed]
-//                                     </span>
-//                                     :
-//                                     <ul>
-//                                     </ul>
-//                                 </div>
 
 #[derive(Debug, Clone, Eq)]
 pub enum TestResult {

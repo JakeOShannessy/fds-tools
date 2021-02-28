@@ -63,6 +63,8 @@ pub struct HtmlPage {
 }
 
 impl HtmlPage {
+    pub fn new() -> Self { Self { sections:vec![] } }
+
     pub fn add(&mut self, section: HtmlElement) {
         self.sections.push(section)
     }

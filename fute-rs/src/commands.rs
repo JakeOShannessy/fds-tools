@@ -2,10 +2,10 @@ use chrono::prelude::*;
 use csv;
 use data_vector::DataVector;
 use data_vector::Point;
-use fute_core::{html::{HtmlElement, HtmlPage}, parse_and_decode_fds_input_file, print_verification_tree};
+use fute_core::{html::{Html, HtmlChild, HtmlElement, HtmlPage}, parse_and_decode_fds_input_file, print_verification_tree};
 use fute_core::{csv_parser::SmvValue, parse_smv_file};
 use fute_core::{decode::*, summary::summarise_input};
-use plotters::prelude::*;
+use plotters::{prelude::*};
 use std::fs::File;
 use std::io::prelude::*;
 use std::{
@@ -349,7 +349,6 @@ pub fn plot_hrr(smv_path: &Path) {
 //         Right a  -> putStrLn $ produceVerificationFragment a
 //         // Right a  -> T.putStrLn $ renderVerificationConsoleText a
 pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    use fute_core::html::Html;
     println!("verifying: {}", fds_path.display());
     let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path);
     let verification_result = fute_core::verify_input(&fds_data);
@@ -373,7 +372,35 @@ pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
 
 pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    fute_core::verify(smv_path)?;
+    let mut smv_contents = String::new();
+    let mut f = std::fs::File::open(smv_path)?;
+    f.read_to_string(&mut smv_contents)?;
+    let smv_file = parse_smv_file(&smv_contents).expect("smv parsing failed").1;
+    // Find the input file from the SMV file.
+    let mut fds_path = PathBuf::from(smv_path.parent().unwrap());
+    fds_path.push(smv_file.input_filename);
+
+    println!("verifying: {}", fds_path.display());
+    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(&fds_path);
+    let verification_result = fute_core::verify_input(&fds_data);
+    print_verification_tree(&verification_result,0);
+    let input_summary = summarise_input(&fds_data);
+    let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
+    chart_page_path.push(format!("Verification.html"));
+    println!("about to create verification page");
+
+    let mut page = HtmlPage {
+        sections: vec![],
+    };
+    page.add(input_summary.to_html());
+    page.add(verification_result.to_html_outer());
+    let (chart_page_path,charts) = create_charts(smv_path);
+    let chart_section = create_chart_section(&chart_page_path, charts);
+    page.add(chart_section);
+    let mut f = std::fs::File::create(&chart_page_path).unwrap();
+    page.render(&mut f).unwrap();
+
+    open_browser(&chart_page_path).unwrap();
     Ok(())
 }
 // showInputVerification path = do
@@ -476,30 +503,26 @@ pub struct ChartResult {
     pub path: PathBuf,
 }
 
-pub fn chart_to_html(dir: &Path, chart: ChartResult) -> String {
-    println!("dir: {:?}, path: {:?}", dir, chart.path);
+pub fn chart_to_html(dir: &Path, chart: ChartResult) -> HtmlElement {
     let p = chart.path.strip_prefix(dir).unwrap();
     let p_str = p.to_str().unwrap();
-    // let url = url::Url::from_file_path(p).unwrap();
-    // let p_str = url.as_str();
-    format!("<img src=\"{}\"/>", p_str)
+    let mut elem = HtmlElement::new("img".to_string());
+    elem.attributes.insert("src".to_string(), p_str.to_string());
+    elem
 }
 
-pub fn create_chart_page(path: &Path, charts: Charts) {
-    // let mut html: String = String::new();
-    let mut chart_strings = Vec::new();
+pub fn create_chart_section(path: &Path, charts: Charts) -> HtmlElement {
+    let mut section = HtmlElement::new("section".to_string());
     let run_chart = charts
         .run_chart_path
         .map(|rc| chart_to_html(path.parent().unwrap(), rc));
-    if let Some(rc_string) = run_chart {
-        chart_strings.push(rc_string);
+    if let Some(run_chart) = run_chart {
+        section.children.push(HtmlChild::Element(run_chart));
     }
     for cr in charts.various.into_iter() {
-        chart_strings.push(chart_to_html(path.parent().unwrap(), cr));
+        section.children.push(HtmlChild::Element(chart_to_html(path.parent().unwrap(), cr)));
     }
-    let html: String = chart_strings.into_iter().collect();
-    let mut f = std::fs::File::create(&path).unwrap();
-    f.write_all(html.as_bytes()).unwrap();
+    section
 }
 
 pub struct Charts {
@@ -523,7 +546,7 @@ pub fn read_out(out_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn create_charts(smv_path: &Path) -> (PathBuf,Charts) {
     let dir = "Charts";
     println!("quick-charting: {:?}", smv_path);
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
@@ -536,7 +559,7 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         csv_file_path.push(smv_dir.clone());
         csv_file_path.push(csvf.filename.clone());
         println!("about to get data");
-        let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path)?;
+        let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path).unwrap();
         if csvf.type_ == "steps" {
             match csv_data.make_data_vector("Simulation Time", "Wall Time") {
                 Some(mut run_vec) => {
@@ -567,11 +590,21 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let mut chart_page_path = PathBuf::from(smv_dir);
     chart_page_path.push(format!("Charts.html"));
     println!("about to create chart page");
-    create_chart_page(&chart_page_path, charts);
+    (chart_page_path,charts)
+}
 
+pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let (chart_page_path,charts) = create_charts(smv_path);
+    let chart_section = create_chart_section(&chart_page_path, charts);
+    let mut page = HtmlPage::new();
+    page.add(chart_section);
+    let mut f = std::fs::File::create(&chart_page_path).unwrap();
+    page.render(&mut f).unwrap();
     open_browser(&chart_page_path).unwrap();
     Ok(())
 }
+
+
 
 pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
     // let dir = "Charts";
@@ -594,8 +627,8 @@ pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
         &mut charts,
         vectors,
     );
-    create_chart_page(&chart_page_path, charts);
-    open_browser(&chart_page_path).unwrap();
+    // create_chart_page(&chart_page_path, charts);
+    // open_browser(&chart_page_path).unwrap();
 }
 
 fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVector<f64, SmvValue> {

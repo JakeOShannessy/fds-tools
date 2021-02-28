@@ -69,7 +69,6 @@ impl<'a> Burner<'a> {
 
     /// Return the non-dimensionalised ratio of the burner.
     pub fn ndr(&self) -> Vec<f64> {
-        let q = self.max_hrr();
         self.panels.iter().map(|panel| panel.ndr()).collect()
     }
 
