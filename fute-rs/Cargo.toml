@@ -10,6 +10,7 @@ csv = "1"
 env_logger = "0.6"
 lazy_static = "1.4"
 log = "0.4.0"
+fds-input-parser = {path = "../../fds-input-parser-rs"}
 fute-core = { path = "../fute-core-rs" }
 plotters = "0.3"
 prettytable-rs = "0.8"

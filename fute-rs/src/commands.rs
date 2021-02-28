@@ -1,10 +1,10 @@
-use data_vector::Point;
 use chrono::prelude::*;
 use csv;
 use data_vector::DataVector;
-use fute_core::decode::*;
+use data_vector::Point;
 use fute_core::parse_and_decode_fds_input_file;
 use fute_core::{csv_parser::SmvValue, parse_smv_file};
+use fute_core::{decode::*, summary::summarise_input};
 use plotters::prelude::*;
 use std::fs::File;
 use std::io::prelude::*;
@@ -29,7 +29,7 @@ pub fn count_cells(input_path: &Path) -> u64 {
     let meshes: Vec<Mesh> = fds_data.meshes;
     let mut total_cells = 0;
     for mesh in meshes {
-        total_cells += mesh.cells();
+        total_cells += mesh.n_cells();
     }
     total_cells
     // let meshes = fdsFile_Meshes inData
@@ -192,7 +192,11 @@ pub fn peak_hrr(fds_path: &Path) {
     // use fute_core::FDSFile;
     // use fute_core::parse_and_decode_fds_input_file;
     let fds_file = parse_and_decode_fds_input_file(fds_path);
-    let hrr: f64 = fds_file.burners().iter().map(|burner| burner.hrr).sum();
+    let hrr: f64 = fds_file
+        .burners()
+        .iter()
+        .map(|burner| burner.max_hrr())
+        .sum();
     println!("{:.2} kW/m²", hrr);
 }
 
@@ -345,7 +349,29 @@ pub fn plot_hrr(smv_path: &Path) {
 //         Left e -> print e
 //         Right a  -> putStrLn $ produceVerificationFragment a
 //         // Right a  -> T.putStrLn $ renderVerificationConsoleText a
+pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    use fute_core::html::Html;
+    println!("verifying: {}", fds_path.display());
+    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path);
+    fute_core::verify_input(&fds_data)?;
+    let input_summary = summarise_input(&fds_data);
+    let dir = "Charts";
+    let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
+    chart_page_path.push(format!("Verification.html"));
+    println!("about to create verification page");
 
+    let html = input_summary.to_html();
+    let mut f = std::fs::File::create(&chart_page_path).unwrap();
+    // f.write_all(html.as_bytes()).unwrap();
+    // write!(f,"{}", html);
+    let mut s = String::new();
+    html.render(&mut f).unwrap();
+    // create_chart_page(&chart_page_path, charts);
+
+    #[cfg(windows)]
+    open_browser(&chart_page_path).unwrap();
+    Ok(())
+}
 
 pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fute_core::verify(smv_path)?;
@@ -517,14 +543,26 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
                 Some(mut run_vec) => {
                     // panic!("x_name: {:?}, {:?}", run_vec.x_name, run_vec.y_name);
                     run_vec.name = "Run Chart".to_string();
-                    plot(&smv_dir, dir, &mut charts, outputs.smv.chid.to_string().clone(), run_vec)
+                    plot(
+                        &smv_dir,
+                        dir,
+                        &mut charts,
+                        outputs.smv.chid.to_string().clone(),
+                        run_vec,
+                    )
                 }
                 None => panic!("could not make run chart"),
             }
         }
 
         for dv in csv_data.default_vecs() {
-            plot(&smv_dir, dir, &mut charts, outputs.smv.chid.to_string().clone(), dv);
+            plot(
+                &smv_dir,
+                dir,
+                &mut charts,
+                outputs.smv.chid.to_string().clone(),
+                dv,
+            );
         }
     }
     let mut chart_page_path = PathBuf::from(smv_dir);
@@ -537,11 +575,13 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-
 pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
     // let dir = "Charts";
     // println!("comparing: {:?} and {:?}", smv_path_a, smv_path_b);
-    let vectors: Vec<DataVector<f64,SmvValue>> = smv_paths.into_iter().map(|smv_path| get_vector_for_comparison(vector_name.clone(), smv_path)).collect();
+    let vectors: Vec<DataVector<f64, SmvValue>> = smv_paths
+        .into_iter()
+        .map(|smv_path| get_vector_for_comparison(vector_name.clone(), smv_path))
+        .collect();
     let mut chart_page_path = PathBuf::from(".");
     chart_page_path.push(format!("Comparison-{}.html", vector_name));
     println!("about to create chart page");
@@ -549,13 +589,19 @@ pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
         run_chart_path: None,
         various: Vec::new(),
     };
-    plot_multiple(&PathBuf::from("."), format!("{} Comparison", vector_name), ".", &mut charts, vectors);
+    plot_multiple(
+        &PathBuf::from("."),
+        format!("{} Comparison", vector_name),
+        ".",
+        &mut charts,
+        vectors,
+    );
     create_chart_page(&chart_page_path, charts);
     #[cfg(windows)]
     open_browser(&chart_page_path).unwrap();
 }
 
-fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVector<f64,SmvValue> {
+fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVector<f64, SmvValue> {
     let outputs = fute_core::Outputs::new(smv_path);
     let chid = outputs.smv.chid.clone();
     // let charts: Charts = Charts::new();
@@ -569,7 +615,6 @@ fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVect
         csv_file_path.push(csvf.filename.clone());
         println!("about to get data");
         let csv_data = fute_core::csv_parser::CsvDataBlock::from_file(&csv_file_path).unwrap();
-
 
         for mut dv in csv_data.default_vecs() {
             if dv.name == vector_name {
@@ -585,8 +630,13 @@ fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVect
     vector.unwrap()
 }
 
-
-fn plot_multiple(smv_dir: &Path, chart_name: String, dir: &str, charts: &mut Charts, dvs: Vec<DataVector<f64,SmvValue>>) {
+fn plot_multiple(
+    smv_dir: &Path,
+    chart_name: String,
+    dir: &str,
+    charts: &mut Charts,
+    dvs: Vec<DataVector<f64, SmvValue>>,
+) {
     let mut path = PathBuf::from(smv_dir.clone());
     path.push(dir);
     std::fs::create_dir_all(&path).unwrap();
@@ -594,36 +644,34 @@ fn plot_multiple(smv_dir: &Path, chart_name: String, dir: &str, charts: &mut Cha
     // names.
     let f_name: Cow<String> = mangle(&chart_name);
     path.push(format!("{}.png", f_name));
-    let cleaned_vecs: Vec<DataVector<f64,f64>> = dvs.into_iter().map(clean_f64_vec).collect();
-    plot_dv(cleaned_vecs.iter().map(|x|x).collect(), chart_name, &path);
+    let cleaned_vecs: Vec<DataVector<f64, f64>> = dvs.into_iter().map(clean_f64_vec).collect();
+    plot_dv(cleaned_vecs.iter().map(|x| x).collect(), chart_name, &path);
     charts.various.push(ChartResult { path: path.clone() });
 }
 
-fn clean_f64_vec(dv: DataVector<f64,SmvValue>) -> DataVector<f64,f64> {
-    let new_values: Vec<Point<f64,f64>> = dv.values().into_iter().map(|point| {
-        let new_y = match point.y {
-            SmvValue::Float(f) => {
-                f
-            },
-            _ => panic!("not float"),
-        };
-        Point {
-            x: point.x,
-            y: new_y,
-        }
-    }).collect();
+fn clean_f64_vec(dv: DataVector<f64, SmvValue>) -> DataVector<f64, f64> {
+    let new_values: Vec<Point<f64, f64>> = dv
+        .values()
+        .into_iter()
+        .map(|point| {
+            let new_y = match point.y {
+                SmvValue::Float(f) => f,
+                _ => panic!("not float"),
+            };
+            Point {
+                x: point.x,
+                y: new_y,
+            }
+        })
+        .collect();
     DataVector::new(
-        dv.name,
-        dv.x_name,
-        dv.y_name,
-        dv.x_units,
-        dv.y_units,
-        new_values,
+        dv.name, dv.x_name, dv.y_name, dv.x_units, dv.y_units, new_values,
     )
 }
 
-
-pub fn hrr_vector(smv_path: &Path) -> Result<DataVector<f64,SmvValue>, Box<dyn std::error::Error>> {
+pub fn hrr_vector(
+    smv_path: &Path,
+) -> Result<DataVector<f64, SmvValue>, Box<dyn std::error::Error>> {
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     for csvf in outputs.smv.csvfs.iter() {
@@ -645,8 +693,13 @@ pub fn hrr_vector(smv_path: &Path) -> Result<DataVector<f64,SmvValue>, Box<dyn s
     panic!("no HRR")
 }
 
-
-fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVector<f64,SmvValue>) {
+fn plot(
+    smv_dir: &Path,
+    dir: &str,
+    charts: &mut Charts,
+    chid: String,
+    dv: DataVector<f64, SmvValue>,
+) {
     let mut path = PathBuf::from(smv_dir.clone());
     path.push(dir);
     std::fs::create_dir_all(&path).unwrap();
@@ -664,18 +717,16 @@ fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVe
                     _ => panic!("type changes part way through vector"),
                 })
                 .collect();
-            let new_dv = DataVector::new(
-                dv.name,
-                dv.x_name,
-                dv.y_name,
-                dv.x_units,
-                dv.y_units,
-                vec,
-            );
+            let new_dv =
+                DataVector::new(dv.name, dv.x_name, dv.y_name, dv.x_units, dv.y_units, vec);
             if &new_dv.name == "HRR" {
                 plot_dv_hrr(vec![&new_dv], &path);
             } else {
-                plot_dv(vec![&new_dv], format!("{} {}", chid, new_dv.name.clone()), &path);
+                plot_dv(
+                    vec![&new_dv],
+                    format!("{} {}", chid, new_dv.name.clone()),
+                    &path,
+                );
             }
             charts.various.push(ChartResult { path: path.clone() })
         }
@@ -688,14 +739,8 @@ fn plot(smv_dir: &Path, dir: &str, charts: &mut Charts, chid: String, dv: DataVe
                     _ => panic!("type changes part way through vector"),
                 })
                 .collect();
-            let new_dv = DataVector::new(
-                dv.name,
-                dv.x_name,
-                dv.y_name,
-                dv.x_units,
-                dv.y_units,
-                vec,
-            );
+            let new_dv =
+                DataVector::new(dv.name, dv.x_name, dv.y_name, dv.x_units, dv.y_units, vec);
             plot_runtime(&new_dv, &path);
             if new_dv.name.as_str() == "Run Chart" {
                 charts.run_chart_path = Some(ChartResult { path: path.clone() })
@@ -755,7 +800,7 @@ fn open_browser(path: &Path) -> std::io::Result<bool> {
     }
 }
 
-fn plot_dv(data_vectors: Vec<&DataVector<f64,f64>>, title: String, path: &Path) {
+fn plot_dv(data_vectors: Vec<&DataVector<f64, f64>>, title: String, path: &Path) {
     let mut x_min = data_vectors[0].values()[0].x as f32;
     let mut x_max = data_vectors[0].values()[0].x as f32;
     let mut y_min = data_vectors[0].values()[0].y as f32;
@@ -844,7 +889,6 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64,f64>>, title: String, path: &Path) 
     }
 }
 
-
 // TODO: needs more const functions
 // const MEDIUM_ALPHA4: f64 = 1055.0 / 300.0_f64.powi(2);
 
@@ -875,7 +919,11 @@ lazy_static::lazy_static! {
     };
 }
 
-fn make_standard_curve(vector: &DataVector<f64,f64>, alpha: f64, name: String) -> DataVector<f64,f64> {
+fn make_standard_curve(
+    vector: &DataVector<f64, f64>,
+    alpha: f64,
+    name: String,
+) -> DataVector<f64, f64> {
     let mut vector = vector.clone();
     for p in vector.iter_mut() {
         p.y = alpha * p.x.powi(2);
@@ -884,17 +932,32 @@ fn make_standard_curve(vector: &DataVector<f64,f64>, alpha: f64, name: String) -
     vector
 }
 
-fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64,f64>>, path: &Path) {
+fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64, f64>>, path: &Path) {
     let mut x_min = data_vectors[0].values()[0].x as f32;
     let mut x_max = data_vectors[0].values()[0].x as f32;
     let mut y_min = data_vectors[0].values()[0].y as f32;
     let mut y_max = data_vectors[0].values()[0].y as f32;
 
-    let slow = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.slow, "Slow".to_string());
-    let medium = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.medium, "Medium".to_string());
-    let fast = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.fast, "Fast".to_string());
-    let ultrafast = make_standard_curve(data_vectors[0], EUROCODE_GROWTH_RATES.ultrafast, "Ultrafast".to_string());
-
+    let slow = make_standard_curve(
+        data_vectors[0],
+        EUROCODE_GROWTH_RATES.slow,
+        "Slow".to_string(),
+    );
+    let medium = make_standard_curve(
+        data_vectors[0],
+        EUROCODE_GROWTH_RATES.medium,
+        "Medium".to_string(),
+    );
+    let fast = make_standard_curve(
+        data_vectors[0],
+        EUROCODE_GROWTH_RATES.fast,
+        "Fast".to_string(),
+    );
+    let ultrafast = make_standard_curve(
+        data_vectors[0],
+        EUROCODE_GROWTH_RATES.ultrafast,
+        "Ultrafast".to_string(),
+    );
 
     for vec in data_vectors.iter() {
         for p in vec.values().iter() {
@@ -971,10 +1034,7 @@ fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64,f64>>, path: &Path) {
 
         chart
             .draw_series(LineSeries::new(
-                slow
-                    .values()
-                    .iter()
-                    .map(|p| (p.x as f32, p.y as f32)),
+                slow.values().iter().map(|p| (p.x as f32, p.y as f32)),
                 &RGBColor(SLOW_COLOR.0, SLOW_COLOR.1, SLOW_COLOR.2),
             ))
             .unwrap()
@@ -988,10 +1048,7 @@ fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64,f64>>, path: &Path) {
 
         chart
             .draw_series(LineSeries::new(
-                medium
-                    .values()
-                    .iter()
-                    .map(|p| (p.x as f32, p.y as f32)),
+                medium.values().iter().map(|p| (p.x as f32, p.y as f32)),
                 &RGBColor(MEDIUM_COLOR.0, MEDIUM_COLOR.1, MEDIUM_COLOR.2),
             ))
             .unwrap()
@@ -1005,10 +1062,7 @@ fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64,f64>>, path: &Path) {
 
         chart
             .draw_series(LineSeries::new(
-                fast
-                    .values()
-                    .iter()
-                    .map(|p| (p.x as f32, p.y as f32)),
+                fast.values().iter().map(|p| (p.x as f32, p.y as f32)),
                 &RGBColor(FAST_COLOR.0, FAST_COLOR.1, FAST_COLOR.2),
             ))
             .unwrap()
@@ -1022,10 +1076,7 @@ fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64,f64>>, path: &Path) {
 
         chart
             .draw_series(LineSeries::new(
-                ultrafast
-                    .values()
-                    .iter()
-                    .map(|p| (p.x as f32, p.y as f32)),
+                ultrafast.values().iter().map(|p| (p.x as f32, p.y as f32)),
                 &RGBColor(ULTRAFAST_COLOR.0, ULTRAFAST_COLOR.1, ULTRAFAST_COLOR.2),
             ))
             .unwrap()
@@ -1047,7 +1098,7 @@ fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64,f64>>, path: &Path) {
     }
 }
 
-fn plot_runtime(dv: &DataVector<f64,DateTime<Utc>>, path: &Path) {
+fn plot_runtime(dv: &DataVector<f64, DateTime<Utc>>, path: &Path) {
     let mut x_min = dv.values()[0].x;
     let mut x_max = dv.values()[0].x;
     let mut y_min: DateTime<Utc> = dv.values()[0].y;

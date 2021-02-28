@@ -214,9 +214,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .expect("Invalid arguments"),
         );
         commands::peak_hrr(&fds_path)
-    // } else if let Some(opts) = matches.subcommand_matches("verify-input") {
-    //     let fds_path = PathBuf::from(opts.value_of("FDS-FILE").unwrap());
-    //     commands::verify_input(&fds_path);
+    } else if let Some(opts) = matches.subcommand_matches("verify-input") {
+        let fds_path = PathBuf::from(opts.value_of("FDS-FILE").unwrap());
+        commands::verify_input(&fds_path);
     } else if let Some(opts) = matches.subcommand_matches("verify") {
         let smv_path = PathBuf::from(opts.value_of("SMV-FILE").unwrap());
         commands::verify(&smv_path);

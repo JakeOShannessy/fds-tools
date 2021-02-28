@@ -1,28 +1,38 @@
 #[macro_use]
 extern crate nom;
+pub mod burners;
+pub mod extracts;
 pub mod csv_parser;
 pub mod new_rev;
 pub mod out_parser;
 pub mod rename;
+pub mod html;
 mod slice_parser;
 mod smv_parser;
+pub mod summary;
 mod verification_tests;
 use arrayvec::ArrayString;
+use burners::Burner;
 use csv_parser::{CsvDataBlock, SmvValue};
 use data_vector::DataVector;
+use extracts::Extract;
 pub use fds_input_parser::decode;
-use fds_input_parser::decode::*;
 pub use fds_input_parser::parse_and_decode_fds_input_file;
 pub use fds_input_parser::FDSFile;
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
-pub use verification_tests::verify;
 use smv_parser::SMVFile;
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str::FromStr;
-use serde::{Serialize, Deserialize, de::{self, Visitor}, Serializer, Deserializer};
+pub use verification_tests::verify;
+pub use verification_tests::verify_input;
+use verification_tests::{SmokeDetector, Sprinkler, Supply, ThermalDetector};
 
 const READ_BUFFER_SIZE: usize = 8192;
 
@@ -82,16 +92,17 @@ impl FromStr for Chid {
         };
         // Check that there are no invalid characters.
         match array_string.find(|c: char| c == '.' || c == ' ') {
-            Some(position) => return Err(ParseChidError::InvalidChar{
-                position,
-                character: array_string.chars().nth(position).unwrap(),
-            }),
+            Some(position) => {
+                return Err(ParseChidError::InvalidChar {
+                    position,
+                    character: array_string.chars().nth(position).unwrap(),
+                })
+            }
             None => (),
         }
         Ok(Chid(array_string))
     }
 }
-
 
 impl Serialize for Chid {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -127,7 +138,6 @@ impl<'de> Deserialize<'de> for Chid {
         deserializer.deserialize_str(ChidVisitor)
     }
 }
-
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Title(ArrayString<[u8; 256]>);
@@ -184,7 +194,8 @@ pub struct Outputs {
 
 impl Outputs {
     pub fn new(smv_path: PathBuf) -> Self {
-        let mut file = File::open(&smv_path).expect(&format!("Could not open smv file: {:?}", smv_path));
+        let mut file =
+            File::open(&smv_path).expect(&format!("Could not open smv file: {:?}", smv_path));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .expect("Could not read smv file");
@@ -196,7 +207,7 @@ impl Outputs {
         &mut self,
         csv_type: String,
         vec_name: String,
-    ) -> Result<DataVector<f64,SmvValue>, Box<dyn std::error::Error>> {
+    ) -> Result<DataVector<f64, SmvValue>, Box<dyn std::error::Error>> {
         // TODO: add caching
         let hrr_csvf = self
             .smv
@@ -219,13 +230,15 @@ impl Outputs {
         &mut self,
         csv_type: String,
         vec_name: String,
-    ) -> Result<DataVector<f64,f64>, Box<dyn std::error::Error>> {
+    ) -> Result<DataVector<f64, f64>, Box<dyn std::error::Error>> {
         let vec = self.get_csv_vec(csv_type, vec_name)?;
         Ok(take_f64_vec(vec)?)
     }
 }
 
-fn take_f64_vec(vec: DataVector<f64,SmvValue>) -> Result<DataVector<f64,f64>, Box<dyn std::error::Error>> {
+fn take_f64_vec(
+    vec: DataVector<f64, SmvValue>,
+) -> Result<DataVector<f64, f64>, Box<dyn std::error::Error>> {
     let n = vec.values().len();
     let values = vec.values();
     let mut new_dv = DataVector::new(
@@ -271,114 +284,98 @@ fn read_slice_file() -> std::io::Result<()> {
     Ok(())
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Burner {
-    // pub hrrpua: f64,
-    // pub area: f64,
-    pub hrr: f64,
-}
+// impl Burner {
+//     pub fn from_obst(fds_file: &FDSFile, obst: &Obst) -> Self {
+//         if obst.surf_id.is_some() {
+//             let surf_id: &String = &obst.surf_id.as_ref().unwrap();
+//             let surf = fds_file.get_surf(surf_id).unwrap();
+//             let hrrpua = surf.hrrpua.unwrap();
+//             let area = 2.0 * obst.area_x().unwrap()
+//                 + 2.0 * obst.area_y().unwrap()
+//                 + 2.0 * obst.area_z().unwrap();
+//             Self { hrr: hrrpua * area }
+//         } else if obst.surf_ids.is_some() {
+//             let surf_ids: &(String, String, String) = obst.surf_ids.as_ref().unwrap();
+//             let surf_top = fds_file.get_surf(&surf_ids.0).unwrap();
+//             let surf_sides = fds_file.get_surf(&surf_ids.1).unwrap();
+//             let surf_bottom = fds_file.get_surf(&surf_ids.2).unwrap();
+//             let hrrpua_top = surf_top.hrrpua.unwrap_or(0.0);
+//             let hrrpua_sides = surf_sides.hrrpua.unwrap_or(0.0);
+//             let hrrpua_bottom = surf_bottom.hrrpua.unwrap_or(0.0);
+//             let area_top = obst.area_z().unwrap();
+//             let area_sides = 2.0 * obst.area_x().unwrap() + 2.0 * obst.area_y().unwrap();
+//             let area_bottom = obst.area_z().unwrap();
+//             Self {
+//                 hrr: hrrpua_top * area_top
+//                     + hrrpua_bottom * area_bottom
+//                     + hrrpua_sides * area_sides,
+//             }
+//         } else if obst.surf_id6.is_some() {
+//             panic!("SURF_ID6 not supported")
+//         } else {
+//             panic!("not valid burner")
+//         }
+//     }
 
-impl Burner {
-    pub fn from_obst(fds_file: &FDSFile, obst: &Obst) -> Self {
-        if obst.surf_id.is_some() {
-            let surf_id: &String = &obst.surf_id.as_ref().unwrap();
-            let surf = fds_file.get_surf(surf_id).unwrap();
-            let hrrpua = surf.hrrpua.unwrap();
-            let area = 2.0 * obst.area_x().unwrap()
-                + 2.0 * obst.area_y().unwrap()
-                + 2.0 * obst.area_z().unwrap();
-            Self { hrr: hrrpua * area }
-        } else if obst.surf_ids.is_some() {
-            let surf_ids: &(String, String, String) = obst.surf_ids.as_ref().unwrap();
-            let surf_top = fds_file.get_surf(&surf_ids.0).unwrap();
-            let surf_sides = fds_file.get_surf(&surf_ids.1).unwrap();
-            let surf_bottom = fds_file.get_surf(&surf_ids.2).unwrap();
-            let hrrpua_top = surf_top.hrrpua.unwrap_or(0.0);
-            let hrrpua_sides = surf_sides.hrrpua.unwrap_or(0.0);
-            let hrrpua_bottom = surf_bottom.hrrpua.unwrap_or(0.0);
-            let area_top = obst.area_z().unwrap();
-            let area_sides = 2.0 * obst.area_x().unwrap() + 2.0 * obst.area_y().unwrap();
-            let area_bottom = obst.area_z().unwrap();
-            Self {
-                hrr: hrrpua_top * area_top
-                    + hrrpua_bottom * area_bottom
-                    + hrrpua_sides * area_sides,
-            }
-        } else if obst.surf_id6.is_some() {
-            panic!("SURF_ID6 not supported")
-        } else {
-            panic!("not valid burner")
-        }
-    }
-
-    pub fn from_vent(fds_file: &FDSFile, vent: &Vent) -> Self {
-        let surf_id: &String = &vent.surf_id.as_ref().unwrap();
-        let surf = fds_file.get_surf(surf_id).unwrap();
-        let hrrpua = surf.hrrpua.unwrap();
-        Self {
-            hrr: hrrpua * (*vent).area().unwrap(),
-        }
-    }
-}
+//     pub fn from_vent(fds_file: &FDSFile, vent: &Vent) -> Self {
+//         let surf_id: &String = &vent.surf_id.as_ref().unwrap();
+//         let surf = fds_file.get_surf(surf_id).unwrap();
+//         let hrrpua = surf.hrrpua.unwrap();
+//         Self {
+//             hrr: hrrpua * (*vent).area().unwrap(),
+//         }
+//     }
+// }
 
 pub trait FDSFileExt {
     fn burners(&self) -> Vec<Burner>;
+    fn sprinklers(&self) -> Vec<Sprinkler>;
+    fn extracts(&self) -> Vec<Extract>;
+    fn supplies(&self) -> Vec<Supply>;
+    fn smoke_detectors(&self) -> Vec<SmokeDetector>;
+    fn thermal_detectors(&self) -> Vec<ThermalDetector>;
+    fn heat_of_combustion(&self) -> f64;
+    fn soot_production_rate(&self) -> f64;
 }
 
 impl FDSFileExt for FDSFile {
     fn burners(&self) -> Vec<Burner> {
-        // First find all the obstructions which have a HRRPUA set. TODO: this
-        // does not define all burners, as there are MLRPUA etc.
-        let burner_surfs: Vec<&Surf> = self
-            .surfs
+        burners::burners(self)
+    }
+    fn sprinklers(&self) -> Vec<Sprinkler> {
+        self.devcs
             .iter()
-            .filter(|surf| surf.hrrpua.is_some())
-            .collect();
-        let burner_obsts: Vec<&Obst> = self
-            .obsts
-            .iter()
-            .filter(|obst| {
-                for s in &burner_surfs {
-                    match &s.id {
-                        Some(id) => {
-                            if (**obst).has_surf(&id) {
-                                return true;
-                            }
-                        }
-                        _ => (),
-                    }
+            .filter_map(|devc| {
+                if devc.is_sprinkler(self) {
+                    Some(Sprinkler::from_devc(devc.clone(), self))
+                } else {
+                    None
                 }
-                false
             })
-            .collect();
-        let burner_vents: Vec<&Vent> = self
-            .vents
-            .iter()
-            .filter(|vent| {
-                for s in &burner_surfs {
-                    match &s.id {
-                        Some(id) => {
-                            if (**vent).has_surf(&id) {
-                                return true;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                false
-            })
-            .collect();
-        let mut obst_burners: Vec<Burner> = burner_obsts
-            .iter()
-            .map(|obst| Burner::from_obst(self, obst))
-            .collect();
-        let mut vent_burners: Vec<Burner> = burner_vents
-            .iter()
-            .map(|vent| Burner::from_vent(self, vent))
-            .collect();
-        obst_burners.append(&mut vent_burners);
-        let burners = obst_burners;
-        burners
+            .collect()
+    }
+    fn extracts(&self) -> Vec<Extract> {
+        extracts::extracts(self)
+    }
+    fn supplies(&self) -> Vec<Supply> {
+        // todo!("list supplies")
+        vec![]
+    }
+    fn smoke_detectors(&self) -> Vec<SmokeDetector> {
+        // todo!("list smoke detectors")
+        vec![]
+    }
+    fn thermal_detectors(&self) -> Vec<ThermalDetector> {
+        // todo!("list thermal detectors")
+        vec![]
+    }
+    fn heat_of_combustion(&self) -> f64 {
+        // todo!("return heat of combustion")
+        0.0
+    }
+    fn soot_production_rate(&self) -> f64{
+        // todo!("return soot production rate")
+        0.0
     }
 }
 
@@ -403,11 +400,17 @@ mod tests {
 
     #[test]
     fn parse_chid() {
-        assert_eq!(Err(ParseChidError::TooLong), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>());
+        assert_eq!(
+            Err(ParseChidError::TooLong),
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>()
+        );
         assert_eq!("hello", "hello".parse::<Chid>().unwrap().as_str());
-        assert_eq!(Err(ParseChidError::InvalidChar {
-            position: 3,
-            character: '.',
-        }), "hel.lo".parse::<Chid>());
+        assert_eq!(
+            Err(ParseChidError::InvalidChar {
+                position: 3,
+                character: '.',
+            }),
+            "hel.lo".parse::<Chid>()
+        );
     }
 }
