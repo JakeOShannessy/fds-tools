@@ -97,10 +97,10 @@ impl CsvDataBlock {
         let y_index = self.names.iter().position(|x| x == y_name)?;
         let mut dv: DataVector<f64,SmvValue> = DataVector::new(
             y_name.to_string(),
-            x_name.to_string(),
-            y_name.to_string(),
             self.units.get(x_index).cloned()?.to_string(),
+            x_name.to_string(),
             self.units.get(y_index).cloned()?.to_string(),
+            y_name.to_string(),
             Vec::with_capacity(self.vec_len()),
         );
         let x_vec = self.values.get(x_index)?.iter();
