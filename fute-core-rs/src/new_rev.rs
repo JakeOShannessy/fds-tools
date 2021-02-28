@@ -94,7 +94,9 @@ pub fn parse_dir_name(dir_name: &str) -> Option<RevName> {
         let rev_width: usize = zero_padding.len() + rev_num_str.len();
         let rev_num: u64 = rev_num_str.parse().ok()?;
         let tail_str: &str = &captures[4];
-
+        if tail_str.chars().next().map(|c| c != '_').unwrap_or(false) {
+            return None;
+        }
         Some(RevName {
             name: name.to_string(),
             rev_width,
@@ -112,11 +114,21 @@ mod tests {
     fn basic_example() {
         assert_eq!(
             parse_dir_name("1234_M1_R01"),
-            Some(RevName::new("1234_M1_R".to_string(), 2_usize, 1_u64, "".to_string()))
+            Some(RevName::new(
+                "1234_M1_R".to_string(),
+                2_usize,
+                1_u64,
+                "".to_string()
+            ))
         );
         assert_eq!(
             parse_dir_name("1234_M1_R1"),
-            Some(RevName::new("1234_M1_R".to_string(), 1_usize, 1_u64, "".to_string()))
+            Some(RevName::new(
+                "1234_M1_R".to_string(),
+                1_usize,
+                1_u64,
+                "".to_string()
+            ))
         );
         assert_eq!(parse_dir_name("1234_M1R1"), None);
         assert_eq!(parse_dir_name("1234_M1_R1x"), None);

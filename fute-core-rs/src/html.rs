@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Clone,Debug)]
 pub enum HtmlChild {
     String(String),
     Element(HtmlElement),
@@ -14,6 +15,7 @@ impl Html for HtmlChild {
     }
 }
 
+#[derive(Clone,Debug)]
 pub struct HtmlElement {
     pub tag: String,
     pub attributes: HashMap<String, String>,
@@ -52,5 +54,45 @@ pub trait Html {
 impl Html for String {
     fn render(&self, f: &mut impl std::io::Write) -> std::io::Result<()> {
         write!(f, "{}", self)
+    }
+}
+
+#[derive(Clone,Debug)]
+pub struct HtmlPage {
+    pub sections: Vec<HtmlElement>,
+}
+
+impl HtmlPage {
+    pub fn add(&mut self, section: HtmlElement) {
+        self.sections.push(section)
+    }
+}
+
+impl Html for HtmlPage {
+    fn render(&self, f: &mut impl std::io::Write) -> std::io::Result<()> {
+        let mut page = HtmlElement::new("html".to_string());
+        let css = include_str!("./summary.css");
+        let mut head = HtmlElement::new("head".to_string());
+        let mut style = HtmlElement::new("style".to_string());
+        style.children.push(HtmlChild::String(css.to_string()));
+        head.children.push(HtmlChild::Element(style));
+        head.children.push(HtmlChild::String(format!(
+            "<script type=\"text/javascript\">{}</script>",
+            r#"
+            function toggle_visibility(ev,el) {
+                if (el.classList.contains("test")) {
+                  el.classList.toggle("shown-test");
+                  el.classList.toggle("hidden-test");
+                  ev.stopPropagation();
+                };
+            }"#
+        )));
+        page.children.push(HtmlChild::Element(head));
+        let mut body = HtmlElement::new("body".to_string());
+        for section in &self.sections {
+            body.children.push(HtmlChild::Element(section.clone()));
+        }
+        page.children.push(HtmlChild::Element(body));
+        page.render(f)
     }
 }

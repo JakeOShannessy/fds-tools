@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate nom;
 pub mod burners;
-pub mod extracts;
+pub mod simple_flow;
 pub mod csv_parser;
 pub mod new_rev;
 pub mod out_parser;
@@ -15,7 +15,6 @@ use arrayvec::ArrayString;
 use burners::Burner;
 use csv_parser::{CsvDataBlock, SmvValue};
 use data_vector::DataVector;
-use extracts::Extract;
 pub use fds_input_parser::decode;
 pub use fds_input_parser::parse_and_decode_fds_input_file;
 pub use fds_input_parser::FDSFile;
@@ -23,6 +22,7 @@ use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use simple_flow::{SimpleFlow, extracts::{self}, supplies};
 pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
 use smv_parser::SMVFile;
@@ -32,7 +32,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 pub use verification_tests::verify;
 pub use verification_tests::verify_input;
-use verification_tests::{SmokeDetector, Sprinkler, Supply, ThermalDetector};
+pub use verification_tests::print_verification_tree;
+use verification_tests::{SmokeDetector, Sprinkler, ThermalDetector};
+pub mod hrrs;
 
 const READ_BUFFER_SIZE: usize = 8192;
 
@@ -330,8 +332,8 @@ fn read_slice_file() -> std::io::Result<()> {
 pub trait FDSFileExt {
     fn burners(&self) -> Vec<Burner>;
     fn sprinklers(&self) -> Vec<Sprinkler>;
-    fn extracts(&self) -> Vec<Extract>;
-    fn supplies(&self) -> Vec<Supply>;
+    fn extracts(&self) -> Vec<SimpleFlow>;
+    fn supplies(&self) -> Vec<SimpleFlow>;
     fn smoke_detectors(&self) -> Vec<SmokeDetector>;
     fn thermal_detectors(&self) -> Vec<ThermalDetector>;
     fn heat_of_combustion(&self) -> f64;
@@ -346,6 +348,7 @@ impl FDSFileExt for FDSFile {
         self.devcs
             .iter()
             .filter_map(|devc| {
+                println!("Looking at device: {:?}", devc.id);
                 if devc.is_sprinkler(self) {
                     Some(Sprinkler::from_devc(devc.clone(), self))
                 } else {
@@ -354,12 +357,11 @@ impl FDSFileExt for FDSFile {
             })
             .collect()
     }
-    fn extracts(&self) -> Vec<Extract> {
+    fn extracts(&self) -> Vec<SimpleFlow> {
         extracts::extracts(self)
     }
-    fn supplies(&self) -> Vec<Supply> {
-        // todo!("list supplies")
-        vec![]
+    fn supplies(&self) -> Vec<SimpleFlow> {
+        supplies::supplies(self)
     }
     fn smoke_detectors(&self) -> Vec<SmokeDetector> {
         // todo!("list smoke detectors")

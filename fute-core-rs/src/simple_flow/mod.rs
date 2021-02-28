@@ -1,23 +1,8 @@
-use fds_input_parser::{
-    decode::Mesh, decode::Obst, decode::Resolution, decode::Surf, decode::Vent, xb::HasXB, FDSFile,
-};
+use fds_input_parser::{FDSFile, decode::{Mesh, Obst, Surf, Vent}, xb::MightHaveXB};
 
-pub fn extracts<'a>(fds_data: &'a FDSFile) -> Vec<Extract<'a>> {
-    // Iterate through all the OBSTs and VENTs and determine which ones are
-    // burners.
-    let mut burners = Vec::new();
-    for obst in fds_data.obsts.iter() {
-        if obst.is_burner(fds_data) {
-            burners.push(Extract::from_obst(fds_data, obst))
-        }
-    }
-    for vent in fds_data.vents.iter() {
-        if vent.is_burner(fds_data) {
-            burners.push(Extract::from_vent(fds_data, vent))
-        }
-    }
-    burners
-}
+pub mod extracts;
+pub mod supplies;
+
 
 /// A burner is a VENT or OBST that has a HRRPUA or an MLRPUA. That is, it
 /// produces fuel. Each Burner is a collection of panels. For example, an OBST
@@ -25,11 +10,11 @@ pub fn extracts<'a>(fds_data: &'a FDSFile) -> Vec<Extract<'a>> {
 /// would be comprised of 5 panels. Each of the panels potentially has a
 /// different surface.
 #[derive(Clone, Debug)]
-pub struct Extract<'a> {
-    pub panels: Vec<ExtractPanel<'a>>,
+pub struct SimpleFlow<'a> {
+    pub panels: Vec<SimpleFlowPanel<'a>>,
 }
 
-impl<'a> Extract<'a> {
+impl<'a> SimpleFlow<'a> {
     /// Return the maximum flow rate of the extract.
     pub fn flow_rate(&self) -> f64 {
         self.panels.iter().map(|panel| panel.flow_rate()).sum()
@@ -45,10 +30,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegI(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -57,8 +42,8 @@ impl<'a> Extract<'a> {
                             .collect::<Vec<_>>(),
                     });
                     // Max X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosI(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -67,8 +52,8 @@ impl<'a> Extract<'a> {
                             .collect(),
                     });
                     // Min Y
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegJ(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -77,8 +62,8 @@ impl<'a> Extract<'a> {
                             .collect(),
                     });
                     // Max Y
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosJ(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -87,8 +72,8 @@ impl<'a> Extract<'a> {
                             .collect(),
                     });
                     // Min Z
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegK(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -97,8 +82,8 @@ impl<'a> Extract<'a> {
                             .collect(),
                     });
                     // Max Z
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosK(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -116,10 +101,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_top))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Top
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosK(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -134,10 +119,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_sides))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Sides
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegI(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -145,8 +130,8 @@ impl<'a> Extract<'a> {
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
                     });
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosI(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -154,8 +139,8 @@ impl<'a> Extract<'a> {
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
                     });
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegJ(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -163,8 +148,8 @@ impl<'a> Extract<'a> {
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
                     });
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosJ(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -180,10 +165,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_bottom))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Top
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegK(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -200,10 +185,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_x))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegI(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -219,10 +204,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_x))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosI(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -238,10 +223,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_y))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegJ(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -257,10 +242,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_y))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosJ(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -276,10 +261,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_z))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstNegK(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -295,10 +280,10 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_z))
             {
-                if surf.is_burner() {
+                if surf.is_extract() {
                     // Min X
-                    panels.push(ExtractPanel {
-                        object: ExtractObject::ObstPosK(obst),
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
                             .meshes
@@ -309,7 +294,7 @@ impl<'a> Extract<'a> {
                 }
             }
         }
-        Extract { panels }
+        SimpleFlow { panels }
     }
 
     pub fn from_vent(fds_data: &'a FDSFile, vent: &'a Vent) -> Self {
@@ -322,16 +307,21 @@ impl<'a> Extract<'a> {
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
-                if surf.is_burner() {
-                    todo!("Not sure how to deal with vent burner direction yet")
+                if surf.is_extract() {
+                    panels.push(SimpleFlowPanel {
+                        object: SimpleFlowObject::Vent(vent),
+                        surf,
+                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(vent)).collect(),
+                    });
+                    // todo!("Not sure how to deal with vent burner direction yet")
                     // // Min X
-                    // panels.push(ExtractPanel {
-                    //     object: ExtractObject::ObstNegI(obst),
+                    // panels.push(SimpleFlowPanel {
+                    //     object: SimpleFlowObject::ObstNegI(obst),
                     //     surf,
                     //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
                     // });
                     // // Max X
-                    // panels.push(ExtractPanel {
+                    // panels.push(SimpleFlowPanel {
                     //     object: BurnerObject::ObstPosI(obst),
                     //     surf,
                     //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
@@ -339,14 +329,14 @@ impl<'a> Extract<'a> {
                 }
             }
         }
-        Extract { panels }
+        SimpleFlow { panels }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct ExtractPanel<'a> {
+pub struct SimpleFlowPanel<'a> {
     /// The object on which this panel is based.
-    pub object: ExtractObject<'a>,
+    pub object: SimpleFlowObject<'a>,
     /// The surface of this panel. TODO: we could probably compute this on
     /// demand.
     pub surf: &'a Surf,
@@ -354,7 +344,7 @@ pub struct ExtractPanel<'a> {
     pub meshes: Vec<&'a Mesh>,
 }
 
-impl<'a> ExtractPanel<'a> {
+impl<'a> SimpleFlowPanel<'a> {
     /// Return the maximum HRR of the burner, i.e. once any ramp up time has
     /// completed. TODO: does not currently account for ramps.
     pub fn flow_rate(&self) -> f64 {
@@ -379,7 +369,7 @@ impl<'a> ExtractPanel<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub enum ExtractObject<'a> {
+pub enum SimpleFlowObject<'a> {
     Vent(&'a Vent),
     ObstNegI(&'a Obst),
     ObstPosI(&'a Obst),
@@ -389,16 +379,16 @@ pub enum ExtractObject<'a> {
     ObstPosK(&'a Obst),
 }
 
-impl<'a> ExtractObject<'a> {
+impl<'a> SimpleFlowObject<'a> {
     pub fn area(&self) -> Option<f64> {
         match self {
-            ExtractObject::Vent(vent) => vent.area(),
-            ExtractObject::ObstNegI(obst) => obst.area_x(),
-            ExtractObject::ObstPosI(obst) => obst.area_x(),
-            ExtractObject::ObstNegJ(obst) => obst.area_y(),
-            ExtractObject::ObstPosJ(obst) => obst.area_y(),
-            ExtractObject::ObstNegK(obst) => obst.area_z(),
-            ExtractObject::ObstPosK(obst) => obst.area_z(),
+            SimpleFlowObject::Vent(vent) => vent.area(),
+            SimpleFlowObject::ObstNegI(obst) => obst.area_x(),
+            SimpleFlowObject::ObstPosI(obst) => obst.area_x(),
+            SimpleFlowObject::ObstNegJ(obst) => obst.area_y(),
+            SimpleFlowObject::ObstPosJ(obst) => obst.area_y(),
+            SimpleFlowObject::ObstNegK(obst) => obst.area_z(),
+            SimpleFlowObject::ObstPosK(obst) => obst.area_z(),
         }
     }
 }

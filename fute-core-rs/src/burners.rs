@@ -1,5 +1,11 @@
 use fds_input_parser::{
-    decode::Mesh, decode::Obst, decode::Resolution, decode::Surf, decode::Vent, xb::HasXB, FDSFile,
+    decode::Mesh,
+    decode::Obst,
+    decode::Resolution,
+    decode::Surf,
+    decode::Vent,
+    xb::{MightHaveXB},
+    FDSFile,
 };
 
 pub fn burners<'a>(fds_data: &'a FDSFile) -> Vec<Burner<'a>> {
@@ -19,6 +25,19 @@ pub fn burners<'a>(fds_data: &'a FDSFile) -> Vec<Burner<'a>> {
     burners
 }
 
+fn source_froude(q: f64, fuel_area: f64) -> f64 {
+    let ambient_density = 1.205;
+    let ambient_specific_heat = 1.005;
+    let ambient_temperature = 293.15;
+    let g = 9.81;
+    let fuel_diameter = ((4.0 * fuel_area) / std::f64::consts::PI).sqrt();
+    q / (ambient_density
+        * ambient_specific_heat
+        * ambient_temperature
+        * (fuel_diameter.powi(2))
+        * ((g * fuel_diameter).sqrt()))
+}
+
 /// A burner is a VENT or OBST that has a HRRPUA or an MLRPUA. That is, it
 /// produces fuel. Each Burner is a collection of panels. For example, an OBST
 /// which has a burner surface applied to its top and sides (but not bottom)
@@ -27,6 +46,7 @@ pub fn burners<'a>(fds_data: &'a FDSFile) -> Vec<Burner<'a>> {
 #[derive(Clone, Debug)]
 pub struct Burner<'a> {
     pub panels: Vec<BurnerPanel<'a>>,
+    pub name: Option<String>,
 }
 
 impl<'a> Burner<'a> {
@@ -39,7 +59,7 @@ impl<'a> Burner<'a> {
     pub fn source_froude(&self) -> f64 {
         let max_hrr = self.max_hrr();
         let fuel_area = self.fuel_area();
-        unimplemented!()
+        source_froude(max_hrr, fuel_area)
     }
 
     /// Return the fuel area of the burner.
@@ -48,8 +68,9 @@ impl<'a> Burner<'a> {
     }
 
     /// Return the non-dimensionalised ratio of the burner.
-    pub fn ndr(&self) -> f64 {
-        todo!()
+    pub fn ndr(&self) -> Vec<f64> {
+        let q = self.max_hrr();
+        self.panels.iter().map(|panel| panel.ndr()).collect()
     }
 
     pub fn from_obst(fds_data: &'a FDSFile, obst: &'a Obst) -> Self {
@@ -326,7 +347,8 @@ impl<'a> Burner<'a> {
                 }
             }
         }
-        Burner { panels }
+        let name = obst.id.clone();
+        Burner { panels, name }
     }
 
     pub fn from_vent(fds_data: &'a FDSFile, vent: &'a Vent) -> Self {
@@ -340,23 +362,22 @@ impl<'a> Burner<'a> {
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
                 if surf.is_burner() {
-                    todo!("Not sure how to deal with vent burner direction yet")
-                    // // Min X
-                    // panels.push(BurnerPanel {
-                    //     object: BurnerObject::ObstNegI(obst),
-                    //     surf,
-                    //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
-                    // });
-                    // // Max X
-                    // panels.push(BurnerPanel {
-                    //     object: BurnerObject::ObstPosI(obst),
-                    //     surf,
-                    //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
-                    // });
+                    panels.push(BurnerPanel {
+                        object: BurnerObject::Vent(vent),
+                        surf,
+                        // TODO: we should 'resolve' the mesh before calculating this (i.e. creating an integer solution).
+                        // meshes: fds_data
+                        //     .meshes
+                        //     .iter()
+                        //     .filter(|mesh| MightHaveXB::intersect(mesh,vent))
+                        //     .collect(),
+                        meshes: fds_data.meshes.iter().map(|x| x).collect(),
+                    });
                 }
             }
         }
-        Burner { panels }
+        let name = vent.id.clone();
+        Burner { panels, name }
     }
 }
 
@@ -386,6 +407,13 @@ impl<'a> BurnerPanel<'a> {
         } else {
             0.0
         }
+    }
+
+    /// Determine the alpha value used by TAU_Q. This does not currently
+    /// consider custom ramps etc.
+    pub fn tau_q(&self) -> Option<f64> {
+        // First we see if the SURF has a TAU_Q value, otherwise we skip to None.
+        self.surf.tau_q
     }
 
     /// Return the source froude number of the burner.

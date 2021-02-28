@@ -5,6 +5,7 @@ authors = ["Jake O'Shannessy <joshannessy@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+ansi_term = "0.12"
 clap = "2"
 csv = "1"
 fds-input-parser = {path = "../../fds-input-parser-rs"}

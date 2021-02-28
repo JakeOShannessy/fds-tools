@@ -6,7 +6,7 @@ use fds_input_parser::{decode::Resolution, FDSFile};
 use html::HtmlElement;
 
 pub fn summarise_input(fds_data: &FDSFile) -> InputSummary {
-    println!("{:?}", fds_data);
+    // println!("{:?}", fds_data);
     let chid = fds_data
         .head
         .as_ref()
@@ -22,9 +22,12 @@ pub fn summarise_input(fds_data: &FDSFile) -> InputSummary {
     let burners = fds_data.burners();
     let n_burners = burners.len();
     let total_max_hrr: f64 = burners.iter().map(|burner| burner.max_hrr()).sum();
-    let ndrs: Vec<_> = burners.iter().map(|burner| burner.ndr()).collect();
+    let ndrs: Vec<Vec<_>> = burners.iter().map(|burner| burner.ndr()).collect();
     let extracts = fds_data.extracts();
     let n_extract_vents = extracts.len();
+    for extract in &extracts {
+        println!("Extract: {:?}", extract);
+    }
     let total_extract_rate = extracts
         .iter()
         .map(|extract| extract.flow_rate().abs())
@@ -51,7 +54,7 @@ pub fn summarise_input(fds_data: &FDSFile) -> InputSummary {
     let n_sprinklers = sprinklers.len();
     let sprinkler_activation_temperatures = sprinklers
         .iter()
-        .map(|sprinkler| sprinkler.activation_temperature())
+        .flat_map(|sprinkler| sprinkler.activation_temperature())
         .collect();
     let smoke_detectors = fds_data.smoke_detectors();
     let n_smoke_detectors = smoke_detectors.len();
@@ -106,13 +109,11 @@ pub struct InputSummary {
     pub n_meshes: usize,
     pub n_cells: u64,
     pub mesh_resolutions: Vec<Resolution>,
-    pub ndrs: Vec<f64>,
+    pub ndrs: Vec<Vec<f64>>,
 }
 
 impl InputSummary {
     pub fn to_html(&self) -> HtmlElement {
-        let css = include_str!("./summary.css");
-        let mut page = HtmlElement::new("html".to_string());
         let mut table = HtmlElement::new("table".to_string());
         table
             .attributes
@@ -239,6 +240,31 @@ impl InputSummary {
                 chid_row.children.push(HtmlChild::Element(chid_cell));
                 body.children.push(HtmlChild::Element(chid_row));
             }
+            // Non-Dimensionalized Ratios
+            {
+                let mut chid_row = HtmlElement::new("tr".to_string());
+                let mut label_cell = HtmlElement::new("td".to_string());
+                let mut chid_cell = HtmlElement::new("td".to_string());
+                label_cell
+                    .children
+                    .push(HtmlChild::String("Non-Dimensionalized Ratios".to_string()));
+                if self.ndrs.is_empty() {
+                    chid_cell
+                        .children
+                        .push(HtmlChild::String("No Burners".to_string()));
+                } else {
+                    let mut list = HtmlElement::new("ul".to_string());
+                    for item in self.ndrs.iter() {
+                        let mut li = HtmlElement::new("li".to_string());
+                        li.children.push(HtmlChild::String(format!("{:?}", item)));
+                        list.children.push(HtmlChild::Element(li));
+                    }
+                    chid_cell.children.push(HtmlChild::Element(list));
+                }
+                chid_row.children.push(HtmlChild::Element(label_cell));
+                chid_row.children.push(HtmlChild::Element(chid_cell));
+                body.children.push(HtmlChild::Element(chid_row));
+            }
             table.children.push(HtmlChild::Element(body));
         }
         // Sprinklers section
@@ -276,14 +302,20 @@ impl InputSummary {
                 label_cell.children.push(HtmlChild::String(
                     "Sprinkler Activation Temperatures".to_string(),
                 ));
-                let mut list = HtmlElement::new("ul".to_string());
-                for item in self.sprinkler_activation_temperatures.iter() {
-                    let mut li = HtmlElement::new("li".to_string());
-                    li.children
-                        .push(HtmlChild::String(format!("{:.2} °C", item)));
-                    list.children.push(HtmlChild::Element(li));
+                if self.sprinkler_activation_temperatures.is_empty() {
+                    chid_cell
+                        .children
+                        .push(HtmlChild::String("No Sprinklers".to_string()));
+                } else {
+                    let mut list = HtmlElement::new("ul".to_string());
+                    for item in self.sprinkler_activation_temperatures.iter() {
+                        let mut li = HtmlElement::new("li".to_string());
+                        li.children
+                            .push(HtmlChild::String(format!("{:.2} °C", item)));
+                        list.children.push(HtmlChild::Element(li));
+                    }
+                    chid_cell.children.push(HtmlChild::Element(list));
                 }
-                chid_cell.children.push(HtmlChild::Element(list));
                 chid_row.children.push(HtmlChild::Element(label_cell));
                 chid_row.children.push(HtmlChild::Element(chid_cell));
                 body.children.push(HtmlChild::Element(chid_row));
@@ -325,14 +357,20 @@ impl InputSummary {
                 label_cell
                     .children
                     .push(HtmlChild::String("Smoke Detector Obscurations".to_string()));
-                let mut list = HtmlElement::new("ul".to_string());
-                for item in self.smoke_detector_obscurations.iter() {
-                    let mut li = HtmlElement::new("li".to_string());
-                    li.children
-                        .push(HtmlChild::String(format!("{:.2} %/m", item)));
-                    list.children.push(HtmlChild::Element(li));
+                if self.smoke_detector_obscurations.is_empty() {
+                    chid_cell
+                        .children
+                        .push(HtmlChild::String("No Obscuration Levels".to_string()));
+                } else {
+                    let mut list = HtmlElement::new("ul".to_string());
+                    for item in self.smoke_detector_obscurations.iter() {
+                        let mut li = HtmlElement::new("li".to_string());
+                        li.children
+                            .push(HtmlChild::String(format!("{:.2} %/m", item)));
+                        list.children.push(HtmlChild::Element(li));
+                    }
+                    chid_cell.children.push(HtmlChild::Element(list));
                 }
-                chid_cell.children.push(HtmlChild::Element(list));
                 chid_row.children.push(HtmlChild::Element(label_cell));
                 chid_row.children.push(HtmlChild::Element(chid_cell));
                 body.children.push(HtmlChild::Element(chid_row));
@@ -465,40 +503,25 @@ impl InputSummary {
                 label_cell
                     .children
                     .push(HtmlChild::String("Mesh Resolutions".to_string()));
-                chid_cell
-                    .children
-                    .push(HtmlChild::String(format!("{}", self.n_sprinklers)));
-                chid_row.children.push(HtmlChild::Element(label_cell));
-                chid_row.children.push(HtmlChild::Element(chid_cell));
-                body.children.push(HtmlChild::Element(chid_row));
-            }
-            // Non-Dimensionalized Ratios
-            {
-                let mut chid_row = HtmlElement::new("tr".to_string());
-                let mut label_cell = HtmlElement::new("td".to_string());
-                let mut chid_cell = HtmlElement::new("td".to_string());
-                label_cell
-                    .children
-                    .push(HtmlChild::String("Non-Dimensionalized Ratios".to_string()));
+
                 let mut list = HtmlElement::new("ul".to_string());
-                for item in self.ndrs.iter() {
+                for mesh_resolution in &self.mesh_resolutions {
                     let mut li = HtmlElement::new("li".to_string());
-                    li.children.push(HtmlChild::String(format!("{:.2}", item)));
+                    li.children.push(HtmlChild::String(format!(
+                        "{:.2}m × {:.2} m × {:.2} m",
+                        mesh_resolution.x, mesh_resolution.y, mesh_resolution.z
+                    )));
                     list.children.push(HtmlChild::Element(li));
                 }
                 chid_cell.children.push(HtmlChild::Element(list));
+
                 chid_row.children.push(HtmlChild::Element(label_cell));
                 chid_row.children.push(HtmlChild::Element(chid_cell));
                 body.children.push(HtmlChild::Element(chid_row));
             }
             table.children.push(HtmlChild::Element(body));
         }
-        page.children.push(HtmlChild::String(format!(
-            "<head><style>{}</style></head>",
-            css
-        )));
-        page.children.push(HtmlChild::Element(table));
-        page
+        table
     }
 }
 

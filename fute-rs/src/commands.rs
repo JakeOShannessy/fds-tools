@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use csv;
 use data_vector::DataVector;
 use data_vector::Point;
-use fute_core::parse_and_decode_fds_input_file;
+use fute_core::{html::{HtmlElement, HtmlPage}, parse_and_decode_fds_input_file, print_verification_tree};
 use fute_core::{csv_parser::SmvValue, parse_smv_file};
 use fute_core::{decode::*, summary::summarise_input};
 use plotters::prelude::*;
@@ -10,7 +10,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::{
     borrow::Cow,
-    ffi::OsStr,
     ops::Range,
     path::{Path, PathBuf},
 };
@@ -278,7 +277,7 @@ pub fn plot_hrr(smv_path: &Path) {
             .margin(15)
             .x_label_area_size(50)
             .y_label_area_size(60)
-            .build_ranged(0_f32..((1800_f32) as f32), 0_f32..3000_f32)
+            .build_cartesian_2d(0_f32..((1800_f32) as f32), 0_f32..3000_f32)
             // .build()
             .unwrap();
 
@@ -353,25 +352,25 @@ pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     use fute_core::html::Html;
     println!("verifying: {}", fds_path.display());
     let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path);
-    fute_core::verify_input(&fds_data)?;
+    let verification_result = fute_core::verify_input(&fds_data);
+    print_verification_tree(&verification_result,0);
     let input_summary = summarise_input(&fds_data);
-    let dir = "Charts";
     let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
     chart_page_path.push(format!("Verification.html"));
     println!("about to create verification page");
 
-    let html = input_summary.to_html();
+    let mut page = HtmlPage {
+        sections: vec![],
+    };
+    page.add(input_summary.to_html());
+    page.add(verification_result.to_html_outer());
     let mut f = std::fs::File::create(&chart_page_path).unwrap();
-    // f.write_all(html.as_bytes()).unwrap();
-    // write!(f,"{}", html);
-    let mut s = String::new();
-    html.render(&mut f).unwrap();
-    // create_chart_page(&chart_page_path, charts);
+    page.render(&mut f).unwrap();
 
-    #[cfg(windows)]
     open_browser(&chart_page_path).unwrap();
     Ok(())
 }
+
 
 pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fute_core::verify(smv_path)?;
@@ -570,7 +569,6 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("about to create chart page");
     create_chart_page(&chart_page_path, charts);
 
-    #[cfg(windows)]
     open_browser(&chart_page_path).unwrap();
     Ok(())
 }
@@ -597,7 +595,6 @@ pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
         vectors,
     );
     create_chart_page(&chart_page_path, charts);
-    #[cfg(windows)]
     open_browser(&chart_page_path).unwrap();
 }
 
@@ -765,6 +762,19 @@ fn mangle(s: &String) -> Cow<String> {
     Cow::Borrowed(s)
 }
 
+
+#[cfg(target_os = "macos")]
+pub fn open_browser(path: &Path) -> std::io::Result<bool> {
+    let status = std::process::Command::new("open").arg(path).output()?.status;
+    Ok(status.success())
+}
+
+#[cfg(target_os = "linux")]
+pub fn open_browser(path: &Path) -> std::io::Result<bool> {
+    let status = std::process::Command::new("xdg-open").arg(path).output()?.status;
+    Ok(status.success())
+}
+
 #[cfg(windows)]
 fn open_browser(path: &Path) -> std::io::Result<bool> {
     {
@@ -843,7 +853,7 @@ fn plot_dv(data_vectors: Vec<&DataVector<f64, f64>>, title: String, path: &Path)
             .margin(15)
             .x_label_area_size(50)
             .y_label_area_size(60)
-            .build_ranged(x_range, y_range)
+            .build_cartesian_2d(x_range, y_range)
             .unwrap();
 
         chart
@@ -996,7 +1006,7 @@ fn plot_dv_hrr(data_vectors: Vec<&DataVector<f64, f64>>, path: &Path) {
             .margin(15)
             .x_label_area_size(50)
             .y_label_area_size(60)
-            .build_ranged(x_range, y_range)
+            .build_cartesian_2d(x_range, y_range)
             .unwrap();
 
         chart
@@ -1138,7 +1148,7 @@ fn plot_runtime(dv: &DataVector<f64, DateTime<Utc>>, path: &Path) {
             .margin(15)
             .x_label_area_size(50)
             .y_label_area_size(60)
-            .build_ranged(y_range, x_range)
+            .build_cartesian_2d(y_range, x_range)
             .unwrap();
 
         let x_label_style = plotters::style::FontDesc::new(

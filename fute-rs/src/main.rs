@@ -216,10 +216,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         commands::peak_hrr(&fds_path)
     } else if let Some(opts) = matches.subcommand_matches("verify-input") {
         let fds_path = PathBuf::from(opts.value_of("FDS-FILE").unwrap());
-        commands::verify_input(&fds_path);
+        commands::verify_input(&fds_path).unwrap();
     } else if let Some(opts) = matches.subcommand_matches("verify") {
         let smv_path = PathBuf::from(opts.value_of("SMV-FILE").unwrap());
-        commands::verify(&smv_path);
+        commands::verify(&smv_path).unwrap();
     } else if let Some(rename_matches) = matches.subcommand_matches("rename") {
         let path = PathBuf::from(rename_matches.value_of("PATH").unwrap());
         let new_chid: Chid = rename_matches.value_of("NEW-CHID").unwrap().parse().unwrap();
@@ -237,9 +237,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         read_out(&out_path)?;
     } else if let Some(hrr_vector_matches) = matches.subcommand_matches("hrr-vector") {
         let smv_path = PathBuf::from(hrr_vector_matches.value_of("SMV-FILE").unwrap());
-        let mut hrr_vector = hrr_vector(&smv_path)?;
+        let hrr_vector = hrr_vector(&smv_path)?;
         let new_dv: data_vector::DataVector<f64,f64> = match hrr_vector.values()[0].y {
-            SmvValue::Float(f) => {
+            SmvValue::Float(_) => {
                 let vec = hrr_vector
                     .values()
                     .into_iter()
