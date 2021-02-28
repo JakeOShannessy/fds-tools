@@ -15,24 +15,24 @@ pub enum GrowthRate {
 impl GrowthRate {
     pub fn alpha(&self) -> f64 {
         // TODO: make these const when available.
-        let nfpaSlowAlpha: f64 = 1055.0 / 600_f64.powi(2);
-        let nfpaMediumAlpha: f64 = 1055.0 / 300_f64.powi(2);
-        let nfpaFastAlpha: f64 = 1055.0 / 150_f64.powi(2);
-        let nfpaUltrafastAlpha: f64 = 1055.0 / 75_f64.powi(2);
-        let eurocodeSlowAlpha: f64 = 1000.0 / 600_f64.powi(2);
-        let eurocodeMediumAlpha: f64 = 1000.0 / 300_f64.powi(2);
-        let eurocodeFastAlpha: f64 = 1000.0 / 150_f64.powi(2);
-        let eurocodeUltrafastAlpha: f64 = 1000.0 / 75_f64.powi(2);
+        let nfpa_slow_alpha: f64 = 1055.0 / 600_f64.powi(2);
+        let nfpa_medium_alpha: f64 = 1055.0 / 300_f64.powi(2);
+        let nfpa_fast_alpha: f64 = 1055.0 / 150_f64.powi(2);
+        let nfpa_ultrafast_alpha: f64 = 1055.0 / 75_f64.powi(2);
+        let eurocode_slow_alpha: f64 = 1000.0 / 600_f64.powi(2);
+        let eurocode_medium_alpha: f64 = 1000.0 / 300_f64.powi(2);
+        let eurocode_fast_alpha: f64 = 1000.0 / 150_f64.powi(2);
+        let eurocode_ultrafast_alpha: f64 = 1000.0 / 75_f64.powi(2);
 
         match self {
-            Self::NFPASlow => nfpaSlowAlpha,
-            Self::NFPAMedium => nfpaMediumAlpha,
-            Self::NFPAFast => nfpaFastAlpha,
-            Self::NFPAUltrafast => nfpaUltrafastAlpha,
-            Self::EurocodeSlow => eurocodeSlowAlpha,
-            Self::EurocodeMedium => eurocodeMediumAlpha,
-            Self::EurocodeFast => eurocodeFastAlpha,
-            Self::EurocodeUltrafast => eurocodeUltrafastAlpha,
+            Self::NFPASlow => nfpa_slow_alpha,
+            Self::NFPAMedium => nfpa_medium_alpha,
+            Self::NFPAFast => nfpa_fast_alpha,
+            Self::NFPAUltrafast => nfpa_ultrafast_alpha,
+            Self::EurocodeSlow => eurocode_slow_alpha,
+            Self::EurocodeMedium => eurocode_medium_alpha,
+            Self::EurocodeFast => eurocode_fast_alpha,
+            Self::EurocodeUltrafast => eurocode_ultrafast_alpha,
             Self::Custom(alpha) => *alpha,
         }
     }

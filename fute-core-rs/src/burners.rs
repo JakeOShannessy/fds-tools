@@ -401,7 +401,7 @@ impl<'a> BurnerPanel<'a> {
     pub fn hrrpua(&self) -> f64 {
         if let Some(hrrpua) = self.surf.hrrpua {
             hrrpua
-        } else if let Some(mlrpua) = self.surf.mlrpua {
+        } else if let Some(_mlrpua) = self.surf.mlrpua {
             todo!("Cannot handle MLRPUA")
         } else {
             0.0
@@ -454,15 +454,6 @@ impl<'a> BurnerPanel<'a> {
         // Non-Dimensionalised Ratio
         let ndr = char_fire_diameter / max_nominal_cell_size;
         ndr
-    }
-}
-
-fn max(a: f64, b: f64) -> f64 {
-    match a.partial_cmp(&b) {
-        Some(std::cmp::Ordering::Greater) => a,
-        Some(std::cmp::Ordering::Equal) => a,
-        Some(std::cmp::Ordering::Less) => b,
-        None => panic!("using unorderable floats"),
     }
 }
 
