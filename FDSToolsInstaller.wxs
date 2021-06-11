@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<?define ProductVersion = "1.11.3"?>
+<?define ProductVersion = "1.12.9"?>
 <?define ProductUpgradeCode = "18709979-23a5-45d7-a7f3-1b3fedb0f653"?>
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
@@ -8,7 +8,7 @@
             UpgradeCode="$(var.ProductUpgradeCode)"
             Language='1033'
             Version='$(var.ProductVersion)'
-            Manufacturer='Jake'>
+            Manufacturer='Smoke Cloud'>
         <Package Id='*'
                 InstallScope='perUser'
                 InstallPrivileges='limited'
@@ -41,10 +41,16 @@
                         </Component>
                         <Directory Id='BINDIR' Name='bin'>
                             <Component Id='QuickMon' Guid='1ab03b30-4375-4d2d-9dcc-56d139bc6943' Win64="yes">
-                                <File Id='QuickMonEXE' Name='FDSQuickMon.exe' Source='dist/FDSQuickMon.exe'>
+                                <File Id='QuickMonEXE' Name='fute-rs.exe' Source='dist/fute-rs.exe'>
                                 </File>
-                                <RegistryKey Id='SMVFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\QuickChart\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSQuickMon.exe&quot; &quot;%1&quot;" KeyPath='yes'/>
+                                <RegistryKey Id='SMVFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\Smoke Cloud - Chart\Command' ForceDeleteOnUninstall="yes">
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; chart &quot;%1&quot;" KeyPath='yes'/>
+                                </RegistryKey>
+                                <RegistryKey Id='SMVFileTypeRegOtherChartAndVerify' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\Smoke Cloud - Verify\Command' ForceDeleteOnUninstall="yes">
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; verify &quot;%1&quot;"/>
+                                </RegistryKey>
+                                <RegistryKey Id='FDSFileTypeRegOtherVerify' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.fds\Shell\Smoke Cloud - Verify Input\Command' ForceDeleteOnUninstall="yes">
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; verify-input &quot;%1&quot;"/>
                                 </RegistryKey>
                             </Component>
                             <!-- <Component Id='DetAct' Guid='39230750-a65f-4768-87bd-4ad212640dc6'>
@@ -57,9 +63,6 @@
                                 <!-- <RegistryKey Id='FDSFileTypeReg' Root='HKLM' Key='SOFTWARE\Classes\.fds' ForceDeleteOnUninstall="yes">
                                     <RegistryValue Type='string' Value="fdsDoc"/>
                                 </RegistryKey> -->
-                                <RegistryKey Id='FDSFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.fds\Shell\FDSVerification\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute.exe&quot; verify-input &quot;%1&quot; --show" KeyPath='yes'/>
-                                </RegistryKey>
                                 <!-- <RegistryKey Id='FDSFileTypeRegCommand' Root='HKLM' Key='SOFTWARE\Classes\.fds\Shell\FDSVerification\command' ForceDeleteOnUninstall="yes">
                                     <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSVerification.exe&quot; &quot;%1&quot;"/>
                                 </RegistryKey> -->
@@ -73,7 +76,7 @@
                                     <RegistryValue Type='string' Value="&quot;[BINDIR]\fute.exe&quot; verify-input &quot;%1&quot; &#8211;&#8211;show"/>
                                 </RegistryKey> -->
                             </Component>
-                            <Component Id='CommonRender' Guid='ec39446c-f8ef-4fbf-a75f-8bc07c87dce1' Win64="yes">
+                            <!-- <Component Id='CommonRender' Guid='ec39446c-f8ef-4fbf-a75f-8bc07c87dce1' Win64="yes">
                                 <File Id='libcairo' Name='libcairo-2.dll' Source='lib64/libcairo-2.dll' KeyPath='yes'></File>
                                 <File Id='libfontconfig' Name='libfontconfig-1.dll' Source='lib64/libfontconfig-1.dll'></File>
                                 <File Id='libfreetype' Name='libfreetype-6.dll' Source='lib64/libfreetype-6.dll'></File>
@@ -92,7 +95,7 @@
                                 <File Id='libglib' Name='libglib-2.0-0.dll' Source='lib64/libglib-2.0-0.dll'></File>
                                 <File Id='libpcre' Name='libpcre-1.dll' Source='lib64/libpcre-1.dll'></File>
                                 <File Id='zlib1' Name='zlib1.dll' Source='lib64/zlib1.dll'></File>
-                            </Component>
+                            </Component> -->
                         </Directory>
                     </Directory>
                 </Directory>
@@ -103,7 +106,7 @@
         </InstallExecuteSequence>
         <Feature Id='QuickMonitor' Level='1'>
             <ComponentRef Id='QuickMon' />
-            <ComponentRef Id='CommonRender' />
+            <!-- <ComponentRef Id='CommonRender' /> -->
         </Feature>
         <!-- <Feature Id='DetectionActivation' Level='1'>
             <ComponentRef Id='DetAct' />
@@ -114,7 +117,7 @@
         <Feature Id='Fute' Level='1'>
             <ComponentRef Id='FuteComponent' />
             <ComponentRef Id='FuteScript' />
-            <ComponentRef Id='CommonRender' />
+            <!-- <ComponentRef Id='CommonRender' /> -->
         </Feature>
     </Product>
 </Wix>

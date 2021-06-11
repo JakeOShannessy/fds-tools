@@ -2,10 +2,14 @@ use chrono::prelude::*;
 use csv;
 use data_vector::DataVector;
 use data_vector::Point;
-use fute_core::{html::{Html, HtmlChild, HtmlElement, HtmlPage}, parse_and_decode_fds_input_file, print_verification_tree};
 use fute_core::{csv_parser::SmvValue, parse_smv_file};
 use fute_core::{decode::*, summary::summarise_input};
-use plotters::{prelude::*};
+use fute_core::{
+    html::{Html, HtmlChild, HtmlElement, HtmlPage},
+    parse_and_decode_fds_input_file, print_verification_tree,
+};
+use plotters::prelude::*;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::prelude::*;
 use std::{
@@ -352,15 +356,13 @@ pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("verifying: {}", fds_path.display());
     let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path);
     let verification_result = fute_core::verify_input(&fds_data);
-    print_verification_tree(&verification_result,0);
+    print_verification_tree(&verification_result, 0);
     let input_summary = summarise_input(&fds_data);
     let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
     chart_page_path.push(format!("Verification.html"));
     println!("about to create verification page");
 
-    let mut page = HtmlPage {
-        sections: vec![],
-    };
+    let mut page = HtmlPage { sections: vec![] };
     page.add(input_summary.to_html());
     page.add(verification_result.to_html_outer());
     let mut f = std::fs::File::create(&chart_page_path).unwrap();
@@ -370,6 +372,67 @@ pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+lazy_static::lazy_static! {
+    pub static ref KNOWN_SMV_OUTPUTS: HashSet<&'static str> = {
+    vec![
+        "bf",
+        "binfo",
+        "bnd",
+        "csv",
+        "end",
+        "gbnd",
+        "info",
+        "ini",
+        "jpg",
+        "prt5",
+        "q",
+        "restart",
+        "s3d",
+        "sf",
+        "sinfo",
+        "stop",
+        "sz",
+        "txt",
+        "xyz",
+    ].into_iter().collect()
+};
+}
+
+pub fn copy_inputs(src_dir: &Path, dest_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in walkdir::WalkDir::new(src_dir).into_iter().filter_entry(|e|e.path().file_name().unwrap() != ".smokecloud") {
+        let entry = entry?;
+        let src_path = PathBuf::from(entry.path());
+        let rel_path = PathBuf::from(entry.path().strip_prefix(src_dir)?);
+        let mut dest_path = PathBuf::from(dest_dir);
+        dest_path.push(&rel_path);
+        if entry.file_type().is_dir() {
+            std::fs::create_dir_all(dest_path)?;
+        } else {
+            let extension: &str = src_path.extension().unwrap().to_str().unwrap();
+            if !KNOWN_SMV_OUTPUTS.contains(extension) {
+                println!("{} -> {}", src_path.display(), dest_path.display());
+                std::fs::copy(src_path, dest_path)?;
+            }
+        }
+    }
+
+    // let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path);
+    // let verification_result = fute_core::verify_input(&fds_data);
+    // print_verification_tree(&verification_result, 0);
+    // let input_summary = summarise_input(&fds_data);
+    // let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
+    // chart_page_path.push(format!("Verification.html"));
+    // println!("about to create verification page");
+
+    // let mut page = HtmlPage { sections: vec![] };
+    // page.add(input_summary.to_html());
+    // page.add(verification_result.to_html_outer());
+    // let mut f = std::fs::File::create(&chart_page_path).unwrap();
+    // page.render(&mut f).unwrap();
+
+    // open_browser(&chart_page_path).unwrap();
+    Ok(())
+}
 
 pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let mut smv_contents = String::new();
@@ -383,18 +446,16 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("verifying: {}", fds_path.display());
     let fds_data = fds_input_parser::parse_and_decode_fds_input_file(&fds_path);
     let verification_result = fute_core::verify_input(&fds_data);
-    print_verification_tree(&verification_result,0);
+    print_verification_tree(&verification_result, 0);
     let input_summary = summarise_input(&fds_data);
     let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
     chart_page_path.push(format!("Verification.html"));
     println!("about to create verification page");
 
-    let mut page = HtmlPage {
-        sections: vec![],
-    };
+    let mut page = HtmlPage { sections: vec![] };
     page.add(input_summary.to_html());
     page.add(verification_result.to_html_outer());
-    let (chart_page_path,charts) = create_charts(smv_path);
+    let (chart_page_path, charts) = create_charts(smv_path);
     let chart_section = create_chart_section(&chart_page_path, charts);
     page.add(chart_section);
     let mut f = std::fs::File::create(&chart_page_path).unwrap();
@@ -520,7 +581,10 @@ pub fn create_chart_section(path: &Path, charts: Charts) -> HtmlElement {
         section.children.push(HtmlChild::Element(run_chart));
     }
     for cr in charts.various.into_iter() {
-        section.children.push(HtmlChild::Element(chart_to_html(path.parent().unwrap(), cr)));
+        section.children.push(HtmlChild::Element(chart_to_html(
+            path.parent().unwrap(),
+            cr,
+        )));
     }
     section
 }
@@ -546,7 +610,7 @@ pub fn read_out(out_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn create_charts(smv_path: &Path) -> (PathBuf,Charts) {
+fn create_charts(smv_path: &Path) -> (PathBuf, Charts) {
     let dir = "Charts";
     println!("quick-charting: {:?}", smv_path);
     let outputs = fute_core::Outputs::new(PathBuf::from(smv_path));
@@ -590,11 +654,11 @@ fn create_charts(smv_path: &Path) -> (PathBuf,Charts) {
     let mut chart_page_path = PathBuf::from(smv_dir);
     chart_page_path.push(format!("Charts.html"));
     println!("about to create chart page");
-    (chart_page_path,charts)
+    (chart_page_path, charts)
 }
 
 pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let (chart_page_path,charts) = create_charts(smv_path);
+    let (chart_page_path, charts) = create_charts(smv_path);
     let chart_section = create_chart_section(&chart_page_path, charts);
     let mut page = HtmlPage::new();
     page.add(chart_section);
@@ -603,8 +667,6 @@ pub fn quick_chart(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     open_browser(&chart_page_path).unwrap();
     Ok(())
 }
-
-
 
 pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
     // let dir = "Charts";
@@ -795,25 +857,31 @@ fn mangle(s: &String) -> Cow<String> {
     Cow::Borrowed(s)
 }
 
-
 #[cfg(target_os = "macos")]
 pub fn open_browser(path: &Path) -> std::io::Result<bool> {
-    let status = std::process::Command::new("open").arg(path).output()?.status;
+    let status = std::process::Command::new("open")
+        .arg(path)
+        .output()?
+        .status;
     Ok(status.success())
 }
 
 #[cfg(target_os = "linux")]
 pub fn open_browser(path: &Path) -> std::io::Result<bool> {
-    let status = std::process::Command::new("xdg-open").arg(path).output()?.status;
+    let status = std::process::Command::new("xdg-open")
+        .arg(path)
+        .output()?
+        .status;
     Ok(status.success())
 }
 
 #[cfg(windows)]
 fn open_browser(path: &Path) -> std::io::Result<bool> {
     {
+        use std::ffi::OsStr;
         use std::os::windows::ffi::OsStrExt;
         fn to_u16s<S: AsRef<OsStr>>(s: S) -> std::io::Result<Vec<u16>> {
-            fn inner(s: &OsStr) -> std::io::Result<Vec<u16>> {
+            fn inner(s: &std::ffi::OsStr) -> std::io::Result<Vec<u16>> {
                 let mut maybe_result: Vec<u16> = s.encode_wide().collect();
                 if maybe_result.iter().any(|&u| u == 0) {
                     return Err(std::io::Error::new(

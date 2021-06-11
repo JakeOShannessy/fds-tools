@@ -518,6 +518,7 @@ dependencies = [
  "prettytable-rs",
  "serde_json",
  "url",
+ "walkdir",
  "winapi",
 ]
 

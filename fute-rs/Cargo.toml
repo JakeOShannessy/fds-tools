@@ -21,6 +21,7 @@ data-vector = { git = "https://github.com/JakeOShannessy/data-vector.git"}
 url = "2"
 chrono = "0.4"
 serde_json = "1"
+walkdir = "2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["shellapi"] }
