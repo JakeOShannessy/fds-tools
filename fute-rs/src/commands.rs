@@ -399,7 +399,10 @@ lazy_static::lazy_static! {
 }
 
 pub fn copy_inputs(src_dir: &Path, dest_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    for entry in walkdir::WalkDir::new(src_dir).into_iter().filter_entry(|e|e.path().file_name().unwrap() != ".smokecloud") {
+    for entry in walkdir::WalkDir::new(src_dir)
+        .into_iter()
+        .filter_entry(|e| e.path().file_name().unwrap() != ".smokecloud")
+    {
         let entry = entry?;
         let src_path = PathBuf::from(entry.path());
         let rel_path = PathBuf::from(entry.path().strip_prefix(src_dir)?);
@@ -408,8 +411,11 @@ pub fn copy_inputs(src_dir: &Path, dest_dir: &Path) -> Result<(), Box<dyn std::e
         if entry.file_type().is_dir() {
             std::fs::create_dir_all(dest_path)?;
         } else {
-            let extension: &str = src_path.extension().unwrap().to_str().unwrap();
-            if !KNOWN_SMV_OUTPUTS.contains(extension) {
+            let extension: Option<&str> = src_path.extension().and_then(|x| x.to_str());
+            let is_result = extension
+                .map(|ext| KNOWN_SMV_OUTPUTS.contains(ext))
+                .unwrap_or(false);
+            if !is_result {
                 println!("{} -> {}", src_path.display(), dest_path.display());
                 std::fs::copy(src_path, dest_path)?;
             }
