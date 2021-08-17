@@ -8,7 +8,7 @@ use fds_input_parser::{
     FDSFile,
 };
 
-pub fn burners<'a>(fds_data: &'a FDSFile) -> Vec<Burner<'a>> {
+pub fn burners(fds_data: &'_ FDSFile) -> Vec<Burner<'_>> {
     // Iterate through all the OBSTs and VENTs and determine which ones are
     // burners.
     let mut burners = Vec::new();
@@ -370,7 +370,7 @@ impl<'a> Burner<'a> {
                         //     .iter()
                         //     .filter(|mesh| MightHaveXB::intersect(mesh,vent))
                         //     .collect(),
-                        meshes: fds_data.meshes.iter().map(|x| x).collect(),
+                        meshes: fds_data.meshes.iter().collect(),
                     });
                 }
             }

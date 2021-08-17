@@ -1398,7 +1398,7 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
             Ok((
                 i,
                 TailEntry::DataFile(DataFileEntry::Smoke3d(Smoke3dDataFile {
-                    mesh_num: mesh_num,
+                    mesh_num,
                     filename: filename.to_string(),
                     longname: longname.to_string(),
                     shortname: shortname.to_string(),
@@ -1653,7 +1653,6 @@ pub enum ObstVisEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom;
     use nom::error::ErrorKind::NoneOf;
     use std::error::Error;
     // In these tests Ok(remaining, result) is used to make sure that we have

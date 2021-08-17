@@ -227,7 +227,7 @@ impl SmvVec for DataVector<f64,f64> {
             _ => match y_string.parse::<f64>() {
                 Err(_) => panic!("invalid float"),
                 Ok(value) => {
-                    self.insert(Point { x: x, y: value });
+                    self.insert(Point { x, y: value });
                 }
             },
         }
@@ -270,7 +270,7 @@ impl SmvVec for DataVector<f64,DateTime<Utc>> {
             Err(e) => panic!("invalid datetime for \"{}\": {}", y_string, e),
             Ok(value) => {
                 println!("adding: {:?}", y_string);
-                self.insert(Point { x: x, y: value });
+                self.insert(Point { x, y: value });
             }
         }
     }
