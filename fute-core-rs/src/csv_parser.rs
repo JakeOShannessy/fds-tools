@@ -175,7 +175,7 @@ impl CsvDataBlock {
                             SmvValue::Float(entry.parse().unwrap())
                         }
                     }
-                    _ => SmvValue::Float(entry.parse().unwrap()),
+                    _ => SmvValue::Float(entry.parse().unwrap_or(f64::NAN)),
                 };
                 vec.push(value);
             }

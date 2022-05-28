@@ -802,6 +802,7 @@ fn plot(
     // Mangle the filenames to ensure there are no forbidden windows
     // names.
     let f_name: Cow<String> = mangle(&dv.name);
+    println!("f_name: {}", f_name);
     path.push(format!("{}.png", f_name));
     match dv.values()[0].y {
         SmvValue::Float(_) => {
@@ -850,12 +851,16 @@ fn plot(
 }
 
 fn mangle(s: &String) -> Cow<String> {
+    let s = Cow::Borrowed(s);
     #[cfg(windows)]
-    match s.to_lowercase().as_str() {
-        "con" | "prn" | "aux" | "nul" | "com0" | "com1" | "com2" | "com3" | "com4" | "com5"
-        | "com6" | "com7" | "com8" | "com9" | "lpt0" | "lpt1" | "lpt2" | "lpt3" | "lpt4"
-        | "lpt5" | "lpt6" | "lpt7" | "lpt8" | "lpt9" => Cow::Owned(format!("{}_", s)),
-        _ => Cow::Borrowed(s),
+    {
+        let s = match s.to_lowercase().as_str() {
+            "con" | "prn" | "aux" | "nul" | "com0" | "com1" | "com2" | "com3" | "com4" | "com5"
+            | "com6" | "com7" | "com8" | "com9" | "lpt0" | "lpt1" | "lpt2" | "lpt3" | "lpt4"
+            | "lpt5" | "lpt6" | "lpt7" | "lpt8" | "lpt9" => Cow::Owned(format!("{}_", s)),
+            _ => s,
+        };
+        Cow::Owned(s.replace(":", "_"))
     }
     #[cfg(not(windows))]
     Cow::Borrowed(s)
