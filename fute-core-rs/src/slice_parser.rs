@@ -101,7 +101,6 @@ impl<R: Read> Iterator for SliceParser<R> {
         };
         let mut new_buf = Vec::new();
         new_buf.extend_from_slice(rem);
-        drop(rem);
         self.buf = new_buf;
         Some(frame)
     }

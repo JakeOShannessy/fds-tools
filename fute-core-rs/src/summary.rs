@@ -68,7 +68,7 @@ pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
     let heat_of_combustion = fds_data.heat_of_combustion();
     let total_soot_production = fds_data.soot_production_rate();
 
-    let input_summary = InputSummary {
+    InputSummary {
         chid,
         simulation_length,
         n_burners,
@@ -87,8 +87,7 @@ pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
         n_cells,
         mesh_resolutions,
         ndrs,
-    };
-    input_summary
+    }
 }
 
 pub struct InputSummary {

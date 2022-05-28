@@ -399,7 +399,10 @@ lazy_static::lazy_static! {
 }
 
 pub fn copy_inputs(src_dir: &Path, dest_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    for entry in walkdir::WalkDir::new(src_dir).into_iter().filter_entry(|e|e.path().file_name().unwrap() != ".smokecloud") {
+    for entry in walkdir::WalkDir::new(src_dir)
+        .into_iter()
+        .filter_entry(|e| e.path().file_name().unwrap() != ".smokecloud")
+    {
         let entry = entry?;
         let src_path = PathBuf::from(entry.path());
         let rel_path = PathBuf::from(entry.path().strip_prefix(src_dir)?);

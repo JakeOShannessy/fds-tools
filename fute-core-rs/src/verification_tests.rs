@@ -38,9 +38,9 @@ pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
     VerificationResult::Tree(
         "Verification Tests".to_string(),
         vec![
-            meshes_overlap_test(&fds_data),
-            reaction_tests(&fds_data),
-            burners_test(&fds_data),
+            meshes_overlap_test(fds_data),
+            reaction_tests(fds_data),
+            burners_test(fds_data),
         ],
     )
 }
@@ -112,7 +112,7 @@ impl VerificationResult {
             VerificationResult::Result(name, res) => Some(res),
             VerificationResult::Tree(_, res) => {
                 let mut results: Vec<Option<&TestResult>> =
-                    res.into_iter().map(|x| x.worst_result()).collect();
+                    res.iter().map(|x| x.worst_result()).collect();
                 results.sort();
                 *(results.last()?)
             }
