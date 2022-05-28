@@ -6,15 +6,16 @@ edition = "2018"
 
 [dependencies]
 ansi_term = "0.12"
-arrayvec = "0.5"
+arrayvec = "0.7"
 chrono = {version = "0.4", features = ["serde"] }
 csv = "1"
 data-vector = { git = "https://github.com/JakeOShannessy/data-vector.git"}
 # data-vector = { path = "../../data-vector"}
 downcast-rs = "1"
 fds-input-parser = {path = "../../red-smoke/fds-input-parser"}
+chid = {path = "../../red-smoke/chid"}
 # fds-input-parser = {version = "0.1.3", git = "https://github.com/JakeOShannessy/fds-input-parser-rs.git"}
-nom = "5"
+nom = "7"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
-version-compare = "0.0.11"
+version-compare = "0.1"

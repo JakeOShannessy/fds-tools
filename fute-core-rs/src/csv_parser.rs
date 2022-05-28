@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use csv;
 use data_vector::{DataVector, Point};
 use serde::{Deserialize, Serialize};
-use std::{path::Path};
+use std::path::Path;
 
 #[derive(Clone)]
 pub enum GetCsvDataError {
@@ -91,11 +91,15 @@ impl CsvDataBlock {
     }
     /// Build data vectors from two vectors. Only takes the first vector if
     /// there are duplicates. Return None if no such vectors exist.
-    pub fn make_data_vector(&self, x_name: &str, y_name: &str) -> Option<DataVector<f64,SmvValue>> {
+    pub fn make_data_vector(
+        &self,
+        x_name: &str,
+        y_name: &str,
+    ) -> Option<DataVector<f64, SmvValue>> {
         // First find the index of the first vector.
         let x_index = self.names.iter().position(|x| x == x_name)?;
         let y_index = self.names.iter().position(|x| x == y_name)?;
-        let mut dv: DataVector<f64,SmvValue> = DataVector::new(
+        let mut dv: DataVector<f64, SmvValue> = DataVector::new(
             y_name.to_string(),
             self.units.get(x_index).cloned()?,
             x_name.to_string(),
@@ -114,7 +118,7 @@ impl CsvDataBlock {
         Some(dv)
     }
 
-    pub fn default_vecs(&self) -> Vec<DataVector<f64,SmvValue>> {
+    pub fn default_vecs(&self) -> Vec<DataVector<f64, SmvValue>> {
         let mut names = self.names.iter();
         // The first name is our default x name.
         let x_name: &String = names.next().unwrap();
@@ -194,7 +198,7 @@ impl Default for CsvDataBlock {
     }
 }
 
-impl SmvVec for DataVector<f64,f64> {
+impl SmvVec for DataVector<f64, f64> {
     fn name(&self) -> &String {
         &self.name
     }
@@ -240,7 +244,7 @@ impl SmvVec for DataVector<f64,f64> {
     }
 }
 
-impl SmvVec for DataVector<f64,DateTime<Utc>> {
+impl SmvVec for DataVector<f64, DateTime<Utc>> {
     fn name(&self) -> &String {
         &self.name
     }
@@ -323,7 +327,7 @@ pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std
                         .unwrap()
                         .ends_with("_steps.csv")
                     {
-                        let vec: DataVector<f64,DateTime<Utc>> = DataVector::new(
+                        let vec: DataVector<f64, DateTime<Utc>> = DataVector::new(
                             "unknown".to_string(),
                             x_units.clone(),
                             "unknown".to_string(),
@@ -334,7 +338,7 @@ pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std
                         let dv = Box::new(vec);
                         data_vectors.push(dv);
                     } else {
-                        let vec: DataVector<f64,f64> = DataVector::new(
+                        let vec: DataVector<f64, f64> = DataVector::new(
                             "unknown".to_string(),
                             x_units.clone(),
                             "unknown".to_string(),
@@ -347,7 +351,7 @@ pub fn get_csv_data(csv_path: &Path) -> Result<Vec<Box<dyn SmvVec>>, Box<dyn std
                     }
                 }
                 _ => {
-                    let vec: DataVector<f64,f64> = DataVector::new(
+                    let vec: DataVector<f64, f64> = DataVector::new(
                         "unknown".to_string(),
                         x_units.clone(),
                         "unknown".to_string(),

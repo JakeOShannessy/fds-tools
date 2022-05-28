@@ -1,4 +1,4 @@
-use crate::Chid;
+use chid::Chid;
 use std::path::Path;
 use std::path::PathBuf;
 

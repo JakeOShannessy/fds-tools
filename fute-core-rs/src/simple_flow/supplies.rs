@@ -1,4 +1,12 @@
-use fds_input_parser::{FdsFile, decode::Mesh, decode::Obst, decode::Resolution, decode::Surf, decode::Vent, xb::{HasXB, MightHaveXB}};
+use fds_input_parser::{
+    decode::Mesh,
+    decode::Obst,
+    decode::Resolution,
+    decode::Surf,
+    decode::Vent,
+    xb::{HasXB, MightHaveXB},
+    FdsFile,
+};
 
 use super::SimpleFlow;
 

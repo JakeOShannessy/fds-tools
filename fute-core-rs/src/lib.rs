@@ -3,12 +3,12 @@
 #[macro_use]
 extern crate nom;
 pub mod burners;
-pub mod simple_flow;
 pub mod csv_parser;
+pub mod html;
 pub mod new_rev;
 pub mod out_parser;
 pub mod rename;
-pub mod html;
+pub mod simple_flow;
 mod slice_parser;
 mod smv_parser;
 pub mod summary;
@@ -24,7 +24,10 @@ use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use simple_flow::{SimpleFlow, extracts::{self}, supplies};
+use simple_flow::{
+    extracts::{self},
+    supplies, SimpleFlow,
+};
 pub use slice_parser::parse_slice_file;
 pub use smv_parser::parse_smv_file;
 use smv_parser::SMVFile;
@@ -32,165 +35,13 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 use std::str::FromStr;
+pub use verification_tests::print_verification_tree;
 pub use verification_tests::verify;
 pub use verification_tests::verify_input;
-pub use verification_tests::print_verification_tree;
 use verification_tests::{SmokeDetector, Sprinkler, ThermalDetector};
 pub mod hrrs;
 
 const READ_BUFFER_SIZE: usize = 8192;
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Chid(ArrayString<[u8; 50]>);
-
-impl Chid {
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl std::fmt::Display for Chid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum ParseChidError {
-    InvalidChar { position: usize, character: char },
-    TooLong,
-}
-
-impl std::fmt::Display for ParseChidError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::InvalidChar {
-                position,
-                character,
-            } => write!(
-                f,
-                "Invalid character {} at position {}",
-                character, position
-            ),
-            Self::TooLong => write!(f, "CHID too long"),
-        }
-    }
-}
-
-impl std::error::Error for ParseChidError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            Self::InvalidChar { .. } => None,
-            Self::TooLong => None,
-        }
-    }
-}
-
-impl FromStr for Chid {
-    type Err = ParseChidError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let array_string = match ArrayString::<[_; 50]>::from(s) {
-            Ok(s) => s,
-            Err(_) => return Err(ParseChidError::TooLong),
-        };
-        // Check that there are no invalid characters.
-        match array_string.find(|c: char| c == '.' || c == ' ') {
-            Some(position) => {
-                return Err(ParseChidError::InvalidChar {
-                    position,
-                    character: array_string.chars().nth(position).unwrap(),
-                })
-            }
-            None => (),
-        }
-        Ok(Chid(array_string))
-    }
-}
-
-impl Serialize for Chid {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-struct ChidVisitor;
-
-impl<'de> Visitor<'de> for ChidVisitor {
-    type Value = Chid;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("a run id beginning with \"scr-\"")
-    }
-
-    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        value.parse().map_err(de::Error::custom)
-    }
-}
-
-impl<'de> Deserialize<'de> for Chid {
-    fn deserialize<D>(deserializer: D) -> Result<Chid, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(ChidVisitor)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Title(ArrayString<[u8; 256]>);
-
-impl Title {
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl std::fmt::Display for Title {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum ParseTitleError {
-    TooLong,
-}
-
-impl std::fmt::Display for ParseTitleError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::TooLong => write!(f, "Title too long"),
-        }
-    }
-}
-
-impl std::error::Error for ParseTitleError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            Self::TooLong => None,
-        }
-    }
-}
-
-impl FromStr for Title {
-    type Err = ParseTitleError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let array_string = match ArrayString::<[_; 256]>::from(s) {
-            Ok(s) => s,
-            Err(_) => return Err(ParseTitleError::TooLong),
-        };
-        Ok(Title(array_string))
-    }
-}
-
 pub struct Outputs {
     pub smv_path: PathBuf,
     pub smv: SMVFile,
@@ -198,8 +49,8 @@ pub struct Outputs {
 
 impl Outputs {
     pub fn new(smv_path: PathBuf) -> Self {
-        let mut file =
-            File::open(&smv_path).unwrap_or_else(|_| panic!("Could not open smv file: {:?}", smv_path));
+        let mut file = File::open(&smv_path)
+            .unwrap_or_else(|_| panic!("Could not open smv file: {:?}", smv_path));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .expect("Could not read smv file");
@@ -277,8 +128,8 @@ fn read_slice_file() -> std::io::Result<()> {
         match parse_slice_file(&read_buffer) {
             Ok(slice_file) => break,
             Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
-            Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
-            Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+            Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.code),
+            Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.code),
         }
         if read == 0 {
             break;
@@ -377,7 +228,7 @@ impl FdsFileExt for FdsFile {
         // todo!("return heat of combustion")
         0.0
     }
-    fn soot_production_rate(&self) -> f64{
+    fn soot_production_rate(&self) -> f64 {
         // todo!("return soot production rate")
         0.0
     }
@@ -400,21 +251,5 @@ mod tests {
         println!("{:?}", sp.next());
         println!("{:?}", sp.next());
         // read_slice_file().unwrap();
-    }
-
-    #[test]
-    fn parse_chid() {
-        assert_eq!(
-            Err(ParseChidError::TooLong),
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Chid>()
-        );
-        assert_eq!("hello", "hello".parse::<Chid>().unwrap().as_str());
-        assert_eq!(
-            Err(ParseChidError::InvalidChar {
-                position: 3,
-                character: '.',
-            }),
-            "hel.lo".parse::<Chid>()
-        );
     }
 }

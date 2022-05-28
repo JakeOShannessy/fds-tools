@@ -36,16 +36,15 @@ impl GrowthRate {
             Self::Custom(alpha) => *alpha,
         }
     }
-    pub fn hrr(&self, time:f64) -> f64 {
-        self.alpha()*time.powi(2)
+    pub fn hrr(&self, time: f64) -> f64 {
+        self.alpha() * time.powi(2)
     }
-    pub fn hrr_capped(&self, cap_time: f64, time:f64) -> f64 {
+    pub fn hrr_capped(&self, cap_time: f64, time: f64) -> f64 {
         let time = if time <= cap_time {
-            self.alpha()*time.powi(2)
+            self.alpha() * time.powi(2)
         } else {
             cap_time
         };
         self.hrr(time)
     }
 }
-

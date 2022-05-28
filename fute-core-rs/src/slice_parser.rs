@@ -1,7 +1,7 @@
-use std::io::Read;
-use std::io::BufReader;
 use nom::number::streaming::le_u32;
 use nom::{multi::many0, IResult};
+use std::io::BufReader;
+use std::io::Read;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SliceFile {
@@ -33,7 +33,6 @@ pub struct Dimensions {
     pub k_max: u32,
 }
 
-
 #[derive(Debug)]
 pub struct SliceParser<R> {
     reader: BufReader<R>,
@@ -44,7 +43,7 @@ pub struct SliceParser<R> {
 impl<R: Read> SliceParser<R> {
     pub fn new(mut input: R) -> Self {
         let mut read_buffer: Vec<u8> = vec![0; 8000];
-    // parse_slice_file(&buf).unwrap();
+        // parse_slice_file(&buf).unwrap();
         // let read = input.read(&mut read_buffer).unwrap();
         let (rem, header) = loop {
             let read = input.read(&mut read_buffer).unwrap();
@@ -52,8 +51,8 @@ impl<R: Read> SliceParser<R> {
             match parse_slice_header(&read_buffer) {
                 Ok(header) => break header,
                 Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
-                Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
-                Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+                Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.code),
+                Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.code),
             }
             if read == 0 {
                 panic!("no header")
@@ -81,11 +80,11 @@ impl<R: Read> Iterator for SliceParser<R> {
             match parse_data_set(i_dim, j_dim, k_dim, &self.buf) {
                 Ok(x) => {
                     break x;
-                },
+                }
                 Err(nom::Err::Incomplete(n)) => {
                     println!("Needed: {:?}", n);
                     match n {
-                        nom::Needed::Size(n) => self.buf.reserve(n),
+                        nom::Needed::Size(n) => self.buf.reserve(n.into()),
                         _ => panic!("extra buffer size not known"),
                     }
                     let l = self.buf.len();
@@ -94,9 +93,9 @@ impl<R: Read> Iterator for SliceParser<R> {
                         panic!("no data frame")
                     }
                     println!("read {}", read);
-                },
-                Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.1),
-                Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.1),
+                }
+                Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.code),
+                Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.code),
             }
         };
         let mut new_buf = Vec::new();
@@ -122,12 +121,7 @@ pub fn parse_slice_file(i: &[u8]) -> IResult<&[u8], SliceFile> {
     }
 }
 
-pub fn parse_data_set(
-    i_dim: u32,
-    j_dim: u32,
-    k_dim: u32,
-    i: &[u8],
-) -> IResult<&[u8], Frame> {
+pub fn parse_data_set(i_dim: u32, j_dim: u32, k_dim: u32, i: &[u8]) -> IResult<&[u8], Frame> {
     let (i, rec_length) = nom::combinator::complete(le_u32)(i)?;
     let (i, time) = nom::number::streaming::le_f32(i)?;
     let (i, check) = le_u32(i)?;
@@ -141,12 +135,7 @@ pub fn parse_data_set(
     Ok((i, Frame { time, values }))
 }
 
-pub fn parse_slice_data(
-    i_dim: u32,
-    j_dim: u32,
-    k_dim: u32,
-    i: &[u8],
-) -> IResult<&[u8], Vec<f32>> {
+pub fn parse_slice_data(i_dim: u32, j_dim: u32, k_dim: u32, i: &[u8]) -> IResult<&[u8], Vec<f32>> {
     let (i, rec_length) = le_u32(i)?;
     let (i, data) = nom::multi::count(
         nom::number::streaming::le_f32,
@@ -296,7 +285,7 @@ mod tests {
         let result = parse_slice_file(include_bytes!("room_fire_01_bad01.sf"));
         assert_eq!(
             result.map_err(|e| match e {
-                nom::Err::Failure(e) => e.1,
+                nom::Err::Failure(e) => e.code,
                 _ => panic!("bad result"),
             }),
             Err(nom::error::ErrorKind::CrLf)

@@ -1,5 +1,5 @@
-use clap::{crate_authors, crate_version, App, AppSettings, Arg, SubCommand};
-use fute_core::Chid;
+use chid::Chid;
+use clap::{crate_authors, crate_version, Arg, Command};
 use std::path::PathBuf;
 mod commands;
 use commands::*;
@@ -7,120 +7,118 @@ use fute_core::csv_parser::SmvValue;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    let matches = App::new("fute")
-        .setting(AppSettings::ArgRequiredElseHelp)
+    let matches = Command::new("fute")
+        .arg_required_else_help(true)
         .version(crate_version!())
         .author(crate_authors!())
         .about("A collection of tools for FDS-SMV.")
         .subcommand(
-            SubCommand::with_name("count-cells")
+            Command::new("count-cells")
                 .about("Count the total number of cells")
                 .arg(
-                    Arg::with_name("FDS-FILE")
+                    Arg::new("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("meshes")
+            Command::new("meshes")
                 .about("Display information on each mesh")
                 .arg(
-                    Arg::with_name("FDS-FILE")
+                    Arg::new("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("mesh-check")
+            Command::new("mesh-check")
                 .about("Check that the meshes are well behaved")
                 .arg(
-                    Arg::with_name("FDS-FILE")
+                    Arg::new("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
                 ),
         )
         // This will understand the ACL
         .subcommand(
-            SubCommand::with_name("plot-hrr").about("Plot the HRR").arg(
-                Arg::with_name("SMV-FILE")
+            Command::new("plot-hrr").about("Plot the HRR").arg(
+                Arg::new("SMV-FILE")
                     .required(true)
                     .help("Path to SMV file."),
             ),
         )
         // This will understand the ACL
         .subcommand(
-            SubCommand::with_name("show-hrr")
-                .about("Plot and show the HRR")
-                .arg(
-                    Arg::with_name("SMV-FILE")
-                        .required(true)
-                        .help("Path to SMV file."),
-                ),
+            Command::new("show-hrr").about("Plot and show the HRR").arg(
+                Arg::new("SMV-FILE")
+                    .required(true)
+                    .help("Path to SMV file."),
+            ),
         )
         .subcommand(
-            SubCommand::with_name("peak-hrr")
+            Command::new("peak-hrr")
                 .about("Print the highest HRR value from available data")
                 .arg(
-                    Arg::with_name("FDS-FILE")
+                    Arg::new("FDS-FILE")
                         .required(true)
                         .help("Path to FDS file."),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("verify-input")
+            Command::new("verify-input")
                 .about("Verify an FDS input file")
                 .arg(
-                    Arg::with_name("FDS-FILE")
+                    Arg::new("FDS-FILE")
                         .required(true)
                         .help("Path to FDS input file."),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("copy-inputs")
+            Command::new("copy-inputs")
                 .about("Copy input and relevant output files.")
                 .arg(
-                    Arg::with_name("SRC-DIR")
+                    Arg::new("SRC-DIR")
                         .required(true)
                         .help("Path to the source directory."),
                 )
                 .arg(
-                    Arg::with_name("DEST-DIR")
+                    Arg::new("DEST-DIR")
                         .required(true)
                         .help("Path to the destination directory."),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("verify")
+            Command::new("verify")
                 .about("Verify both the input and the output")
                 .arg(
-                    Arg::with_name("SMV-FILE")
+                    Arg::new("SMV-FILE")
                         .required(true)
                         .help("Path to an SMV file."),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("rename")
+            Command::new("rename")
                 .arg(
-                    Arg::with_name("PATH")
+                    Arg::new("PATH")
                         .required(true)
                         .help("Path to SMV file or directory."),
                 )
                 .arg(
-                    Arg::with_name("NEW-CHID")
+                    Arg::new("NEW-CHID")
                         .required(true)
                         .help("Thenew CHID to use."),
                 )
                 .about("Rename a simulation"),
         )
         .subcommand(
-            SubCommand::with_name("compare")
+            Command::new("compare")
                 .arg(
-                    Arg::with_name("ITEM")
+                    Arg::new("ITEM")
                         .required(true)
                         .help("The value we will compare."),
                 )
                 .arg(
-                    Arg::with_name("SMV-FILES")
+                    Arg::new("SMV-FILES")
                         .required(true)
                         .min_values(1)
                         .help("Path to SMV files."),
@@ -128,61 +126,61 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .about("Compare data vectors from multiple different simulations"),
         )
         .subcommand(
-            SubCommand::with_name("new-rev")
+            Command::new("new-rev")
                 .arg(
-                    Arg::with_name("DIR")
+                    Arg::new("DIR")
                         .required(true)
                         .help("Path to a directory holding an FDS file."),
                 )
                 .about("Create a new revision of a simulation"),
         )
         .subcommand(
-            SubCommand::with_name("current-progress")
+            Command::new("current-progress")
                 .arg(
-                    Arg::with_name("SMV-FILE")
+                    Arg::new("SMV-FILE")
                         .required(true)
                         .help("Path to SMV file."),
                 )
                 .about("Output the current progress of the simulation"),
         )
         .subcommand(
-            SubCommand::with_name("plot-out")
+            Command::new("plot-out")
                 .arg(
-                    Arg::with_name("OUT-FILE")
+                    Arg::new("OUT-FILE")
                         .required(true)
                         .help("Path to an FDS out file."),
                 )
                 .about("Plot information from the .out file"),
         )
         .subcommand(
-            SubCommand::with_name("chart")
+            Command::new("chart")
                 .arg(
-                    Arg::with_name("SMV-FILE")
+                    Arg::new("SMV-FILE")
                         .required(true)
                         .help("Path to an SMV file."),
                 )
                 .arg(
-                    Arg::with_name("open")
+                    Arg::new("open")
                         .long("open")
-                        .short("o")
+                        .short('o')
                         .takes_value(false)
                         .help("Open the results"),
                 )
                 .about("Compile a summary of information"),
         )
         .subcommand(
-            SubCommand::with_name("read-out")
+            Command::new("read-out")
                 .arg(
-                    Arg::with_name("OUT-FILE")
+                    Arg::new("OUT-FILE")
                         .required(true)
                         .help("Path to a .out file."),
                 )
                 .about("Read .out info"),
         )
         .subcommand(
-            SubCommand::with_name("hrr-vector")
+            Command::new("hrr-vector")
                 .arg(
-                    Arg::with_name("SMV-FILE")
+                    Arg::new("SMV-FILE")
                         .required(true)
                         .help("Path to a .smv file."),
                 )

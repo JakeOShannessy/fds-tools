@@ -1,17 +1,17 @@
-use chrono::{NaiveDateTime};
-use serde::{Serialize, Deserialize};
+use chrono::NaiveDateTime;
 use data_vector::DataVector;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
-    io::{BufRead, BufReader, Read}, path::Path
+    io::{BufRead, BufReader, Read},
+    path::Path,
 };
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RunData {
     pub start_time: Option<f64>,
     pub end_time: Option<f64>,
-    pub time_steps: DataVector<f64,NaiveDateTime>,
+    pub time_steps: DataVector<f64, NaiveDateTime>,
 }
 
 impl RunData {
@@ -44,7 +44,7 @@ pub struct ReadOutParser<R> {
     step_line_re: Regex,
     sim_start_re: Regex,
     sim_end_re: Regex,
-    time_step_vec: DataVector<f64,NaiveDateTime>,
+    time_step_vec: DataVector<f64, NaiveDateTime>,
 }
 
 impl<R: Read> ReadOutParser<R> {
@@ -72,12 +72,12 @@ impl<R: Read> ReadOutParser<R> {
             sim_start: None,
             sim_end: None,
             time_step_vec: DataVector::new(
-               "Run Time".to_string(),
-               "Simulation Time".to_string(),
-               "Wall Time".to_string(),
-               "s".to_string(),
-               "datetime".to_string(),
-               Vec::new(),
+                "Run Time".to_string(),
+                "Simulation Time".to_string(),
+                "Wall Time".to_string(),
+                "s".to_string(),
+                "datetime".to_string(),
+                Vec::new(),
             ),
         }
     }
@@ -101,14 +101,10 @@ impl<R: Read> ReadOutParser<R> {
                 for cap in self.sim_start_re.captures_iter(line) {
                     match cap.get(1) {
                         None => (),
-                        Some(sim_start_string) => {
-                            match sim_start_string.as_str().parse() {
-                                Err(_) => (),
-                                Ok(time) => {
-                                    self.sim_start = Some(time)
-                                },
-                            }
-                        }
+                        Some(sim_start_string) => match sim_start_string.as_str().parse() {
+                            Err(_) => (),
+                            Ok(time) => self.sim_start = Some(time),
+                        },
                     }
                     continue;
                 }
@@ -116,14 +112,10 @@ impl<R: Read> ReadOutParser<R> {
                 for cap in self.sim_end_re.captures_iter(line) {
                     match cap.get(1) {
                         None => (),
-                        Some(sim_end_string) => {
-                            match sim_end_string.as_str().parse() {
-                                Err(_) => (),
-                                Ok(time) => {
-                                    self.sim_end = Some(time)
-                                },
-                            }
-                        }
+                        Some(sim_end_string) => match sim_end_string.as_str().parse() {
+                            Err(_) => (),
+                            Ok(time) => self.sim_end = Some(time),
+                        },
                     }
                     continue;
                 }
@@ -132,23 +124,20 @@ impl<R: Read> ReadOutParser<R> {
                 for cap in self.time_line_re.captures_iter(line) {
                     let time_step: Option<u64> = match cap.get(1) {
                         None => None,
-                        Some(string) => {
-                            match string.as_str().parse() {
-                                Err(_) => None,
-                                Ok(x) => {
-                                    Some(x)
-                                },
-                            }
-                        }
+                        Some(string) => match string.as_str().parse() {
+                            Err(_) => None,
+                            Ok(x) => Some(x),
+                        },
                     };
                     let datetime: Option<NaiveDateTime> = match cap.get(2) {
                         None => None,
                         Some(match_val) => {
-                            match NaiveDateTime::parse_from_str(match_val.as_str(), "%B %e, %Y  %H:%M:%S") {
+                            match NaiveDateTime::parse_from_str(
+                                match_val.as_str(),
+                                "%B %e, %Y  %H:%M:%S",
+                            ) {
                                 Err(_) => None,
-                                Ok(x) => {
-                                    Some(x)
-                                },
+                                Ok(x) => Some(x),
                             }
                         }
                     };
@@ -165,25 +154,17 @@ impl<R: Read> ReadOutParser<R> {
                 for cap in self.step_line_re.captures_iter(line) {
                     let step_size: Option<f64> = match cap.get(1) {
                         None => None,
-                        Some(string) => {
-                            match string.as_str().parse() {
-                                Err(_) => None,
-                                Ok(x) => {
-                                    Some(x)
-                                },
-                            }
-                        }
+                        Some(string) => match string.as_str().parse() {
+                            Err(_) => None,
+                            Ok(x) => Some(x),
+                        },
                     };
                     let total_time: Option<f64> = match cap.get(2) {
                         None => None,
-                        Some(string) => {
-                            match string.as_str().parse() {
-                                Err(_) => None,
-                                Ok(x) => {
-                                    Some(x)
-                                },
-                            }
-                        }
+                        Some(string) => match string.as_str().parse() {
+                            Err(_) => None,
+                            Ok(x) => Some(x),
+                        },
                     };
                     if let Some(RuntimeEntry::TimeStep {
                         time_step,
@@ -215,7 +196,6 @@ impl<R: Read> ReadOutParser<R> {
     }
 }
 
-
 pub enum RuntimeEntry {
     TimeStep {
         time_step: u64,
@@ -233,7 +213,6 @@ pub struct TimeStep {
     step_size: f64,
     total_time: f64,
 }
-
 
 #[cfg(test)]
 mod test {
@@ -263,7 +242,7 @@ mod test {
                             let time: f64 = time;
                             println!("time: {:?}", time);
                             // self.sim_start = Some(time)
-                        },
+                        }
                     }
                 }
             }

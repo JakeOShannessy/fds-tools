@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum HtmlChild {
     String(String),
     Element(HtmlElement),
@@ -15,7 +15,7 @@ impl Html for HtmlChild {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct HtmlElement {
     pub tag: String,
     pub attributes: HashMap<String, String>,
@@ -57,13 +57,15 @@ impl Html for String {
     }
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct HtmlPage {
     pub sections: Vec<HtmlElement>,
 }
 
 impl HtmlPage {
-    pub fn new() -> Self { Self { sections:vec![] } }
+    pub fn new() -> Self {
+        Self { sections: vec![] }
+    }
 
     pub fn add(&mut self, section: HtmlElement) {
         self.sections.push(section)

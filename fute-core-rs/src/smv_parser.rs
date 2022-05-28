@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
-use crate::Chid;
-use crate::Title;
+use chid::Chid;
+use chid::Title;
 use nom::error::ErrorKind;
 use nom::error::ParseError;
 use nom::lib::std::ops::{Range, RangeFrom, RangeTo};
@@ -13,7 +13,7 @@ use nom::{
         not_line_ending, one_of, space0,
     },
     combinator::{opt, peek, value},
-    multi::{many0, many1, many_till, separated_list},
+    multi::{many0, many1, many_till},
     number::complete::double,
     sequence::preceded,
     IResult,
@@ -21,7 +21,6 @@ use nom::{
 use nom::{AsChar, FindToken, InputIter, InputLength, InputTakeAtPosition, Slice};
 use nom::{Compare, CompareResult};
 use std::collections::HashMap;
-use version_compare::version::Version;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SMVFile {

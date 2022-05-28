@@ -1,8 +1,11 @@
-use fds_input_parser::{FdsFile, decode::{Mesh, Obst, Surf, Vent}, xb::MightHaveXB};
+use fds_input_parser::{
+    decode::{Mesh, Obst, Surf, Vent},
+    xb::MightHaveXB,
+    FdsFile,
+};
 
 pub mod extracts;
 pub mod supplies;
-
 
 /// A burner is a VENT or OBST that has a HRRPUA or an MLRPUA. That is, it
 /// produces fuel. Each Burner is a collection of panels. For example, an OBST
@@ -311,7 +314,11 @@ impl<'a> SimpleFlow<'a> {
                     panels.push(SimpleFlowPanel {
                         object: SimpleFlowObject::Vent(vent),
                         surf,
-                        meshes: fds_data.mesh.iter().filter(|mesh| mesh.intersect(vent)).collect(),
+                        meshes: fds_data
+                            .mesh
+                            .iter()
+                            .filter(|mesh| mesh.intersect(vent))
+                            .collect(),
                     });
                     // todo!("Not sure how to deal with vent burner direction yet")
                     // // Min X
@@ -354,7 +361,7 @@ impl<'a> SimpleFlowPanel<'a> {
     /// Return the velocity of the surface.
     pub fn vel(&self) -> f64 {
         if let Some(volume_flow) = self.surf.volume_flow {
-            volume_flow/self.flow_area()
+            volume_flow / self.flow_area()
         } else if let Some(vel) = self.surf.vel {
             vel
         } else {
