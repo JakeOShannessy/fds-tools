@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "fds-input-parser"
-version = "0.2.0-alpha"
+version = "0.1.8"
 dependencies = [
  "namelist",
  "paste",
@@ -655,7 +655,7 @@ dependencies = [
 [[package]]
 name = "namelist"
 version = "0.3.0"
-source = "git+https://github.com/JakeOShannessy/namelist-rs.git#71cd6a5d87da0f0320b12439a0adec32cc635d3c"
+source = "git+https://github.com/JakeOShannessy/namelist-rs.git?rev=e6f13b6cb83230df34d44e89f14b82822f000f72#e6f13b6cb83230df34d44e89f14b82822f000f72"
 
 [[package]]
 name = "nodrop"

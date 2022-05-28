@@ -1,5 +1,4 @@
 use chrono::prelude::*;
-use csv;
 use data_vector::DataVector;
 use data_vector::Point;
 use fute_core::{csv_parser::SmvValue, parse_smv_file};
@@ -266,8 +265,8 @@ pub fn plot_hrr(smv_path: &Path) {
         // The iterator yields Result<StringRecord, Error>, so we check the
         // error here.
         let record: Vec<f64> = result.unwrap();
-        let t = record.get(time_index).expect("time val").clone();
-        let v = record.get(value_index).expect("val").clone();
+        let t = *record.get(time_index).expect("time val");
+        let v = *record.get(value_index).expect("val");
         x_data.push(t);
         y_data.push(v);
     }
@@ -315,7 +314,7 @@ pub fn plot_hrr(smv_path: &Path) {
     }
     std::fs::create_dir_all("verification").expect("could not create dir");
     let mut file = File::create("verification/hrr.svg").expect("Could not create file");
-    file.write_all(&svg.as_bytes()).expect("write failed");
+    file.write_all(svg.as_bytes()).expect("write failed");
 }
 
 // createHRRPlots :: FilePath -> IO [FilePath]
@@ -359,7 +358,7 @@ pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     print_verification_tree(&verification_result, 0);
     let input_summary = summarise_input(&fds_data);
     let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
-    chart_page_path.push(format!("Verification.html"));
+    chart_page_path.push("Verification.html");
     println!("about to create verification page");
 
     let mut page = HtmlPage { sections: vec![] };
@@ -411,8 +410,10 @@ pub fn copy_inputs(src_dir: &Path, dest_dir: &Path) -> Result<(), Box<dyn std::e
         if entry.file_type().is_dir() {
             std::fs::create_dir_all(dest_path)?;
         } else {
-            let extension = src_path.extension().and_then(|ext|ext.to_str());
-            let copy = extension.map(|ext|!KNOWN_SMV_OUTPUTS.contains(ext)).unwrap_or(true);
+            let extension = src_path.extension().and_then(|ext| ext.to_str());
+            let copy = extension
+                .map(|ext| !KNOWN_SMV_OUTPUTS.contains(ext))
+                .unwrap_or(true);
             if copy {
                 println!("{} -> {}", src_path.display(), dest_path.display());
                 std::fs::copy(src_path, dest_path)?;
@@ -453,7 +454,7 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     print_verification_tree(&verification_result, 0);
     let input_summary = summarise_input(&fds_data);
     let mut chart_page_path = PathBuf::from(fds_path.parent().unwrap());
-    chart_page_path.push(format!("Verification.html"));
+    chart_page_path.push("Verification.html");
     println!("about to create verification page");
 
     let mut page = HtmlPage { sections: vec![] };
@@ -655,8 +656,8 @@ fn create_charts(smv_path: &Path) -> (PathBuf, Charts) {
             );
         }
     }
-    let mut chart_page_path = PathBuf::from(smv_dir);
-    chart_page_path.push(format!("Charts.html"));
+    let mut chart_page_path = smv_dir;
+    chart_page_path.push("Charts.html");
     println!("about to create chart page");
     (chart_page_path, charts)
 }
@@ -699,7 +700,7 @@ pub fn compare(vector_name: String, smv_paths: Vec<PathBuf>) {
 
 fn get_vector_for_comparison(vector_name: String, smv_path: PathBuf) -> DataVector<f64, SmvValue> {
     let outputs = fute_core::Outputs::new(smv_path);
-    let chid = outputs.smv.chid.clone();
+    let chid = outputs.smv.chid;
     // let charts: Charts = Charts::new();
     let smv_dir = PathBuf::from(outputs.smv_path.parent().unwrap());
     let mut vector = None;
@@ -733,7 +734,7 @@ fn plot_multiple(
     charts: &mut Charts,
     dvs: Vec<DataVector<f64, SmvValue>>,
 ) {
-    let mut path = PathBuf::from(smv_dir.clone());
+    let mut path = PathBuf::from(smv_dir);
     path.push(dir);
     std::fs::create_dir_all(&path).unwrap();
     // Mangle the filenames to ensure there are no forbidden windows
@@ -741,14 +742,14 @@ fn plot_multiple(
     let f_name: Cow<String> = mangle(&chart_name);
     path.push(format!("{}.png", f_name));
     let cleaned_vecs: Vec<DataVector<f64, f64>> = dvs.into_iter().map(clean_f64_vec).collect();
-    plot_dv(cleaned_vecs.iter().map(|x| x).collect(), chart_name, &path);
+    plot_dv(cleaned_vecs.iter().collect(), chart_name, &path);
     charts.various.push(ChartResult { path: path.clone() });
 }
 
 fn clean_f64_vec(dv: DataVector<f64, SmvValue>) -> DataVector<f64, f64> {
     let new_values: Vec<Point<f64, f64>> = dv
         .values()
-        .into_iter()
+        .iter()
         .map(|point| {
             let new_y = match point.y {
                 SmvValue::Float(f) => f,
@@ -796,7 +797,7 @@ fn plot(
     chid: String,
     dv: DataVector<f64, SmvValue>,
 ) {
-    let mut path = PathBuf::from(smv_dir.clone());
+    let mut path = PathBuf::from(smv_dir);
     path.push(dir);
     std::fs::create_dir_all(&path).unwrap();
     // Mangle the filenames to ensure there are no forbidden windows
@@ -808,7 +809,7 @@ fn plot(
         SmvValue::Float(_) => {
             let vec = dv
                 .values()
-                .into_iter()
+                .iter()
                 .map(|v| match v.y {
                     SmvValue::Float(d) => data_vector::Point { x: v.x, y: d },
                     _ => panic!("type changes part way through vector"),
@@ -830,7 +831,7 @@ fn plot(
         SmvValue::DateTime(_) => {
             let vec = dv
                 .values()
-                .into_iter()
+                .iter()
                 .map(|v| match v.y {
                     SmvValue::DateTime(d) => data_vector::Point { x: v.x, y: d },
                     _ => panic!("type changes part way through vector"),
@@ -851,9 +852,9 @@ fn plot(
 }
 
 fn mangle(s: &String) -> Cow<String> {
-    let s = Cow::Borrowed(s);
     #[cfg(windows)]
     {
+        let s = Cow::Borrowed(s);
         let s = match s.to_lowercase().as_str() {
             "con" | "prn" | "aux" | "nul" | "com0" | "com1" | "com2" | "com3" | "com4" | "com5"
             | "com6" | "com7" | "com8" | "com9" | "lpt0" | "lpt1" | "lpt2" | "lpt3" | "lpt4"

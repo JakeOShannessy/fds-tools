@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(clippy::type_complexity)]
 #[macro_use]
 extern crate nom;
 pub mod burners;
@@ -198,7 +199,7 @@ pub struct Outputs {
 impl Outputs {
     pub fn new(smv_path: PathBuf) -> Self {
         let mut file =
-            File::open(&smv_path).expect(&format!("Could not open smv file: {:?}", smv_path));
+            File::open(&smv_path).unwrap_or_else(|_| panic!("Could not open smv file: {:?}", smv_path));
         let mut contents = String::new();
         file.read_to_string(&mut contents)
             .expect("Could not read smv file");
@@ -235,7 +236,7 @@ impl Outputs {
         vec_name: String,
     ) -> Result<DataVector<f64, f64>, Box<dyn std::error::Error>> {
         let vec = self.get_csv_vec(csv_type, vec_name)?;
-        Ok(take_f64_vec(vec)?)
+        take_f64_vec(vec)
     }
 }
 
@@ -252,11 +253,11 @@ fn take_f64_vec(
         vec.y_units.clone(),
         Vec::with_capacity(n),
     );
-    for value in values.into_iter() {
+    for value in values.iter() {
         let x = value.x;
         let y = match value.y {
             SmvValue::Float(y) => y,
-            _ => return Err("not float")?,
+            _ => return Err("not float".into()),
         };
         new_dv.insert(data_vector::Point { x, y });
     }

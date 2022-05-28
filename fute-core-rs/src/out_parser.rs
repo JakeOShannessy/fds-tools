@@ -93,7 +93,7 @@ impl<R: Read> ReadOutParser<R> {
                 Ok(line) => line,
             };
             let line = line.trim();
-            if line.len() == 0 {
+            if line.is_empty() {
                 continue;
             }
 

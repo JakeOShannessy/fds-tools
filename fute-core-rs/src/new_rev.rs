@@ -6,7 +6,7 @@ pub fn create_new_rev(path: &Path) {
     }
     let dir_name = path.file_name().unwrap().to_str().unwrap();
     let containing_dir = path.parent().unwrap();
-    let mut current_rev = parse_dir_name(&dir_name).unwrap();
+    let mut current_rev = parse_dir_name(dir_name).unwrap();
     // Create a new directory for this revision after incrementing. If the
     // directory already exists we just need to keep incrementing. TODO: warn
     // about increased width.
@@ -55,7 +55,7 @@ pub struct RevName {
 impl RevName {
     pub fn new(name: String, rev_width: usize, rev_num: u64, tail_string: String) -> Self {
         Self {
-            name: name,
+            name,
             rev_width,
             rev_num,
             tail_string,

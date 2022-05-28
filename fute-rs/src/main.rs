@@ -1,5 +1,4 @@
 use clap::{crate_authors, crate_version, App, AppSettings, Arg, SubCommand};
-use env_logger;
 use fute_core::Chid;
 use std::path::PathBuf;
 mod commands;
@@ -220,7 +219,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .values_of("SMV-FILES")
             .expect("Invalid arguments")
             .into_iter()
-            .map(|path| PathBuf::from(path))
+            .map(PathBuf::from)
             .collect();
         commands::compare(vector_name, smv_paths);
     } else if let Some(_show_hrr_matches) = matches.subcommand_matches("show-hrr") {
@@ -267,21 +266,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             SmvValue::Float(_) => {
                 let vec = hrr_vector
                     .values()
-                    .into_iter()
+                    .iter()
                     .map(|v| match v.y {
                         SmvValue::Float(d) => data_vector::Point { x: v.x, y: d },
                         _ => panic!("type changes part way through vector"),
                     })
                     .collect();
-                let new_dv = data_vector::DataVector::new(
+                data_vector::DataVector::new(
                     hrr_vector.name.clone(),
                     hrr_vector.x_name.clone(),
                     hrr_vector.y_name.clone(),
                     hrr_vector.x_units.clone(),
                     hrr_vector.y_units.clone(),
                     vec,
-                );
-                new_dv
+                )
             }
             _ => panic!("incorrect type"),
         };

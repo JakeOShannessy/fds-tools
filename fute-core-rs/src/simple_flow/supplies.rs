@@ -2,7 +2,7 @@ use fds_input_parser::{FdsFile, decode::Mesh, decode::Obst, decode::Resolution, 
 
 use super::SimpleFlow;
 
-pub fn supplies<'a>(fds_data: &'a FdsFile) -> Vec<SimpleFlow<'a>> {
+pub fn supplies(fds_data: &FdsFile) -> Vec<SimpleFlow<'_>> {
     // Iterate through all the OBSTs and VENTs and determine which ones are
     // extracts.
     let mut extracts = Vec::new();

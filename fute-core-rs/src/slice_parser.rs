@@ -63,7 +63,7 @@ impl<R: Read> SliceParser<R> {
         buf.extend_from_slice(rem);
         SliceParser {
             reader: BufReader::new(input),
-            header: header,
+            header,
             buf,
         }
     }
@@ -106,13 +106,13 @@ impl<R: Read> Iterator for SliceParser<R> {
     }
 }
 
-pub fn parse_slice_file<'a, 'b>(i: &'b [u8]) -> IResult<&'b [u8], SliceFile> {
+pub fn parse_slice_file(i: &[u8]) -> IResult<&[u8], SliceFile> {
     let (i, header) = parse_slice_header(i)?;
     let i_dim = header.dimensions.i_max - header.dimensions.i_min + 1;
     let j_dim = header.dimensions.j_max - header.dimensions.j_min + 1;
     let k_dim = header.dimensions.k_max - header.dimensions.k_min + 1;
     let (i, frames) = many0(|iv| parse_data_set(i_dim, j_dim, k_dim, iv))(i)?;
-    if i.len() == 0 {
+    if i.is_empty() {
         Ok((i, SliceFile { header, frames }))
     } else {
         Err(nom::Err::Error(error_position!(
@@ -122,12 +122,12 @@ pub fn parse_slice_file<'a, 'b>(i: &'b [u8]) -> IResult<&'b [u8], SliceFile> {
     }
 }
 
-pub fn parse_data_set<'a, 'b>(
+pub fn parse_data_set(
     i_dim: u32,
     j_dim: u32,
     k_dim: u32,
-    i: &'b [u8],
-) -> IResult<&'b [u8], Frame> {
+    i: &[u8],
+) -> IResult<&[u8], Frame> {
     let (i, rec_length) = nom::combinator::complete(le_u32)(i)?;
     let (i, time) = nom::number::streaming::le_f32(i)?;
     let (i, check) = le_u32(i)?;
@@ -141,12 +141,12 @@ pub fn parse_data_set<'a, 'b>(
     Ok((i, Frame { time, values }))
 }
 
-pub fn parse_slice_data<'a, 'b>(
+pub fn parse_slice_data(
     i_dim: u32,
     j_dim: u32,
     k_dim: u32,
-    i: &'b [u8],
-) -> IResult<&'b [u8], Vec<f32>> {
+    i: &[u8],
+) -> IResult<&[u8], Vec<f32>> {
     let (i, rec_length) = le_u32(i)?;
     let (i, data) = nom::multi::count(
         nom::number::streaming::le_f32,
@@ -261,7 +261,7 @@ fn parse_record(i: &[u8]) -> IResult<&[u8], &[u8]> {
             nom::error::ErrorKind::ManyMN,
         )));
     }
-    Ok((i, &b_string))
+    Ok((i, b_string))
 }
 
 #[cfg(test)]

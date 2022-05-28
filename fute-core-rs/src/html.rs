@@ -70,6 +70,12 @@ impl HtmlPage {
     }
 }
 
+impl Default for HtmlPage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Html for HtmlPage {
     fn render(&self, f: &mut impl std::io::Write) -> std::io::Result<()> {
         let mut page = HtmlElement::new("html".to_string());

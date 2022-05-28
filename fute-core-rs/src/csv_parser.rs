@@ -97,9 +97,9 @@ impl CsvDataBlock {
         let y_index = self.names.iter().position(|x| x == y_name)?;
         let mut dv: DataVector<f64,SmvValue> = DataVector::new(
             y_name.to_string(),
-            self.units.get(x_index).cloned()?.to_string(),
+            self.units.get(x_index).cloned()?,
             x_name.to_string(),
-            self.units.get(y_index).cloned()?.to_string(),
+            self.units.get(y_index).cloned()?,
             y_name.to_string(),
             Vec::with_capacity(self.vec_len()),
         );
@@ -185,6 +185,12 @@ impl CsvDataBlock {
             names,
             values,
         })
+    }
+}
+
+impl Default for CsvDataBlock {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -1,13 +1,9 @@
 use fds_input_parser::{
-    decode::Mesh,
-    decode::Obst,
-    decode::Resolution,
-    decode::Surf,
-    decode::Vent,
-    xb::{MightHaveXB}, FdsFile,
+    decode::Mesh, decode::Obst, decode::Resolution, decode::Surf, decode::Vent, xb::MightHaveXB,
+    FdsFile,
 };
 
-pub fn burners<'a>(fds_data: &'a FdsFile) -> Vec<Burner<'a>> {
+pub fn burners(fds_data: &'_ FdsFile) -> Vec<Burner<'_>> {
     // Iterate through all the OBSTs and VENTs and determine which ones are
     // burners.
     let mut burners = Vec::new();
@@ -369,7 +365,7 @@ impl<'a> Burner<'a> {
                         //     .iter()
                         //     .filter(|mesh| MightHaveXB::intersect(mesh,vent))
                         //     .collect(),
-                        meshes: fds_data.mesh.iter().map(|x| x).collect(),
+                        meshes: fds_data.mesh.iter().collect(),
                     });
                 }
             }
@@ -433,10 +429,9 @@ impl<'a> BurnerPanel<'a> {
         let ambient_temperature = 293.15_f64;
         let g = 9.81_f64;
         let max_hrr = self.max_hrr();
-        let resolutions: Vec<Resolution> = self.meshes.iter().map(|m| m.resolution()).collect();
-        let nominal_cell_sizes: Vec<f64> =
-            resolutions.into_iter().map(|res| res.max_side()).collect();
-        let max_nominal_cell_size = if nominal_cell_sizes.len() == 0 {
+        let resolutions = self.meshes.iter().map(|m| m.resolution());
+        let nominal_cell_sizes: Vec<f64> = resolutions.map(|res| res.max_side()).collect();
+        let max_nominal_cell_size = if nominal_cell_sizes.is_empty() {
             panic!("no cell dimensions for burner")
         } else {
             let mut m = nominal_cell_sizes[0];
@@ -451,8 +446,7 @@ impl<'a> BurnerPanel<'a> {
             / (ambient_density * ambient_specific_heat * ambient_temperature * (g.sqrt())))
         .powf(2_f64 / 5_f64);
         // Non-Dimensionalised Ratio
-        let ndr = char_fire_diameter / max_nominal_cell_size;
-        ndr
+        char_fire_diameter / max_nominal_cell_size
     }
 }
 

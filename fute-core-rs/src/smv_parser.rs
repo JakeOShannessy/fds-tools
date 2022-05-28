@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
-use crate::Title;
 use crate::Chid;
+use crate::Title;
 use nom::error::ErrorKind;
 use nom::error::ParseError;
 use nom::lib::std::ops::{Range, RangeFrom, RangeTo};
@@ -42,7 +42,7 @@ pub struct SMVFile {
     // , obstVis       : Vec<ObstVisEntry>
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct RawSMVFile {
     title: Option<String>,
     chid: Option<String>,
@@ -91,25 +91,13 @@ impl RawSMVFile {
     }
 }
 
-impl Default for RawSMVFile {
-    fn default() -> Self {
-        RawSMVFile {
-            title: Default::default(),
-            chid: Default::default(),
-            csvfs: Default::default(),
-            inpfs: Default::default(),
-            unknown_blocks: Default::default(),
-        }
-    }
-}
-
-impl Into<SMVFile> for RawSMVFile {
-    fn into(self) -> SMVFile {
-        SMVFile {
-            title: self.title.unwrap().parse().unwrap(),
-            chid: self.chid.unwrap().parse().unwrap(),
-            csvfs: self.csvfs,
-            input_filename: self.inpfs.get(0).unwrap().clone(),
+impl From<RawSMVFile> for SMVFile {
+    fn from(raw: RawSMVFile) -> Self {
+        Self {
+            title: raw.title.unwrap().parse().unwrap(),
+            chid: raw.chid.unwrap().parse().unwrap(),
+            csvfs: raw.csvfs,
+            input_filename: raw.inpfs.get(0).unwrap().clone(),
         }
     }
 }
@@ -120,7 +108,7 @@ pub struct SMVBlock {
     pub content: String,
 }
 
-pub fn parse_smv_block<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVBlock> {
+pub fn parse_smv_block(i: &str) -> IResult<&str, SMVBlock> {
     // Parse the title/category of the block
     let (i, title) = not_line_ending(i)?;
     let (i, _) = line_ending(i)?;
@@ -182,13 +170,13 @@ where
     }
 }
 
-pub fn parse_smv_file<'a, 'b>(i: &'b str) -> IResult<&'b str, SMVFile> {
+pub fn parse_smv_file(i: &str) -> IResult<&str, SMVFile> {
     let (i, blocks) = many0(parse_smv_block)(i)?;
     let mut raw_smv_file = RawSMVFile::new();
     for block in blocks {
         raw_smv_file.add_block(block);
     }
-    if i.len() == 0 {
+    if i.is_empty() {
         Ok((i, raw_smv_file.into()))
     } else {
         Err(nom::Err::Error(error_position!(
@@ -223,7 +211,7 @@ pub fn parse_int(i: &str) -> IResult<&str, i64> {
     // TODO: fix this error handling
     let num = digits.parse::<i64>().expect("not a valid number");
     if s == Some('-') {
-        Ok((i, -1 * num))
+        Ok((i, -num))
     } else {
         Ok((i, num))
     }
@@ -305,10 +293,7 @@ fn parse_string_block(i: &str) -> IResult<&str, String> {
     let (i, string) = not_line_ending(i)?;
     let (i, _) = line_ending(i)?;
     let (i, _) = line_ending(i)?;
-    Ok((
-        i,
-        string.to_string(),
-    ))
+    Ok((i, string.to_string()))
 }
 
 fn parse_geom(i: &str) -> IResult<&str, String> {
@@ -1425,7 +1410,7 @@ fn parse_tail_entry(i: &str) -> IResult<&str, TailEntry> {
             let (i, _) = line_ending(i)?;
             Ok((
                 i,
-                TailEntry::DataFile(DataFileEntry::XYZ(XYZDataFile {
+                TailEntry::DataFile(DataFileEntry::Xyz(XYZDataFile {
                     filename: name.to_string(),
                 })),
             ))
@@ -1493,7 +1478,7 @@ pub enum TailEntry {
 
 #[derive(Clone, Debug)]
 pub enum DataFileEntry {
-    XYZ(XYZDataFile),
+    Xyz(XYZDataFile),
     Smoke3d(Smoke3dDataFile),
 }
 

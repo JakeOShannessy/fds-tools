@@ -477,15 +477,11 @@ fn meshes_overlap_test(fds_data: &FdsFile) -> VerificationResult {
     let mut meshes = fds_data.mesh.clone();
     let mut intersections = Vec::new();
     let mut index_a = 1;
-    loop {
-        if let Some(mesh) = meshes.pop() {
-            for (i, other_mesh) in meshes.iter().enumerate() {
-                if mesh.intersect(&other_mesh) {
-                    intersections.push(MeshIntersection::new(index_a, i + 1))
-                }
+    while let Some(mesh) = meshes.pop() {
+        for (i, other_mesh) in meshes.iter().enumerate() {
+            if mesh.intersect(&other_mesh) {
+                intersections.push(MeshIntersection::new(index_a, i + 1))
             }
-        } else {
-            break;
         }
         index_a += 1;
     }
@@ -579,7 +575,7 @@ fn co_yield_test(fds_data: &FdsFile) -> VerificationResult {
     };
     if let Some(value) = value {
         if value == 0.05 {
-            VerificationResult::Result(name, TestResult::Success(format!("{}", value)))
+            VerificationResult::Result(name, TestResult::Failure(format!("{}", value)))
         } else {
             VerificationResult::Result(name, TestResult::Success(format!("{}", value)))
         }
@@ -624,7 +620,7 @@ fn visibility_factor_test(
         .misc
         .as_ref()
         .and_then(|misc| misc.visibility_factor);
-    let visibility_factor = match fds_data.misc {
+    let visibility_factor = match vis {
         None => return Err(VisibilityFactorTestFailure::NoMisc),
         Some(visibility_factor) => Ok(visibility_factor),
     }?;
@@ -707,7 +703,7 @@ fn burners_test(fds_data: &FdsFile) -> VerificationResult {
         let burner_test_results = burners
             .iter()
             .enumerate()
-            .map(|(i, burner)| burner_test(fds_data, &burner, i))
+            .map(|(i, burner)| burner_test(fds_data, burner, i))
             .collect();
         VerificationResult::Tree(name, burner_test_results)
     }
@@ -751,7 +747,7 @@ fn ndr_test(fds_data: &FdsFile, burner: &Burner) -> VerificationResult {
     if ndrs.len() == 1 {
         VerificationResult::Result(name, ndr_res(ndrs[0]))
     } else {
-        let ndr_test_results = ndrs.into_iter().map(|ndr| ndr_res(ndr)).enumerate();
+        let ndr_test_results = ndrs.into_iter().map(ndr_res).enumerate();
         let mut res = Vec::new();
         for (i, ndr_t) in ndr_test_results {
             res.push(VerificationResult::Result(format!("Panel {}", i), ndr_t));
