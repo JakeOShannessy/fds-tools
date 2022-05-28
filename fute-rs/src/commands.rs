@@ -20,7 +20,7 @@ use std::{
 // /// Output the total number of cells simply as an integer (with newline). This
 // /// is to make it trivially parseable.
 // countCellsMachine1 path = do
-//     Right inData <- (fmap decodeNamelistFile) <$> parseFDSFile path
+//     Right inData <- (fmap decodeNamelistFile) <$> parseFdsFile path
 //     let meshes = fdsFile_Meshes inData
 //         nCells = sum $ map getNCells meshes
 //     putStrLn (show nCells)
@@ -29,7 +29,7 @@ use std::{
 /// not machine readable.
 pub fn count_cells(input_path: &Path) -> u64 {
     let fds_data = parse_and_decode_fds_input_file(input_path);
-    let meshes: Vec<Mesh> = fds_data.meshes;
+    let meshes: Vec<Mesh> = fds_data.mesh;
     let mut total_cells = 0;
     for mesh in meshes {
         total_cells += mesh.n_cells();
@@ -56,14 +56,14 @@ pub fn count_cells(input_path: &Path) -> u64 {
     // putStrLn s
 }
 pub fn meshes(fds_path: &Path) {
-    // use fute_core::FDSFileExt;
+    // use fute_core::FdsFileExt;
     use prettytable::{Attr, Cell, Row, Table};
-    // use fute_core::FDSFile;
+    // use fute_core::FdsFile;
     // use fute_core::parse_and_decode_fds_input_file;
     use num_format::{Locale, ToFormattedString};
 
     let fds_file = parse_and_decode_fds_input_file(fds_path);
-    let meshes = fds_file.meshes;
+    let meshes = fds_file.mesh;
     let mut table = Table::new();
     table.set_titles(Row::new(vec![
         Cell::new("#").with_style(Attr::Bold),
@@ -155,7 +155,7 @@ pub fn meshes(fds_path: &Path) {
 
 // /// Output mesh details as a human readable table. This is not machine readable.
 // meshDetails path = do
-//     inDataRaw <- (fmap decodeNamelistFile) <$> parseFDSFile path
+//     inDataRaw <- (fmap decodeNamelistFile) <$> parseFdsFile path
 //     let inData = case inDataRaw of
 //             Left e -> error (show e)
 //             Right x -> x
@@ -191,8 +191,8 @@ pub fn meshes(fds_path: &Path) {
 //     return ()
 
 pub fn peak_hrr(fds_path: &Path) {
-    use fute_core::FDSFileExt;
-    // use fute_core::FDSFile;
+    use fute_core::FdsFileExt;
+    // use fute_core::FdsFile;
     // use fute_core::parse_and_decode_fds_input_file;
     let fds_file = parse_and_decode_fds_input_file(fds_path);
     let hrr: f64 = fds_file
@@ -320,7 +320,7 @@ pub fn plot_hrr(smv_path: &Path) {
 
 // createHRRPlots :: FilePath -> IO [FilePath]
 // createHRRPlots path = do
-//     fdsRaw <- (fmap decodeNamelistFile) <$> parseFDSFile path
+//     fdsRaw <- (fmap decodeNamelistFile) <$> parseFdsFile path
 //     let
 //         fdsData = case fdsRaw of
 //             Right x -> x
@@ -408,8 +408,9 @@ pub fn copy_inputs(src_dir: &Path, dest_dir: &Path) -> Result<(), Box<dyn std::e
         if entry.file_type().is_dir() {
             std::fs::create_dir_all(dest_path)?;
         } else {
-            let extension: &str = src_path.extension().unwrap().to_str().unwrap();
-            if !KNOWN_SMV_OUTPUTS.contains(extension) {
+            let extension = src_path.extension().and_then(|ext|ext.to_str());
+            let copy = extension.map(|ext|!KNOWN_SMV_OUTPUTS.contains(ext)).unwrap_or(true);
+            if copy {
                 println!("{} -> {}", src_path.display(), dest_path.display());
                 std::fs::copy(src_path, dest_path)?;
             }

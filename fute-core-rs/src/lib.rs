@@ -17,7 +17,7 @@ use csv_parser::{CsvDataBlock, SmvValue};
 use data_vector::DataVector;
 pub use fds_input_parser::decode;
 pub use fds_input_parser::parse_and_decode_fds_input_file;
-pub use fds_input_parser::FDSFile;
+pub use fds_input_parser::FdsFile;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -287,7 +287,7 @@ fn read_slice_file() -> std::io::Result<()> {
 }
 
 // impl Burner {
-//     pub fn from_obst(fds_file: &FDSFile, obst: &Obst) -> Self {
+//     pub fn from_obst(fds_file: &FdsFile, obst: &Obst) -> Self {
 //         if obst.surf_id.is_some() {
 //             let surf_id: &String = &obst.surf_id.as_ref().unwrap();
 //             let surf = fds_file.get_surf(surf_id).unwrap();
@@ -319,7 +319,7 @@ fn read_slice_file() -> std::io::Result<()> {
 //         }
 //     }
 
-//     pub fn from_vent(fds_file: &FDSFile, vent: &Vent) -> Self {
+//     pub fn from_vent(fds_file: &FdsFile, vent: &Vent) -> Self {
 //         let surf_id: &String = &vent.surf_id.as_ref().unwrap();
 //         let surf = fds_file.get_surf(surf_id).unwrap();
 //         let hrrpua = surf.hrrpua.unwrap();
@@ -329,7 +329,7 @@ fn read_slice_file() -> std::io::Result<()> {
 //     }
 // }
 
-pub trait FDSFileExt {
+pub trait FdsFileExt {
     fn burners(&self) -> Vec<Burner>;
     fn sprinklers(&self) -> Vec<Sprinkler>;
     fn extracts(&self) -> Vec<SimpleFlow>;
@@ -340,12 +340,12 @@ pub trait FDSFileExt {
     fn soot_production_rate(&self) -> f64;
 }
 
-impl FDSFileExt for FDSFile {
+impl FdsFileExt for FdsFile {
     fn burners(&self) -> Vec<Burner> {
         burners::burners(self)
     }
     fn sprinklers(&self) -> Vec<Sprinkler> {
-        self.devcs
+        self.devc
             .iter()
             .filter_map(|devc| {
                 println!("Looking at device: {:?}", devc.id);

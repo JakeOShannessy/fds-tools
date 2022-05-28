@@ -1,7 +1,7 @@
 use crate::{burners::Burner, parse_smv_file};
-use crate::{html::HtmlChild, html::HtmlElement, FDSFileExt};
+use crate::{html::HtmlChild, html::HtmlElement, FdsFileExt};
 use fds_input_parser::xb::HasXB;
-use fds_input_parser::FDSFile;
+use fds_input_parser::FdsFile;
 use fds_input_parser::{decode::*, xb::MightHaveXB};
 use std::{
     cmp::Ordering,
@@ -25,7 +25,7 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Verify an input file.
-pub fn verify_input(fds_data: &FDSFile) -> VerificationResult {
+pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
     // let verification_tests = vec![
     //     parameterVerificationTests
     //     , outputDataCoverage
@@ -96,7 +96,7 @@ pub fn print_verification_tree(tree: &VerificationResult, indent_level: usize) {
 }
 
 pub enum VerificationTest {
-    Test(Box<dyn Fn(&FDSFile) -> VerificationResult>),
+    Test(Box<dyn Fn(&FdsFile) -> VerificationResult>),
     Tree(Vec<VerificationTest>),
 }
 
@@ -388,7 +388,7 @@ impl PartialEq for TestResult {
 //                 []
 
 // /// Ensure that no devices are stuck in solids.
-// devicesTest :: FDSFile -> Tree CompletedTest
+// devicesTest :: FdsFile -> Tree CompletedTest
 // devicesTest fdsData =
 //     let
 //         testName = "Devices Stuck in Solids Test"
@@ -404,7 +404,7 @@ impl PartialEq for TestResult {
 //             -- <> T.unpack (pprint nml)
 
 // /// Ensure that sprinklers and smoke detectors are beneath a ceiling.
-// spkDetCeilingTest :: FDSFile -> Tree CompletedTest
+// spkDetCeilingTest :: FdsFile -> Tree CompletedTest
 // spkDetCeilingTest fdsData =
 //     let
 //         testName = "Sprinklers and detectors below ceiling"
@@ -423,7 +423,7 @@ impl PartialEq for TestResult {
 
 // /// Take the xb dimensions of a vent and see if there is a flow vent with the
 // /// matching dimensions, or a device that references it as a duct node.
-// hasFlowDevc :: FDSFile -> Vent -> Bool
+// hasFlowDevc :: FdsFile -> Vent -> Bool
 // hasFlowDevc fdsData namelist =
 //     let
 //         devcs = filter
@@ -447,10 +447,10 @@ impl PartialEq for TestResult {
 //     in trackingFlowMatchingXB || trackingFlowViaDuctID
 
 // / Check one obstruction and determine if it intersects any other namelists.
-// fn obst_intersects_with_others(fds_data: FDSFile, other: N) -> bool {
+// fn obst_intersects_with_others(fds_data: FdsFile, other: N) -> bool {
 
 // }
-// obstIntersectsWithOthers :: HasXB a => FDSFile -> a -> [Obst]
+// obstIntersectsWithOthers :: HasXB a => FdsFile -> a -> [Obst]
 // obstIntersectsWithOthers fdsData namelist =
 //     let
 //         obsts :: [Obst]
@@ -472,9 +472,9 @@ impl MeshIntersection {
 }
 
 /// Do any of the meshes overlap.
-fn meshes_overlap_test(fds_data: &FDSFile) -> VerificationResult {
+fn meshes_overlap_test(fds_data: &FdsFile) -> VerificationResult {
     // Clone a list of meshes.
-    let mut meshes = fds_data.meshes.clone();
+    let mut meshes = fds_data.mesh.clone();
     let mut intersections = Vec::new();
     let mut index_a = 1;
     loop {
@@ -510,22 +510,22 @@ fn meshes_overlap_test(fds_data: &FDSFile) -> VerificationResult {
 }
 
 /// Test that the REAC properties are reasonable.
-fn reaction_tests(fds_data: &FDSFile) -> VerificationResult {
+fn reaction_tests(fds_data: &FdsFile) -> VerificationResult {
     let soot_yield = soot_yield_test(fds_data);
     let co_yield = co_yield_test(fds_data);
     VerificationResult::Tree("Reaction Tests".to_string(), vec![soot_yield, co_yield])
 }
 
-fn soot_yield_test(fds_data: &FDSFile) -> VerificationResult {
+fn soot_yield_test(fds_data: &FdsFile) -> VerificationResult {
     let name = "Soot Yield".to_string();
-    let value = match fds_data.reacs.len() {
+    let value = match fds_data.reac.len() {
         0 => {
             return VerificationResult::Result(
                 name,
                 TestResult::Failure("No Reaction Specified".to_string()),
             )
         }
-        1 => fds_data.reacs[0].soot_yield,
+        1 => fds_data.reac[0].soot_yield,
         _ => {
             return VerificationResult::Result(
                 name,
@@ -560,16 +560,16 @@ pub enum COYieldTestFailure {
     NoValue,
 }
 
-fn co_yield_test(fds_data: &FDSFile) -> VerificationResult {
+fn co_yield_test(fds_data: &FdsFile) -> VerificationResult {
     let name = "CO Yield".to_string();
-    let value = match fds_data.reacs.len() {
+    let value = match fds_data.reac.len() {
         0 => {
             return VerificationResult::Result(
                 name,
                 TestResult::Failure("No Reaction Specified".to_string()),
             )
         }
-        1 => fds_data.reacs[0].co_yield,
+        1 => fds_data.reac[0].co_yield,
         _ => {
             return VerificationResult::Result(
                 name,
@@ -597,7 +597,7 @@ pub struct MiscTests {
     pub maximum_visibility: Result<MaximumVisibilityTestSuccess, MaximumVisibilityTestFailure>,
 }
 
-fn misc_tests(fds_data: &FDSFile) -> MiscTests {
+fn misc_tests(fds_data: &FdsFile) -> MiscTests {
     let visibility_factor = visibility_factor_test(fds_data);
     let maximum_visibility = maximum_visibility_test(fds_data);
     MiscTests {
@@ -618,11 +618,15 @@ pub enum VisibilityFactorTestFailure {
 }
 
 fn visibility_factor_test(
-    fds_data: &FDSFile,
+    fds_data: &FdsFile,
 ) -> Result<VisibilityFactorTestSuccess, VisibilityFactorTestFailure> {
+    let vis = fds_data
+        .misc
+        .as_ref()
+        .and_then(|misc| misc.visibility_factor);
     let visibility_factor = match fds_data.misc {
-        None => Err(VisibilityFactorTestFailure::NoMisc),
-        Some(ref misc) => Ok(misc.visibility_factor),
+        None => return Err(VisibilityFactorTestFailure::NoMisc),
+        Some(visibility_factor) => Ok(visibility_factor),
     }?;
     if visibility_factor == 3.0 || visibility_factor == 8.0 {
         Ok(VisibilityFactorTestSuccess::GoodValue(visibility_factor))
@@ -643,12 +647,16 @@ pub enum MaximumVisibilityTestFailure {
 }
 
 fn maximum_visibility_test(
-    fds_data: &FDSFile,
+    fds_data: &FdsFile,
 ) -> Result<MaximumVisibilityTestSuccess, MaximumVisibilityTestFailure> {
-    let maximum_visibility = match fds_data.misc {
-        None => Err(MaximumVisibilityTestFailure::NoMisc),
-        Some(ref misc) => Ok(misc.maximum_visibility),
-    }?;
+    let vis = fds_data
+        .misc
+        .as_ref()
+        .and_then(|misc| misc.maximum_visibility);
+    let maximum_visibility = match vis {
+        None => return Err(MaximumVisibilityTestFailure::NoMisc),
+        Some(maximum_visibility) => maximum_visibility,
+    };
     if maximum_visibility <= 100.0 {
         Ok(MaximumVisibilityTestSuccess::GoodValue(maximum_visibility))
     } else {
@@ -656,15 +664,15 @@ fn maximum_visibility_test(
     }
 }
 
-fn dump_tests(fds_data: &FDSFile) {
+fn dump_tests(fds_data: &FdsFile) {
     let dt_restart_result = dt_restart_test(fds_data);
     let nframes = nframes_test(fds_data);
     unimplemented!()
 }
 
-fn dt_restart_test(fds_data: &FDSFile) {
+fn dt_restart_test(fds_data: &FdsFile) {
     unimplemented!()
-    //       dt_restart :: Dump -> FDSFile -> Tree CompletedTest
+    //       dt_restart :: Dump -> FdsFile -> Tree CompletedTest
     //       dt_restart dump fdsData =
     //           let
     //               testName = "Restart Interval"
@@ -673,9 +681,9 @@ fn dt_restart_test(fds_data: &FDSFile) {
     //             $ "Value: " ++ show nValue ++ ".") []
 }
 
-fn nframes_test(fds_data: &FDSFile) -> VerificationResult {
+fn nframes_test(fds_data: &FdsFile) -> VerificationResult {
     unimplemented!()
-    //       nframes :: Dump -> FDSFile -> Tree CompletedTest
+    //       nframes :: Dump -> FdsFile -> Tree CompletedTest
     //       nframes dump fdsData =
     //           let
     //               testName = "Number of Frames"
@@ -690,7 +698,7 @@ fn nframes_test(fds_data: &FDSFile) -> VerificationResult {
 }
 
 /// Test all burners.
-fn burners_test(fds_data: &FDSFile) -> VerificationResult {
+fn burners_test(fds_data: &FdsFile) -> VerificationResult {
     let name = "Burner Tests".to_string();
     let burners = fds_data.burners();
     if burners.is_empty() {
@@ -706,7 +714,7 @@ fn burners_test(fds_data: &FDSFile) -> VerificationResult {
 }
 
 /// Test a burner
-fn burner_test(fds_data: &FDSFile, burner: &Burner, i: usize) -> VerificationResult {
+fn burner_test(fds_data: &FdsFile, burner: &Burner, i: usize) -> VerificationResult {
     let source_froude = source_froude_test(burner);
     let ndr = ndr_test(fds_data, burner);
     let growth_rate = growth_rate_test(fds_data, burner);
@@ -737,7 +745,7 @@ fn source_froude_test(burner: &Burner) -> VerificationResult {
     }
 }
 
-fn ndr_test(fds_data: &FDSFile, burner: &Burner) -> VerificationResult {
+fn ndr_test(fds_data: &FdsFile, burner: &Burner) -> VerificationResult {
     let name = "Non-Dimensionalised Ratio".to_string();
     let ndrs = burner.ndr();
     if ndrs.len() == 1 {
@@ -760,13 +768,13 @@ fn ndr_res(ndr: f64) -> TestResult {
     }
 }
 
-fn intersection_test(fds_data: &FDSFile, burner: &Burner) -> VerificationResult {
+fn intersection_test(fds_data: &FdsFile, burner: &Burner) -> VerificationResult {
     todo!()
 }
 
 /// Test the growth rate of a burner and check that it either matches a standard
 /// growth rate, or a steady-state value within 20 s.
-fn growth_rate_test(fds_data: &FDSFile, burner: &Burner) -> VerificationResult {
+fn growth_rate_test(fds_data: &FdsFile, burner: &Burner) -> VerificationResult {
     // TODO: This requires understanding the burner and it's exposed surfaces
     // TODO: allow steady state curves
     let name = "Growth Rate".to_string();
@@ -827,7 +835,7 @@ fn growth_rate_test(fds_data: &FDSFile, burner: &Burner) -> VerificationResult {
 }
 
 //     /// Test that the burner does not intersect with any other obstructions.
-//     intersectionTest :: Burner -> FDSFile -> Tree CompletedTest
+//     intersectionTest :: Burner -> FdsFile -> Tree CompletedTest
 //     intersectionTest burner fdsData = case getBurnerId burner of
 //         // TODO: we should be able to uniquely identify each OBST
 //         Nothing -> Node (CompletedTest testName $ Failure
@@ -892,10 +900,10 @@ pub struct Sprinkler {
 }
 
 impl Sprinkler {
-    pub fn from_devc(devc: Devc, fds_file: &FDSFile) -> Self {
+    pub fn from_devc(devc: Devc, fds_file: &FdsFile) -> Self {
         let prop = {
             fds_file
-                .props
+                .prop
                 .iter()
                 .find(|&prop| prop.id.as_ref() == devc.prop_id.as_ref())
                 .unwrap()
@@ -914,7 +922,7 @@ pub struct SmokeDetector {
 }
 
 impl SmokeDetector {
-    pub fn from_devc(devc: Devc, fds_file: &FDSFile) -> Self {
+    pub fn from_devc(devc: Devc, fds_file: &FdsFile) -> Self {
         // let prop = {
         //     fds_file.props.iter().find(|&&prop| prop.id.as_ref() == devc.prop_id.as_ref()).unwrap().clone()
         // };
@@ -936,7 +944,7 @@ pub struct ThermalDetector {
 }
 
 impl ThermalDetector {
-    pub fn from_devc(devc: Devc, fds_file: &FDSFile) -> Self {
+    pub fn from_devc(devc: Devc, fds_file: &FdsFile) -> Self {
         todo!()
         // let prop = {
         //     fds_file.props.iter().find(|&&prop| prop.id.as_ref() == devc.prop_id.as_ref()).unwrap().clone()
@@ -970,7 +978,7 @@ fn sprinkler_activation_temperature_test() {
 
 //--GUIDELINES
 //
-// outputDataCoverage :: FDSFile -> Tree CompletedTest
+// outputDataCoverage :: FdsFile -> Tree CompletedTest
 // outputDataCoverage fdsData =
 //     let
 //         testName = "Output Data Coverage"

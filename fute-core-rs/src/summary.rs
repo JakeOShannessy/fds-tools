@@ -1,11 +1,11 @@
 use crate::{
     html::{self, HtmlChild},
-    FDSFileExt,
+    FdsFileExt,
 };
-use fds_input_parser::{decode::Resolution, FDSFile};
+use fds_input_parser::{decode::Resolution, FdsFile};
 use html::HtmlElement;
 
-pub fn summarise_input(fds_data: &FDSFile) -> InputSummary {
+pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
     // println!("{:?}", fds_data);
     let chid = fds_data
         .head
@@ -37,7 +37,7 @@ pub fn summarise_input(fds_data: &FDSFile) -> InputSummary {
     let n_supply_vents = supplies.len();
     let total_supply_rate = supplies.iter().map(|supply| supply.flow_rate().abs()).sum();
 
-    let meshes = &fds_data.meshes;
+    let meshes = &fds_data.mesh;
     let mesh_resolutions: Vec<_> = meshes.iter().map(|mesh| mesh.resolution()).collect();
     let n_meshes = meshes.len();
     let n_cells: u64 = meshes.iter().map(|mesh| mesh.n_cells()).sum();

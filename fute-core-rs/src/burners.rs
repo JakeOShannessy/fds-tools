@@ -4,20 +4,19 @@ use fds_input_parser::{
     decode::Resolution,
     decode::Surf,
     decode::Vent,
-    xb::{MightHaveXB},
-    FDSFile,
+    xb::{MightHaveXB}, FdsFile,
 };
 
-pub fn burners<'a>(fds_data: &'a FDSFile) -> Vec<Burner<'a>> {
+pub fn burners<'a>(fds_data: &'a FdsFile) -> Vec<Burner<'a>> {
     // Iterate through all the OBSTs and VENTs and determine which ones are
     // burners.
     let mut burners = Vec::new();
-    for obst in fds_data.obsts.iter() {
+    for obst in fds_data.obst.iter() {
         if obst.is_burner(fds_data) {
             burners.push(Burner::from_obst(fds_data, obst))
         }
     }
-    for vent in fds_data.vents.iter() {
+    for vent in fds_data.vent.iter() {
         if vent.is_burner(fds_data) {
             burners.push(Burner::from_vent(fds_data, vent))
         }
@@ -72,13 +71,13 @@ impl<'a> Burner<'a> {
         self.panels.iter().map(|panel| panel.ndr()).collect()
     }
 
-    pub fn from_obst(fds_data: &'a FDSFile, obst: &'a Obst) -> Self {
+    pub fn from_obst(fds_data: &'a FdsFile, obst: &'a Obst) -> Self {
         let mut panels = Vec::new();
         if let Some(surf_id) = &obst.surf_id {
             // The OBST has been given a single surf_id, therefore this value
             // will be applied to all surfaces.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
@@ -88,7 +87,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect::<Vec<_>>(),
@@ -98,7 +97,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -108,7 +107,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -118,7 +117,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -128,7 +127,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -138,7 +137,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -149,7 +148,7 @@ impl<'a> Burner<'a> {
             // The OBST has been given three surf_ids, on for top, one for
             // sides, and one for bottom.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_top))
             {
@@ -159,7 +158,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -167,7 +166,7 @@ impl<'a> Burner<'a> {
                 }
             }
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_sides))
             {
@@ -177,7 +176,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -186,7 +185,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -195,7 +194,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -204,7 +203,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -213,7 +212,7 @@ impl<'a> Burner<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_bottom))
             {
@@ -223,7 +222,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -233,7 +232,7 @@ impl<'a> Burner<'a> {
         } else if let Some((min_x, max_x, min_y, max_y, min_z, max_z)) = &obst.surf_id6 {
             // The OBST has been given a separate surf_id for each side.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_x))
             {
@@ -243,7 +242,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -252,7 +251,7 @@ impl<'a> Burner<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_x))
             {
@@ -262,7 +261,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -271,7 +270,7 @@ impl<'a> Burner<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_y))
             {
@@ -281,7 +280,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -290,7 +289,7 @@ impl<'a> Burner<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_y))
             {
@@ -300,7 +299,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -309,7 +308,7 @@ impl<'a> Burner<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_z))
             {
@@ -319,7 +318,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -328,7 +327,7 @@ impl<'a> Burner<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_z))
             {
@@ -338,7 +337,7 @@ impl<'a> Burner<'a> {
                         object: BurnerObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -350,13 +349,13 @@ impl<'a> Burner<'a> {
         Burner { panels, name }
     }
 
-    pub fn from_vent(fds_data: &'a FDSFile, vent: &'a Vent) -> Self {
+    pub fn from_vent(fds_data: &'a FdsFile, vent: &'a Vent) -> Self {
         let mut panels = Vec::new();
         if let Some(surf_id) = &vent.surf_id {
             // The OBST has been given a single surf_id, therefore this value
             // will be applied to all surfaces.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
@@ -366,11 +365,11 @@ impl<'a> Burner<'a> {
                         surf,
                         // TODO: we should 'resolve' the mesh before calculating this (i.e. creating an integer solution).
                         // meshes: fds_data
-                        //     .meshes
+                        //     .mesh
                         //     .iter()
                         //     .filter(|mesh| MightHaveXB::intersect(mesh,vent))
                         //     .collect(),
-                        meshes: fds_data.meshes.iter().map(|x| x).collect(),
+                        meshes: fds_data.mesh.iter().map(|x| x).collect(),
                     });
                 }
             }

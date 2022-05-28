@@ -1,4 +1,4 @@
-use fds_input_parser::{FDSFile, decode::{Mesh, Obst, Surf, Vent}, xb::MightHaveXB};
+use fds_input_parser::{FdsFile, decode::{Mesh, Obst, Surf, Vent}, xb::MightHaveXB};
 
 pub mod extracts;
 pub mod supplies;
@@ -20,13 +20,13 @@ impl<'a> SimpleFlow<'a> {
         self.panels.iter().map(|panel| panel.flow_rate()).sum()
     }
 
-    pub fn from_obst(fds_data: &'a FDSFile, obst: &'a Obst) -> Self {
+    pub fn from_obst(fds_data: &'a FdsFile, obst: &'a Obst) -> Self {
         let mut panels = Vec::new();
         if let Some(surf_id) = &obst.surf_id {
             // The OBST has been given a single surf_id, therefore this value
             // will be applied to all surfaces.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
@@ -36,7 +36,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect::<Vec<_>>(),
@@ -46,7 +46,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -56,7 +56,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -66,7 +66,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -76,7 +76,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -86,7 +86,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -97,7 +97,7 @@ impl<'a> SimpleFlow<'a> {
             // The OBST has been given three surf_ids, on for top, one for
             // sides, and one for bottom.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_top))
             {
@@ -107,7 +107,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -115,7 +115,7 @@ impl<'a> SimpleFlow<'a> {
                 }
             }
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_sides))
             {
@@ -125,7 +125,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -134,7 +134,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -143,7 +143,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -152,7 +152,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -161,7 +161,7 @@ impl<'a> SimpleFlow<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id_bottom))
             {
@@ -171,7 +171,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -181,7 +181,7 @@ impl<'a> SimpleFlow<'a> {
         } else if let Some((min_x, max_x, min_y, max_y, min_z, max_z)) = &obst.surf_id6 {
             // The OBST has been given a separate surf_id for each side.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_x))
             {
@@ -191,7 +191,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -200,7 +200,7 @@ impl<'a> SimpleFlow<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_x))
             {
@@ -210,7 +210,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosI(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -219,7 +219,7 @@ impl<'a> SimpleFlow<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_y))
             {
@@ -229,7 +229,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -238,7 +238,7 @@ impl<'a> SimpleFlow<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_y))
             {
@@ -248,7 +248,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosJ(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -257,7 +257,7 @@ impl<'a> SimpleFlow<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(min_z))
             {
@@ -267,7 +267,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstNegK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -276,7 +276,7 @@ impl<'a> SimpleFlow<'a> {
             }
 
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(max_z))
             {
@@ -286,7 +286,7 @@ impl<'a> SimpleFlow<'a> {
                         object: SimpleFlowObject::ObstPosK(obst),
                         surf,
                         meshes: fds_data
-                            .meshes
+                            .mesh
                             .iter()
                             .filter(|mesh| mesh.intersect(obst))
                             .collect(),
@@ -297,13 +297,13 @@ impl<'a> SimpleFlow<'a> {
         SimpleFlow { panels }
     }
 
-    pub fn from_vent(fds_data: &'a FDSFile, vent: &'a Vent) -> Self {
+    pub fn from_vent(fds_data: &'a FdsFile, vent: &'a Vent) -> Self {
         let mut panels = Vec::new();
         if let Some(surf_id) = &vent.surf_id {
             // The OBST has been given a single surf_id, therefore this value
             // will be applied to all surfaces.
             if let Some(surf) = fds_data
-                .surfs
+                .surf
                 .iter()
                 .find(|surf| surf.id.as_ref() == Some(surf_id))
             {
@@ -311,20 +311,20 @@ impl<'a> SimpleFlow<'a> {
                     panels.push(SimpleFlowPanel {
                         object: SimpleFlowObject::Vent(vent),
                         surf,
-                        meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(vent)).collect(),
+                        meshes: fds_data.mesh.iter().filter(|mesh| mesh.intersect(vent)).collect(),
                     });
                     // todo!("Not sure how to deal with vent burner direction yet")
                     // // Min X
                     // panels.push(SimpleFlowPanel {
                     //     object: SimpleFlowObject::ObstNegI(obst),
                     //     surf,
-                    //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    //     meshes: fds_data.mesh.iter().filter(|mesh| mesh.intersect(obst)).collect(),
                     // });
                     // // Max X
                     // panels.push(SimpleFlowPanel {
                     //     object: BurnerObject::ObstPosI(obst),
                     //     surf,
-                    //     meshes: fds_data.meshes.iter().filter(|mesh| mesh.intersect(obst)).collect(),
+                    //     meshes: fds_data.mesh.iter().filter(|mesh| mesh.intersect(obst)).collect(),
                     // });
                 }
             }

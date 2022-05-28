@@ -8,7 +8,7 @@ edition = "2018"
 ansi_term = "0.12"
 clap = "2"
 csv = "1"
-fds-input-parser = {path = "../../fds-input-parser-rs"}
+fds-input-parser = {path = "../../red-smoke/fds-input-parser"}
 env_logger = "0.8"
 lazy_static = "1"
 log = "0.4"
