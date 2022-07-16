@@ -3,6 +3,7 @@ use crate::{html::HtmlChild, html::HtmlElement, FdsFileExt};
 use fds_input_parser::xb::HasXB;
 use fds_input_parser::FdsFile;
 use fds_input_parser::{decode::*, xb::MightHaveXB};
+use std::ops::Deref;
 use std::{
     cmp::Ordering,
     io::Read,
@@ -35,7 +36,7 @@ pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
             burners_test(fds_data),
             parameters_test(fds_data),
             outputDataCoverage(fds_data),
-            // flowCoverage(fds_data),
+            flowCoverage(fds_data),
             // leakage(fds_data),
             // devicesTest(fds_data),
             // spkDetCeilingTest(fds_data),
@@ -92,6 +93,22 @@ pub fn print_verification_tree(tree: &VerificationResult, indent_level: usize) {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ItemRef<'fds_data> {
+    Id(&'fds_data str),
+    Number(usize),
+}
+
+// pub trait HasId {
+//     fn get_item_ref<'fds_data>(&'fds_data self, fds_data: &'fds_data FdsFile) -> ItemRef<'fds_data>;
+// }
+
+// impl HasId for Vent {
+//     fn get_item_ref<'fds_data>(&'fds_data self, fds_data: &'fds_data FdsFile) -> ItemRef<'fds_data> {
+//         self.id.unwrap_or_else
+//     }
+// }
 
 pub enum VerificationTest {
     Test(Box<dyn Fn(&FdsFile) -> VerificationResult>),
@@ -340,36 +357,267 @@ impl PartialEq for TestResult {
 //     relatedFiles <- globDir [pattern] (simDir simulation)
 //     return (concat relatedFiles)
 
-/// Ensure that everage flow device is covered by a flow rate device/
-fn flowCoverage(fds_data: &FdsFile) -> VerificationResult {
-    todo!()
-    // let
-    //     testName = "Flow Coverage Test"
-    //     // it is also possible that other objects (such as OBST have flow)
-    //     vents = fdsFile_Vents fdsData
-    //     obsts = fdsFile_Obsts fdsData
-    //     surfs = fdsFile_Surfs fdsData
-    //     // vents which may have a flow
-    //     ventsWithFlows = filter (ventHasFlow fdsData) vents
-    //     // obsts that have surfaces with flows
-    //     obstWithFlows = filter (obstHasFlow fdsData) vents
-    //     // for each of the vents, ensure there is a flow device with the same
-    //     // dimensions find those which do not
-    //     notCovered =  filter (not . (hasFlowDevc fdsData)) ventsWithFlows
-    // in if null notCovered
-    //         then Node (CompletedTest testName $ Success
-    //             $ "All flow devices have devcs.") []
-    //         else Node (CompletedTest testName $ Failure $ unlines
-    //             $ map formatRes notCovered) []
-    // where
-    //     formatRes nml = "Flow object " <> getIdBound nml
-    //         <> " does not have a flow tracking devices.\n    "
-    //         // ++ T.unpack (pprint nml)
+fn ventHasFlow(fds_data: &FdsFile, vent: &Vent) -> bool {
+    fn isLinkedToVent(vent: &Vent, hvac: &Hvac) -> bool {
+        if let Some(vent_id) = vent.id.as_ref() {
+            hvac.vent_id.as_ref() == Some(vent_id) || hvac.vent2_id.as_ref() == Some(vent_id)
+        } else {
+            false
+        }
+    }
+    let linkedHVACs = fds_data
+        .hvac
+        .iter()
+        .filter(|hvac| isLinkedToVent(vent, hvac));
+    let isHVAC = linkedHVACs.count() != 0;
+    let hasSurfFlow = vent.getSurfList(fds_data).iter().any(|s| surfHasFlow(s));
+    println!("Vent: {:?} hasSurfFlow: {hasSurfFlow}", vent.id);
+    isHVAC || hasSurfFlow
 }
+
+#[derive(Clone, Debug)]
+pub enum SurfaceIdSpec<'fds_data> {
+    Single(&'fds_data str),
+    Triple(&'fds_data str, &'fds_data str, &'fds_data str),
+    Six(
+        &'fds_data str,
+        &'fds_data str,
+        &'fds_data str,
+        &'fds_data str,
+        &'fds_data str,
+        &'fds_data str,
+    ),
+}
+
+#[derive(Clone, Debug)]
+pub enum SurfaceSpec<'fds_data> {
+    Single(Option<&'fds_data Surf>),
+    Triple(
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+    ),
+    Six(
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+        Option<&'fds_data Surf>,
+    ),
+}
+
+pub trait HasSurf {
+    fn getSurfList<'fds_data>(
+        &'fds_data self,
+        fds_data: &'fds_data FdsFile,
+    ) -> Vec<&'fds_data Surf>;
+
+    fn getSurfs<'fds_data>(&'fds_data self, fds_data: &'fds_data FdsFile)
+        -> SurfaceSpec<'fds_data>;
+
+    fn getSurfIds(&self) -> SurfaceIdSpec;
+}
+
+impl HasSurf for Obst {
+    fn getSurfList<'fds_data>(
+        &'fds_data self,
+        fds_data: &'fds_data FdsFile,
+    ) -> Vec<&'fds_data Surf> {
+        let surfs = match self.getSurfs(fds_data) {
+            SurfaceSpec::Single(surf) => vec![surf],
+            SurfaceSpec::Triple(surf1, surf2, surf3) => vec![surf1, surf2, surf3],
+            SurfaceSpec::Six(surf1, surf2, surf3, surf4, surf5, surf6) => {
+                vec![surf1, surf2, surf3, surf4, surf5, surf6]
+            }
+        };
+        surfs.into_iter().flatten().collect()
+    }
+
+    fn getSurfs<'fds_data>(
+        &'fds_data self,
+        fds_data: &'fds_data FdsFile,
+    ) -> SurfaceSpec<'fds_data> {
+        getSurfsFromIds(fds_data, self.getSurfIds())
+    }
+
+    fn getSurfIds(&self) -> SurfaceIdSpec {
+        if let Some(surf_id) = self.surf_id.as_deref() {
+            SurfaceIdSpec::Single(surf_id)
+        } else if let Some((a, b, c)) = self.surf_ids.as_ref() {
+            SurfaceIdSpec::Triple(a, b, c)
+        } else if let Some((a, b, c, d, e, f)) = self.surf_id6.as_ref() {
+            SurfaceIdSpec::Six(a, b, c, d, e, f)
+        } else {
+            // TODO: be cautious of defaults here
+            SurfaceIdSpec::Single("INERT")
+        }
+    }
+}
+
+impl HasSurf for Vent {
+    fn getSurfList<'fds_data>(
+        &'fds_data self,
+        fds_data: &'fds_data FdsFile,
+    ) -> Vec<&'fds_data Surf> {
+        let surfs = match self.getSurfs(fds_data) {
+            SurfaceSpec::Single(surf) => vec![surf],
+            SurfaceSpec::Triple(surf1, surf2, surf3) => vec![surf1, surf2, surf3],
+            SurfaceSpec::Six(surf1, surf2, surf3, surf4, surf5, surf6) => {
+                vec![surf1, surf2, surf3, surf4, surf5, surf6]
+            }
+        };
+        surfs.into_iter().flatten().collect()
+    }
+
+    // getSurfsObst :: HasSurf a => FDSFile -> a -> SurfaceSpec
+    fn getSurfs<'fds_data>(
+        &'fds_data self,
+        fds_data: &'fds_data FdsFile,
+    ) -> SurfaceSpec<'fds_data> {
+        getSurfsFromIds(fds_data, self.getSurfIds())
+    }
+
+    fn getSurfIds(&self) -> SurfaceIdSpec<'_> {
+        if let Some(surf_id) = self.surf_id.as_deref() {
+            SurfaceIdSpec::Single(surf_id)
+        } else {
+            // TODO: be cautious of defaults here
+            SurfaceIdSpec::Single("INERT")
+        }
+    }
+}
+
+fn getSurfsFromIds<'fds_data>(
+    fds_data: &'fds_data FdsFile,
+    idSpec: SurfaceIdSpec<'fds_data>,
+) -> SurfaceSpec<'fds_data> {
+    // where
+    //     surfs = fdsFile_Surfs fdsData
+    fn find<'fds_data>(
+        fds_data: &'fds_data FdsFile,
+        surf_id: &'fds_data str,
+    ) -> Option<&'fds_data Surf> {
+        let matching_surfs: Vec<_> = fds_data
+            .surf
+            .iter()
+            .filter(|s| s.id.as_deref() == Some(surf_id))
+            .collect();
+        if matching_surfs.len() > 1 {
+            // TODO: don't panic
+            panic!("Multiple matching surfs")
+        } else if let Some(s) = matching_surfs.first() {
+            Some(*s)
+        } else {
+            None
+        }
+    }
+    match idSpec {
+        SurfaceIdSpec::Single(s1) => SurfaceSpec::Single(find(fds_data, s1)),
+        SurfaceIdSpec::Triple(s1, s2, s3) => {
+            SurfaceSpec::Triple(find(fds_data, s1), find(fds_data, s2), find(fds_data, s3))
+        }
+        SurfaceIdSpec::Six(s1, s2, s3, s4, s5, s6) => SurfaceSpec::Six(
+            find(fds_data, s1),
+            find(fds_data, s2),
+            find(fds_data, s3),
+            find(fds_data, s4),
+            find(fds_data, s5),
+            find(fds_data, s6),
+        ),
+    }
+}
+
+fn obstHasFlow(fds_data: &FdsFile, obst: &Obst) -> bool {
+    let surfs = obst.getSurfList(fds_data);
+    surfs.iter().any(|s| surfHasFlow(s))
+}
+
+fn surfHasFlow(surf: &Surf) -> bool {
+    [
+        surf.mlrpua.is_some(),
+        // surf.mass_flux.is_some(),
+        // surf.mass_flux_total.is_some(),
+        // surf.mass_flux_var.is_some(),
+        surf.hrrpua.is_some(),
+        surf.vel.is_some(),
+        // surf.vel_t.is_some(),
+        surf.volume_flow.is_some(),
+    ]
+    .iter()
+    .any(|s| *s)
+}
+// getFlowRate :: (HasXB a, HasSurf a) => FDSFile -> a -> Double
+// getFlowRate fdsData burner =
+//     let (xMin, xMax, yMin, yMax, zMin, zMax) =
+//             getFlowRates fdsData burner
+//     in sum [xMin, xMax, yMin, yMax, zMin, zMax]
+
+// getFlowRates :: (HasXB a, HasSurf a) => FDSFile -> a
+//     -> (Double, Double, Double, Double, Double, Double)
+// getFlowRates fdsData nml =
+//     -- TODO: this doesn't handle VENT namelists properly
+//     let (xMinSurf, xMaxSurf, yMinSurf, yMaxSurf, zMinSurf, zMaxSurf) =
+//             getSixSurfs fdsData nml
+//         (xMinArea, xMaxArea, yMinArea, yMaxArea, zMinArea, zMaxArea) =
+//             getSurfAreas fdsData nml
+//     in
+//         ( getFaceFlowRate fdsData xMinSurf xMinArea
+//         , getFaceFlowRate fdsData xMaxSurf xMaxArea
+//         , getFaceFlowRate fdsData yMinSurf yMinArea
+//         , getFaceFlowRate fdsData yMaxSurf yMaxArea
+//         , getFaceFlowRate fdsData zMinSurf zMinArea
+//         , getFaceFlowRate fdsData zMaxSurf zMaxArea
+//         )
+
+/// Ensure that everage flow device is covered by a flow rate device. TODO: does not cover HVAC.
+fn flowCoverage(fds_data: &FdsFile) -> VerificationResult {
+    let name = "Flow Coverage Test".to_string();
+    // it is also possible that other objects (such as OBST have flow)
+    let vents = &fds_data.vent;
+    let obsts = &fds_data.obst;
+    let surfs = &fds_data.surf;
+    // vents which may have a flow
+    let ventsWithFlows: Vec<_> = vents
+        .iter()
+        .filter(|vent| ventHasFlow(fds_data, vent))
+        .collect();
+    // obsts that have surfaces with flows
+    let obstWithFlows: Vec<_> = obsts
+        .iter()
+        .filter(|obst| obstHasFlow(fds_data, obst))
+        .collect();
+    // for each of the vents, ensure there is a flow device with the same
+    // dimensions find those which do not
+    let notCovered: Vec<_> = ventsWithFlows
+        .iter()
+        .filter(|vent| !hasFlowDevc(fds_data, vent))
+        .collect();
+    if notCovered.is_empty() {
+        VerificationResult::Result(
+            name,
+            TestResult::Success("All Flows Vents and Obsts Measured".to_string()),
+        )
+    } else {
+        let issues = notCovered
+            .iter()
+            .map(|vent| {
+                VerificationResult::Result(
+                    format!("Vent {:?} Flow Measurement", vent.id),
+                    TestResult::Failure("No adequate flow measuring device".to_string()),
+                )
+            })
+            .collect();
+        VerificationResult::Tree(
+            "The following objects have issues with their flow measurements".to_string(),
+            issues,
+        )
+    }
+}
+
 fn leakage(fds_data: &FdsFile) -> VerificationResult {
+    let testName = "Leakage Implementation Test".to_string();
     todo!()
-    // let
-    //     testName = "Leakage Implementation Test"
     //     parts = fdsFile_Parts fdsData
     //     screenParts = filter isScreenPart parts
     //     isScreenPart part = case part_DRAG_LAW part of
@@ -389,9 +637,8 @@ fn leakage(fds_data: &FdsFile) -> VerificationResult {
 }
 /// Ensure that no devices are stuck in solids.
 fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
+    let testName = "Devices Stuck in Solids Test".to_string();
     todo!()
-    // let
-    //     testName = "Devices Stuck in Solids Test"
     //     stuckDevices = filter (fromMaybe False . stuckInSolid fdsData)
     //         $ fdsFile_Devcs fdsData
     // in if null stuckDevices
@@ -405,9 +652,8 @@ fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
 }
 /// Ensure that sprinklers and smoke detectors are beneath a ceiling.
 fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
+    let testName = "Sprinklers and detectors immediately below ceiling".to_string();
     todo!()
-    // let
-    //     testName = "Sprinklers and detectors below ceiling"
     //     nonBeneathCeiling = filter
     //         (not . fromMaybe False . beneathCeiling fdsData)
     //         $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x)
@@ -425,28 +671,57 @@ fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
 /// matching dimensions, or a device that references it as a duct node.
 // hasFlowDevc :: FdsFile -> Vent -> Bool
 fn hasFlowDevc(fds_data: &FdsFile, vent: &Vent) -> bool {
-    todo!()
-    // let
-    //     devcs = filter
-    //         (\nml->devc_QUANTITY nml == (Just "VOLUME FLOW"))
-    //         (fdsFile_Devcs fdsData)
-    //     trackingFlowMatchingXB = any (matchXBs namelist) devcs
-    //     // get all the devices
-    //     allDevcs = fdsFile_Devcs fdsData
-    //     // take only the devices which have a "DUCT_ID" parameter
-    //     ductIDDevices = filter (isJust . devc_DUCT_ID) allDevcs
-    //     // take only the devices where the "DUCT_ID" matches the flowing
-    //     // namelist
-    //     relevantDuctIDDevices = filter (\nml-> (Just True) == (do
-    //         ductId <- devc_DUCT_ID nml
-    //         flowId <- getId nml
-    //         pure (ductId == flowId))) ductIDDevices
-    //     // take only the devices that measure "DUCT VOLUME FLOW", and check that
-    //     // the list is not null
-    //     trackingFlowViaDuctID = not $ null $ filter
-    //         (\nml->devc_QUANTITY nml == (Just "DUCT VOLUME FLOW")) allDevcs
-    // in trackingFlowMatchingXB || trackingFlowViaDuctID
+    let mut flow_devcs = fds_data
+        .devc
+        .iter()
+        .filter(|devc| devc.quantity.as_deref() == Some("VOLUME FLOW"));
+    let trackingFlowMatchingXB = flow_devcs.any(|devc| {
+        if let (Some(xb_a), Some(xb_b)) = (vent.xb, devc.xb) {
+            println!(
+                "trackingFlowMatchingXB: Vent: {:?} devc: {:?}, {}",
+                vent.id,
+                devc.id,
+                xb_a == xb_b
+            );
+            xb_a == xb_b
+        } else {
+            false
+        }
+    });
+    // take only the devices which have a "DUCT_ID" parameter
+    let ductIDDevices: Vec<_> = fds_data
+        .devc
+        .iter()
+        .filter(|devc| devc.duct_id.is_some())
+        .collect();
+    // take only the devices where the "DUCT_ID" matches the flowing
+    // namelist
+    let relevantDuctIDDevices: Vec<_> = ductIDDevices
+        .iter()
+        .filter(|devc| {
+            if let (Some(duct_id), (Some(flow_id))) = (devc.duct_id.as_deref(), vent.id.as_deref())
+            {
+                duct_id == flow_id
+            } else {
+                false
+            }
+        })
+        .collect();
+    // take only the devices that measure "DUCT VOLUME FLOW", and check that
+    // the list is not null
+    let trackingFlowViaDuctID = relevantDuctIDDevices
+        .iter()
+        .any(|devc| devc.quantity.as_deref() == Some("DUCT VOLUME FLOW"));
+    println!(
+            "Vent: {:?}\n  trackingFlowMatchingXB: {trackingFlowMatchingXB}\n  trackingFlowViaDuctID: {trackingFlowViaDuctID}",vent.id
+        );
+    trackingFlowMatchingXB || trackingFlowViaDuctID
 }
+
+// matchXBs :: (MightHaveXB a, MightHaveXB b) => a -> b -> Bool
+// fn matchXbs(xb_a:Xb, xb_b:Xb) = case (tryGetXB nmlA, tryGetXB nmlB) of
+//     (Just a, Just b) -> a == b
+//     _ -> False
 
 /// Check one obstruction and determine if it intersects any other namelists.
 fn obst_intersects_with_others(fds_data: FdsFile) -> bool {
@@ -597,13 +872,6 @@ fn parameters_test(fds_data: &FdsFile) -> VerificationResult {
     ];
     let test_results = tests.into_iter().map(|test| test(fds_data)).collect();
     VerificationResult::Tree(name, test_results)
-    //    let summaryResults = worstN testResults;
-    // Node (CompletedTest testName summaryResults) testResults
-    // let burner_test_results = burners
-    //         .iter()
-    //         .enumerate()
-    //         .map(|(i, burner)| burner_test(fds_data, burner, i))
-    //         .collect();
 }
 
 /// Test that the REAC properties are reasonable.
@@ -792,7 +1060,7 @@ fn dump_tests(fds_data: &FdsFile) -> VerificationResult {
         } else {
             VerificationResult::Result(
                 name,
-                TestResult::Success(format!("Restart Interval is not set")),
+                TestResult::Success("Restart Interval is not set".to_string()),
             )
         }
     }

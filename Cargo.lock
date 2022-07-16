@@ -144,7 +144,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chid"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=a972856d2c09ead91228a7a7a21828ce8b775111#a972856d2c09ead91228a7a7a21828ce8b775111"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=ec335ae1cfce97bd0c7b1346eec503f62d274b90#ec335ae1cfce97bd0c7b1346eec503f62d274b90"
 dependencies = [
  "arrayvec 0.7.2",
 ]
@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "fds-input-parser"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=a972856d2c09ead91228a7a7a21828ce8b775111#a972856d2c09ead91228a7a7a21828ce8b775111"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=ec335ae1cfce97bd0c7b1346eec503f62d274b90#ec335ae1cfce97bd0c7b1346eec503f62d274b90"
 dependencies = [
  "namelist",
  "paste",
