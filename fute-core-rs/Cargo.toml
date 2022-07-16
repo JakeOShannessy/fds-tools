@@ -7,12 +7,12 @@ edition = "2018"
 [dependencies]
 ansi_term = "0.12"
 arrayvec = "0.7"
-chid = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "3a4a8c78c97ca32b93f24fe408f641c5a276596c"}
+chid = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "a972856d2c09ead91228a7a7a21828ce8b775111"}
 chrono = {version = "0.4", features = ["serde"] }
 csv = "1"
 data-vector = { git = "https://github.com/JakeOShannessy/data-vector.git"}
 downcast-rs = "1"
-fds-input-parser = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "3a4a8c78c97ca32b93f24fe408f641c5a276596c"}
+fds-input-parser = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "a972856d2c09ead91228a7a7a21828ce8b775111"}
 nom = "7"
 regex = "1"
 serde = { version = "1", features = ["derive"] }

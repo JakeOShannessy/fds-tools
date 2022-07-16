@@ -1,5 +1,6 @@
 #![allow(unused)]
 #![allow(clippy::type_complexity)]
+#![allow(non_snake_case)]
 #[macro_use]
 extern crate nom;
 pub mod burners;

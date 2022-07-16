@@ -26,21 +26,19 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
 /// Verify an input file.
 pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
-    // let verification_tests = vec![
-    //     parameterVerificationTests
-    //     , outputDataCoverage
-    //     , meshOverlapTests
-    //     , flowCoverage
-    //     , leakage
-    //     , devicesTest
-    //     , spkDetCeilingTest
-    // ];
+    println!("{fds_data:#?}");
     VerificationResult::Tree(
         "Verification Tests".to_string(),
         vec![
             meshes_overlap_test(fds_data),
             reaction_tests(fds_data),
             burners_test(fds_data),
+            parameters_test(fds_data),
+            outputDataCoverage(fds_data),
+            // flowCoverage(fds_data),
+            // leakage(fds_data),
+            // devicesTest(fds_data),
+            // spkDetCeilingTest(fds_data),
         ],
     )
 }
@@ -342,120 +340,124 @@ impl PartialEq for TestResult {
 //     relatedFiles <- globDir [pattern] (simDir simulation)
 //     return (concat relatedFiles)
 
-// /// Ensure that everage flow device is covered by a flow rate device/
-// flowCoverage fdsData =
-//     let
-//         testName = "Flow Coverage Test"
-//         // it is also possible that other objects (such as OBST have flow)
-//         vents = fdsFile_Vents fdsData
-//         obsts = fdsFile_Obsts fdsData
-//         surfs = fdsFile_Surfs fdsData
-//         // vents which may have a flow
-//         ventsWithFlows = filter (ventHasFlow fdsData) vents
-//         // obsts that have surfaces with flows
-//         obstWithFlows = filter (obstHasFlow fdsData) vents
-//         // for each of the vents, ensure there is a flow device with the same
-//         // dimensions find those which do not
-//         notCovered =  filter (not . (hasFlowDevc fdsData)) ventsWithFlows
-//     in if null notCovered
-//             then Node (CompletedTest testName $ Success
-//                 $ "All flow devices have devcs.") []
-//             else Node (CompletedTest testName $ Failure $ unlines
-//                 $ map formatRes notCovered) []
-//     where
-//         formatRes nml = "Flow object " <> getIdBound nml
-//             <> " does not have a flow tracking devices.\n    "
-//             // ++ T.unpack (pprint nml)
-
-// leakage fdsData =
-//     let
-//         testName = "Leakage Implementation Test"
-//         parts = fdsFile_Parts fdsData
-//         screenParts = filter isScreenPart parts
-//         isScreenPart part = case part_DRAG_LAW part of
-//             "SCREEN" -> True
-//             _ -> False
-//         hasInertOrDefaultSurf nml = case part_SURF_ID nml of
-//             Nothing -> True
-//             Just "INERT" -> True
-//             _ -> False
-//     in if all (not . hasInertOrDefaultSurf) screenParts
-//             then Node (CompletedTest testName $ Success
-//                 $ "No inert screens.")
-//                 []
-//             else Node (CompletedTest testName $ Failure
-//                 $ "PART uses the SCREEN drag law, but uses an INERT surface.")
-//                 []
-
-// /// Ensure that no devices are stuck in solids.
-// devicesTest :: FdsFile -> Tree CompletedTest
-// devicesTest fdsData =
-//     let
-//         testName = "Devices Stuck in Solids Test"
-//         stuckDevices = filter (fromMaybe False . stuckInSolid fdsData)
-//             $ fdsFile_Devcs fdsData
-//     in if null stuckDevices
-//         then Node (CompletedTest testName $ Success $ "No stuck devices.") []
-//         else Node (CompletedTest testName $ Failure $ unlines
-//             $ map formatRes stuckDevices) []
-//     where
-//         formatRes nml = "Device " <> getIdBound nml
-//             <> " is placed within a solid obstruction.\n    "
-//             -- <> T.unpack (pprint nml)
-
-// /// Ensure that sprinklers and smoke detectors are beneath a ceiling.
-// spkDetCeilingTest :: FdsFile -> Tree CompletedTest
-// spkDetCeilingTest fdsData =
-//     let
-//         testName = "Sprinklers and detectors below ceiling"
-//         nonBeneathCeiling = filter
-//             (not . fromMaybe False . beneathCeiling fdsData)
-//             $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x)
-//             $ fdsFile_Devcs fdsData
-//     in if null nonBeneathCeiling
-//         then Node (CompletedTest testName $ Success $ "No distant devices.") []
-//         else Node (CompletedTest testName $ Failure $ unlines
-//             $ map formatRes nonBeneathCeiling) []
-//     where
-//         formatRes nml = "Device " <> getIdBound nml
-//             <> " is not directly beneath the ceiling.\n    "
-//             -- <> T.unpack (pprint nml)
-
-// /// Take the xb dimensions of a vent and see if there is a flow vent with the
-// /// matching dimensions, or a device that references it as a duct node.
+/// Ensure that everage flow device is covered by a flow rate device/
+fn flowCoverage(fds_data: &FdsFile) -> VerificationResult {
+    todo!()
+    // let
+    //     testName = "Flow Coverage Test"
+    //     // it is also possible that other objects (such as OBST have flow)
+    //     vents = fdsFile_Vents fdsData
+    //     obsts = fdsFile_Obsts fdsData
+    //     surfs = fdsFile_Surfs fdsData
+    //     // vents which may have a flow
+    //     ventsWithFlows = filter (ventHasFlow fdsData) vents
+    //     // obsts that have surfaces with flows
+    //     obstWithFlows = filter (obstHasFlow fdsData) vents
+    //     // for each of the vents, ensure there is a flow device with the same
+    //     // dimensions find those which do not
+    //     notCovered =  filter (not . (hasFlowDevc fdsData)) ventsWithFlows
+    // in if null notCovered
+    //         then Node (CompletedTest testName $ Success
+    //             $ "All flow devices have devcs.") []
+    //         else Node (CompletedTest testName $ Failure $ unlines
+    //             $ map formatRes notCovered) []
+    // where
+    //     formatRes nml = "Flow object " <> getIdBound nml
+    //         <> " does not have a flow tracking devices.\n    "
+    //         // ++ T.unpack (pprint nml)
+}
+fn leakage(fds_data: &FdsFile) -> VerificationResult {
+    todo!()
+    // let
+    //     testName = "Leakage Implementation Test"
+    //     parts = fdsFile_Parts fdsData
+    //     screenParts = filter isScreenPart parts
+    //     isScreenPart part = case part_DRAG_LAW part of
+    //         "SCREEN" -> True
+    //         _ -> False
+    //     hasInertOrDefaultSurf nml = case part_SURF_ID nml of
+    //         Nothing -> True
+    //         Just "INERT" -> True
+    //         _ -> False
+    // in if all (not . hasInertOrDefaultSurf) screenParts
+    //         then Node (CompletedTest testName $ Success
+    //             $ "No inert screens.")
+    //             []
+    //         else Node (CompletedTest testName $ Failure
+    //             $ "PART uses the SCREEN drag law, but uses an INERT surface.")
+    //             []
+}
+/// Ensure that no devices are stuck in solids.
+fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
+    todo!()
+    // let
+    //     testName = "Devices Stuck in Solids Test"
+    //     stuckDevices = filter (fromMaybe False . stuckInSolid fdsData)
+    //         $ fdsFile_Devcs fdsData
+    // in if null stuckDevices
+    //     then Node (CompletedTest testName $ Success $ "No stuck devices.") []
+    //     else Node (CompletedTest testName $ Failure $ unlines
+    //         $ map formatRes stuckDevices) []
+    // where
+    //     formatRes nml = "Device " <> getIdBound nml
+    //         <> " is placed within a solid obstruction.\n    "
+    //         -- <> T.unpack (pprint nml)
+}
+/// Ensure that sprinklers and smoke detectors are beneath a ceiling.
+fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
+    todo!()
+    // let
+    //     testName = "Sprinklers and detectors below ceiling"
+    //     nonBeneathCeiling = filter
+    //         (not . fromMaybe False . beneathCeiling fdsData)
+    //         $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x)
+    //         $ fdsFile_Devcs fdsData
+    // in if null nonBeneathCeiling
+    //     then Node (CompletedTest testName $ Success $ "No distant devices.") []
+    //     else Node (CompletedTest testName $ Failure $ unlines
+    //         $ map formatRes nonBeneathCeiling) []
+    // where
+    //     formatRes nml = "Device " <> getIdBound nml
+    //         <> " is not directly beneath the ceiling.\n    "
+    //         -- <> T.unpack (pprint nml)
+}
+/// Take the xb dimensions of a vent and see if there is a flow vent with the
+/// matching dimensions, or a device that references it as a duct node.
 // hasFlowDevc :: FdsFile -> Vent -> Bool
-// hasFlowDevc fdsData namelist =
-//     let
-//         devcs = filter
-//             (\nml->devc_QUANTITY nml == (Just "VOLUME FLOW"))
-//             (fdsFile_Devcs fdsData)
-//         trackingFlowMatchingXB = any (matchXBs namelist) devcs
-//         // get all the devices
-//         allDevcs = fdsFile_Devcs fdsData
-//         // take only the devices which have a "DUCT_ID" parameter
-//         ductIDDevices = filter (isJust . devc_DUCT_ID) allDevcs
-//         // take only the devices where the "DUCT_ID" matches the flowing
-//         // namelist
-//         relevantDuctIDDevices = filter (\nml-> (Just True) == (do
-//             ductId <- devc_DUCT_ID nml
-//             flowId <- getId nml
-//             pure (ductId == flowId))) ductIDDevices
-//         // take only the devices that measure "DUCT VOLUME FLOW", and check that
-//         // the list is not null
-//         trackingFlowViaDuctID = not $ null $ filter
-//             (\nml->devc_QUANTITY nml == (Just "DUCT VOLUME FLOW")) allDevcs
-//     in trackingFlowMatchingXB || trackingFlowViaDuctID
+fn hasFlowDevc(fds_data: &FdsFile, vent: &Vent) -> bool {
+    todo!()
+    // let
+    //     devcs = filter
+    //         (\nml->devc_QUANTITY nml == (Just "VOLUME FLOW"))
+    //         (fdsFile_Devcs fdsData)
+    //     trackingFlowMatchingXB = any (matchXBs namelist) devcs
+    //     // get all the devices
+    //     allDevcs = fdsFile_Devcs fdsData
+    //     // take only the devices which have a "DUCT_ID" parameter
+    //     ductIDDevices = filter (isJust . devc_DUCT_ID) allDevcs
+    //     // take only the devices where the "DUCT_ID" matches the flowing
+    //     // namelist
+    //     relevantDuctIDDevices = filter (\nml-> (Just True) == (do
+    //         ductId <- devc_DUCT_ID nml
+    //         flowId <- getId nml
+    //         pure (ductId == flowId))) ductIDDevices
+    //     // take only the devices that measure "DUCT VOLUME FLOW", and check that
+    //     // the list is not null
+    //     trackingFlowViaDuctID = not $ null $ filter
+    //         (\nml->devc_QUANTITY nml == (Just "DUCT VOLUME FLOW")) allDevcs
+    // in trackingFlowMatchingXB || trackingFlowViaDuctID
+}
 
-// / Check one obstruction and determine if it intersects any other namelists.
-// fn obst_intersects_with_others(fds_data: FdsFile, other: N) -> bool {
-
-// }
-// obstIntersectsWithOthers :: HasXB a => FdsFile -> a -> [Obst]
-// obstIntersectsWithOthers fdsData namelist =
-//     let
-//         obsts :: [Obst]
-//         obsts = fdsFile_Obsts fdsData
-//     in filter (nmlIntersect namelist) obsts
+/// Check one obstruction and determine if it intersects any other namelists.
+fn obst_intersects_with_others(fds_data: FdsFile) -> bool {
+    todo!()
+    // obstIntersectsWithOthers :: HasXB a => FdsFile -> a -> [Obst]
+    // obstIntersectsWithOthers fdsData namelist =
+    //     let
+    //         obsts :: [Obst]
+    //         obsts = fdsFile_Obsts fdsData
+    //     in filter (nmlIntersect namelist) obsts
+}
 
 pub struct MeshIntersection {
     pub mesh_a: usize,
@@ -587,110 +589,267 @@ fn co_yield_test(fds_data: &FdsFile) -> VerificationResult {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct MiscTests {
-    pub visibility_factor: Result<VisibilityFactorTestSuccess, VisibilityFactorTestFailure>,
-    pub maximum_visibility: Result<MaximumVisibilityTestSuccess, MaximumVisibilityTestFailure>,
+fn parameters_test(fds_data: &FdsFile) -> VerificationResult {
+    let name = "Input Verification Tests".to_string();
+    let tests: Vec<fn(&FdsFile) -> VerificationResult> = vec![
+        reac_tests, misc_tests, // , burnerTestsGroup
+        dump_tests,
+    ];
+    let test_results = tests.into_iter().map(|test| test(fds_data)).collect();
+    VerificationResult::Tree(name, test_results)
+    //    let summaryResults = worstN testResults;
+    // Node (CompletedTest testName summaryResults) testResults
+    // let burner_test_results = burners
+    //         .iter()
+    //         .enumerate()
+    //         .map(|(i, burner)| burner_test(fds_data, burner, i))
+    //         .collect();
 }
 
-fn misc_tests(fds_data: &FdsFile) -> MiscTests {
-    let visibility_factor = visibility_factor_test(fds_data);
-    let maximum_visibility = maximum_visibility_test(fds_data);
-    MiscTests {
-        visibility_factor,
-        maximum_visibility,
+/// Test that the REAC properties are reasonable.
+fn reac_tests(fds_data: &FdsFile) -> VerificationResult {
+    let name = "REAC Properties".to_string();
+    fn soot_yield_test(fds_data: &FdsFile, reac: &Reac) -> VerificationResult {
+        let propName = "Soot Yield".to_string();
+        let testName = "Soot Yield".to_string();
+        let possibleValues = vec![0.07, 0.1];
+        if let Some(value) = reac.soot_yield {
+            if possibleValues.contains(&value) {
+                VerificationResult::Result(
+                    testName,
+                    TestResult::Success(format!("{propName} was {value}, a recognised value.")),
+                )
+            } else {
+                VerificationResult::Result(
+                    testName,
+                     TestResult::Failure(format!(
+                         "{propName} was {value}, which is not one of the usual value of {possibleValues:?}."
+                     )),
+                 )
+            }
+        } else {
+            VerificationResult::Result(
+                testName,
+                TestResult::Failure(format!("{propName} was not specified.")),
+            )
+        }
     }
+
+    fn co_yield_test(fds_data: &FdsFile, reac: &Reac) -> VerificationResult {
+        let propName = "CO Yield".to_string();
+        let testName = "CO Yield".to_string();
+        let possibleValues = vec![0.05];
+        if let Some(value) = reac.soot_yield {
+            if possibleValues.contains(&value) {
+                VerificationResult::Result(
+                    testName,
+                    TestResult::Success(format!("{propName} was {value}, a recognised value.")),
+                )
+            } else {
+                VerificationResult::Result(
+                    testName,
+                     TestResult::Failure(format!(
+                         "{propName} was {value}, which is not one of the usual value of {possibleValues:?}."
+                     )),
+                 )
+            }
+        } else {
+            VerificationResult::Result(
+                testName,
+                TestResult::Failure(format!("{propName} was not specified.")),
+            )
+        }
+    }
+    let tests: Vec<fn(&FdsFile, &Reac) -> VerificationResult> = vec![
+        soot_yield_test,
+        co_yield_test, // --           , chemicalFormula
+    ];
+    let specified_result = specified(fds_data, "REAC", |f| !f.reac.is_empty());
+    let mut test_results = vec![specified_result];
+    // TODO: deal with multiple REACs
+    if let Some(reac) = fds_data.reac.first() {
+        for test_result in tests.into_iter().map(|test| test(fds_data, reac)) {
+            test_results.push(test_result);
+        }
+    }
+    VerificationResult::Tree(name, test_results)
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum VisibilityFactorTestSuccess {
-    GoodValue(f64),
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum VisibilityFactorTestFailure {
-    NoMisc,
-    BadValue(f64),
-}
-
-fn visibility_factor_test(
-    fds_data: &FdsFile,
-) -> Result<VisibilityFactorTestSuccess, VisibilityFactorTestFailure> {
-    let vis = fds_data
-        .misc
-        .as_ref()
-        .and_then(|misc| misc.visibility_factor);
-    let visibility_factor = match vis {
-        None => return Err(VisibilityFactorTestFailure::NoMisc),
-        Some(visibility_factor) => Ok(visibility_factor),
-    }?;
-    if visibility_factor == 3.0 || visibility_factor == 8.0 {
-        Ok(VisibilityFactorTestSuccess::GoodValue(visibility_factor))
+fn specified(fds_data: &FdsFile, nml: &str, exists: fn(&FdsFile) -> bool) -> VerificationResult {
+    let name = format!("{nml} Namelist Specified");
+    if exists(fds_data) {
+        VerificationResult::Result(
+            format!("{nml} Namelist Existence"),
+            TestResult::Success(format!("{nml} namelist specified.")),
+        )
     } else {
-        Err(VisibilityFactorTestFailure::BadValue(visibility_factor))
+        VerificationResult::Result(
+            format!("{nml} Namelist Existence"),
+            TestResult::Failure(format!("No {nml} namelist not specified.")),
+        )
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum MaximumVisibilityTestSuccess {
-    GoodValue(f64),
-}
+/// Test that the MISC properties are reasonable.
+fn misc_tests(fds_data: &FdsFile) -> VerificationResult {
+    let name = "MISC Properties".to_string();
 
-#[derive(Copy, Clone, Debug)]
-pub enum MaximumVisibilityTestFailure {
-    NoMisc,
-    BadValue(f64),
-}
-
-fn maximum_visibility_test(
-    fds_data: &FdsFile,
-) -> Result<MaximumVisibilityTestSuccess, MaximumVisibilityTestFailure> {
-    let vis = fds_data
-        .misc
-        .as_ref()
-        .and_then(|misc| misc.maximum_visibility);
-    let maximum_visibility = match vis {
-        None => return Err(MaximumVisibilityTestFailure::NoMisc),
-        Some(maximum_visibility) => maximum_visibility,
-    };
-    if maximum_visibility <= 100.0 {
-        Ok(MaximumVisibilityTestSuccess::GoodValue(maximum_visibility))
-    } else {
-        Err(MaximumVisibilityTestFailure::BadValue(maximum_visibility))
+    fn visibility_factor(fds_data: &FdsFile, misc: &Misc) -> VerificationResult {
+        let name = "Visibility Factor".to_string();
+        let vis = fds_data
+            .misc
+            .as_ref()
+            .and_then(|misc| misc.visibility_factor);
+        let visibility_factor = match vis {
+            None => {
+                return VerificationResult::Result(
+                    "Visibility Factor Set".to_string(),
+                    TestResult::Failure("Not Set".to_string()),
+                )
+            }
+            Some(v) => v,
+        };
+        if visibility_factor == 3.0 || visibility_factor == 8.0 {
+            VerificationResult::Result(
+                "Visibility Factor Value".to_string(),
+                TestResult::Success(format!(
+                    "Visibility Factor is {visibility_factor}, a known value."
+                )),
+            )
+        } else {
+            VerificationResult::Result(
+                "Visibility Factor Value".to_string(),
+                TestResult::Failure(format!(
+                    "Visibility Factor is {visibility_factor}. Known good visibility factors are 3 and 8."
+                )),
+            )
+        }
     }
-}
 
-fn dump_tests(fds_data: &FdsFile) {
-    let dt_restart_result = dt_restart_test(fds_data);
-    let nframes = nframes_test(fds_data);
-    unimplemented!()
-}
+    fn maximum_visibility(fds_data: &FdsFile, misc: &Misc) -> VerificationResult {
+        let vis = fds_data
+            .misc
+            .as_ref()
+            .and_then(|misc| misc.maximum_visibility);
 
-fn dt_restart_test(fds_data: &FdsFile) {
-    unimplemented!()
-    //       dt_restart :: Dump -> FdsFile -> Tree CompletedTest
-    //       dt_restart dump fdsData =
+        let maximum_visibility = match vis {
+            None => {
+                return VerificationResult::Result(
+                    "Maximum Visibility Set".to_string(),
+                    TestResult::Failure("Not Set".to_string()),
+                )
+            }
+            Some(v) => v,
+        };
+        if maximum_visibility <= 100.0 {
+            VerificationResult::Result(
+                "Maximum Visibility Value".to_string(),
+                TestResult::Success(format!(
+                    "Maximum Visibility is {maximum_visibility}, above 100."
+                )),
+            )
+        } else {
+            VerificationResult::Result(
+                    "Maximum Visibility Value".to_string(),
+                    TestResult::Failure(format!(
+                        "Maximum Visibility is {maximum_visibility}. This is a low value and may cause issues when try to visualise results."
+                    )),
+                )
+        }
+    }
+    let tests: Vec<fn(&FdsFile, &Misc) -> VerificationResult> =
+        vec![visibility_factor, maximum_visibility];
+    //       (summaryResults, testResults) = case (specified fdsData) of
+    //         l@(Node (CompletedTest _ r@(Failure _)) _) -> (r, [])
+    //         l@(Node (CompletedTest _ (Success _)) _) ->
     //           let
-    //               testName = "Restart Interval"
-    //               nValue = dump_DT_RESTART dump
-    //           in Node (CompletedTest testName $ Success
-    //             $ "Value: " ++ show nValue ++ ".") []
+    //               Just misc = fdsFile_Misc fdsData
+    //               testResults :: [Tree CompletedTest]
+    //               testResults = pam (pam tests misc) fdsData
+    //               summaryResults :: TestResult
+    //               summaryResults = worstN testResults
+    //           in (summaryResults, testResults) :: (TestResult, [Tree CompletedTest])
+    //   in Node (CompletedTest testName summaryResults) testResults
+    let specified_result = specified(fds_data, "MISC", |f| f.misc.as_ref().is_some());
+    let mut test_results = vec![specified_result];
+    if let Some(misc) = fds_data.misc.as_ref() {
+        for test_result in tests.into_iter().map(|test| test(fds_data, misc)) {
+            test_results.push(test_result);
+        }
+    }
+    VerificationResult::Tree(name, test_results)
 }
+/// Test that the DUMP properties are reasonable.
+fn dump_tests(fds_data: &FdsFile) -> VerificationResult {
+    let name = "DUMP Properties".to_string();
+    fn dt_restart_test(fds_data: &FdsFile, dump: &Dump) -> VerificationResult {
+        let name = "Restart Interval".to_string();
+        if let Some(ri) = dump.dt_restart {
+            VerificationResult::Result(
+                name,
+                TestResult::Success(format!("Restart Interval is {ri}, any value is not set")),
+            )
+        } else {
+            VerificationResult::Result(
+                name,
+                TestResult::Success(format!("Restart Interval is not set")),
+            )
+        }
+    }
 
-fn nframes_test(fds_data: &FdsFile) -> VerificationResult {
-    unimplemented!()
-    //       nframes :: Dump -> FdsFile -> Tree CompletedTest
-    //       nframes dump fdsData =
+    fn nframes_test(fds_data: &FdsFile, dump: &Dump) -> VerificationResult {
+        let name = "Number of Frames".to_string();
+        fn getSimTimes(fds_data: &FdsFile) -> (f64, f64) {
+            if let Some(time) = fds_data.time {
+                (time.t_begin.unwrap_or(0.0), time.t_end.unwrap_or(0.0))
+            } else {
+                (0.0, 1.0)
+            }
+        }
+        if let Some(nframes) = dump.nframes {
+            let (tStart, tEnd) = getSimTimes(fds_data);
+            let simInterval = (tEnd - tStart).round() as i64;
+            let s = simInterval % nframes;
+            if s == 0 {
+                VerificationResult::Result(
+                    name,
+                    TestResult::Success(format!(
+                        "Value {nframes}, results in round number of frames"
+                    )),
+                )
+            } else {
+                VerificationResult::Result(
+                    name,
+                    TestResult::Failure(format!("Value {nframes} may result in clipped output")),
+                )
+            }
+        } else {
+            VerificationResult::Result(
+                name,
+                TestResult::Failure("NFRAMES not specified".to_string()),
+            )
+        }
+    }
+    //       (summaryResults, testResults) = case (specified fdsData) of
+    //         l@(Node (CompletedTest _ r@(Failure _)) _) -> (r, [])
+    //         l@(Node (CompletedTest _ (Success _)) _) ->
     //           let
-    //               testName = "Number of Frames"
-    //               nValue = dump_NFRAMES dump
-    //           in if (mod (round simInterval :: Int) nValue)  == 0
-    //                 -- TODO: check that simTime is whole number
-    //               then Node (CompletedTest testName $ Success
-    //                 $ "Value: " ++ show nValue ++ ".") []
-    //               else Node (CompletedTest testName $ Success
-    //                 $ "Value of " ++ show nValue
-    //                 ++ " may result in clipped output.") []
+    //               Just dump = fdsFile_Dump fdsData
+    //               testResults :: [Tree CompletedTest]
+    //               testResults = pam (pam tests dump) fdsData
+    //               summaryResults :: TestResult
+    //               summaryResults = worstN testResults
+    //           in (summaryResults, testResults) :: (TestResult, [Tree CompletedTest])
+    //   in Node (CompletedTest testName summaryResults) testResults
+    let tests: Vec<fn(&FdsFile, &Dump) -> VerificationResult> = vec![dt_restart_test, nframes_test];
+    let specified_result = specified(fds_data, "DUMP", |f| f.dump.as_ref().is_some());
+    let mut test_results = vec![specified_result];
+    if let Some(dump) = fds_data.dump.as_ref() {
+        for test_result in tests.into_iter().map(|test| test(fds_data, dump)) {
+            test_results.push(test_result);
+        }
+    }
+    VerificationResult::Tree(name, test_results)
 }
 
 /// Test all burners.
@@ -972,109 +1131,84 @@ fn sprinkler_activation_temperature_test() {
     //         maxThreshold = 2.5
 }
 
-//--GUIDELINES
-//
-// outputDataCoverage :: FdsFile -> Tree CompletedTest
-// outputDataCoverage fdsData =
-//     let
-//         testName = "Output Data Coverage"
-//         outputSlices = fdsFile_Slcfs fdsData
-//         tests =
-//             [ coDataCoverage
-//             , tempDataCoverage
-//             , visDataCoverage
-//             ]
-//         testResults = pam (pam tests outputSlices) fdsData
-//         summaryResults = worstN testResults
-//   in Node (CompletedTest testName summaryResults) testResults
+// GUIDELINES
 
-// genericDataCoverageTest slices =
-// let relSlices = filter
-// (\slice
-// -> hasParameterValue "SPEC_ID" "carbon monoxide" slice
-// && hasParameterValue "QUANTITY" "VOLUME FRACTION" slice
-// ) slices
-// in TestGroup (name ++ " Data Coverage")
-// [ xAxisCoverage relSlices
-// , yAxisCoverage relSlices
-// , zAxisCoverage relSlices
-// ]
+fn outputDataCoverage(fds_data: &FdsFile) -> VerificationResult {
+    let name = "Output Data Coverage".to_string();
+    let tests: Vec<fn(&FdsFile) -> VerificationResult> =
+        vec![coDataCoverage, tempDataCoverage, visDataCoverage];
+    let mut test_results = vec![];
+    for test_result in tests.into_iter().map(|test| test(fds_data)) {
+        test_results.push(test_result);
+    }
+    VerificationResult::Tree(name, test_results)
+}
 
-// // |Carbon monoxide data coverage test.
-// coDataCoverage slices fdsData =
-//     let
-//         testName = "CO Data Coverage"
-//         coSlices = filter
-//             (\slice
-//             -> slcf_SPEC_ID slice == Just "CARBON MONOXIDE"
-//             && slcf_QUANTITY slice == Just "VOLUME FRACTION"
-//             ) slices
-//         tests =
-//             [ xAxisCoverage
-//             , yAxisCoverage
-//             , zAxisCoverage
-//             ]
-//         testResults = pam (pam tests coSlices) fdsData
-//         summaryResults = worstN testResults
-//     in Node (CompletedTest testName summaryResults) testResults
+fn dataCoverage(fds_data: &FdsFile, value: &str, f: fn(&&Slcf) -> bool) -> VerificationResult {
+    let name = format!("{value} Data Coverage");
+    // Get all the slices relevant to this output type.
+    let slices: Vec<&Slcf> = fds_data.slcf.iter().filter(f).collect();
+    let tests: Vec<fn(&[&Slcf]) -> VerificationResult> =
+        vec![xAxisCoverage, yAxisCoverage, zAxisCoverage];
+    let mut test_results = vec![];
+    for test_result in tests.into_iter().map(|test| test(&slices)) {
+        test_results.push(test_result);
+    }
+    VerificationResult::Tree(name, test_results)
+}
 
-// // |Tempearature data coverage test.
-// tempDataCoverage slices fdsData =
-//     let
-//         testName = "Temperature Data Coverage"
-//         coSlices = filter
-//             (\slice
-//             -> slcf_QUANTITY slice == Just "TEMPERATURE"
-//             ) slices
-//         tests =
-//             [ xAxisCoverage
-//             , yAxisCoverage
-//             , zAxisCoverage
-//             ]
-//         testResults = pam (pam tests coSlices) fdsData
-//         summaryResults = worstN testResults
-//     in Node (CompletedTest testName summaryResults) testResults
+/// Carbon monoxide data coverage test.
+fn coDataCoverage(fds_data: &FdsFile) -> VerificationResult {
+    let f = |slice: &&Slcf| {
+        slice.spec_id.as_deref() == Some("CARBON MONOXIDE")
+            && slice.quantity.as_deref() == Some("VOLUME FRACTION")
+    };
+    dataCoverage(fds_data, "CO", f)
+}
 
-// // |Soot Visibility data coverage test.
-// visDataCoverage slices fdsData =
-//     let
-//         testName = "Soot Visibiltity Data Coverage"
-//         coSlices = filter
-//             (\slice
-//             -> slcf_QUANTITY slice == Just ("VISIBILITY" :: String)
-//             ) slices
-//         tests =
-//             [ xAxisCoverage
-//             , yAxisCoverage
-//             , zAxisCoverage
-//             ]
-//         testResults = pam (pam tests coSlices) fdsData
-//         summaryResults = worstN testResults
-//     in Node (CompletedTest testName summaryResults) testResults
+/// Tempearature data coverage test.
+fn tempDataCoverage(fds_data: &FdsFile) -> VerificationResult {
+    let f = |slice: &&Slcf| slice.quantity.as_deref() == Some("TEMPERATURE");
+    dataCoverage(fds_data, "Temperature", f)
+}
 
-// xAxisCoverage slices fdsData =
-//     let
-//         testName = "X Axis Coverage"
-//     in if not $ null $ filter (isJust . slcf_PBX) slices
-//       then Node (CompletedTest testName $ Success
-//         $ "Full X axis coverage of this value is present.") []
-//       else Node (CompletedTest testName $ Warning
-//         $ "Full X axis coverage of this value is not present.") []
+/// Soot Visibility data coverage test.
+fn visDataCoverage(fds_data: &FdsFile) -> VerificationResult {
+    let f = |slice: &&Slcf| slice.quantity.as_deref() == Some("VISIBILITY");
+    dataCoverage(fds_data, "Visibility", f)
+}
 
-// yAxisCoverage slices fdsData =
-//     let
-//         testName = "Y Axis Coverage"
-//     in if not $ null $ filter (isJust . slcf_PBY) slices
-//       then Node (CompletedTest testName $ Success
-//         $ "Full Y axis coverage of this value is present.") []
-//       else Node (CompletedTest testName $ Warning
-//         $ "Full Y axis coverage of this value is not present.") []
+/// X-Axis coverage test
+fn xAxisCoverage(slices: &[&Slcf]) -> VerificationResult {
+    axisCoverage(slices, "X", |s| s.pbx.is_some())
+}
 
-// zAxisCoverage slices fdsData =
-//     let
-//         testName = "Z Axis Coverage"
-//     in if not $ null $ filter (isJust . slcf_PBZ) slices
-//       then Node (CompletedTest testName $ Success
-//         $ "Full Z axis coverage of this value is present.") []
-//       else Node (CompletedTest testName $ Warning
-//         $ "Full Z axis coverage of this value is not present.") []
+/// Y-Axis coverage test
+fn yAxisCoverage(slices: &[&Slcf]) -> VerificationResult {
+    axisCoverage(slices, "Y", |s| s.pby.is_some())
+}
+
+/// Z-Axis coverage test
+fn zAxisCoverage(slices: &[&Slcf]) -> VerificationResult {
+    axisCoverage(slices, "Z", |s| s.pbz.is_some())
+}
+
+fn axisCoverage(slices: &[&Slcf], axis: &str, f: fn(&&Slcf) -> bool) -> VerificationResult {
+    let name = format!("{axis} Axis Coverage");
+    // TODO: check that the value for PB* is within the bounds of the model
+    if slices.iter().any(f) {
+        VerificationResult::Result(
+            name,
+            TestResult::Success(format!(
+                "Full {axis} axis coverage of this value is present."
+            )),
+        )
+    } else {
+        VerificationResult::Result(
+            name,
+            TestResult::Failure(format!(
+                "Full {axis} axis coverage of this value is not present."
+            )),
+        )
+    }
+}
