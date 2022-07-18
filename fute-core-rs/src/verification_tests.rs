@@ -40,7 +40,7 @@ pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
             outputDataCoverage(fds_data),
             flowCoverage(fds_data),
             // leakage(fds_data),
-            // devicesTest(fds_data),
+            devicesTest(fds_data),
             spkDetCeilingTest(fds_data),
         ],
     )
@@ -637,20 +637,40 @@ fn leakage(fds_data: &FdsFile) -> VerificationResult {
     //             $ "PART uses the SCREEN drag law, but uses an INERT surface.")
     //             []
 }
+
+/// Check if a device is stuck in a solid. Returns Nothing if it's not a
+/// sensible question (e.g. it is not a point device).
+fn stuckInSolid(fds_data: &FdsFile, devc: &Devc) -> Option<bool> {
+    let xyz = devc.xyz?;
+    let cell = determineCell(fds_data, xyz)?;
+    Some(isCellSolid(fds_data, cell))
+}
+
 /// Ensure that no devices are stuck in solids.
 fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
-    let testName = "Devices Stuck in Solids Test".to_string();
-    todo!()
-    //     stuckDevices = filter (fromMaybe False . stuckInSolid fdsData)
-    //         $ fdsFile_Devcs fdsData
-    // in if null stuckDevices
-    //     then Node (CompletedTest testName $ Success $ "No stuck devices.") []
-    //     else Node (CompletedTest testName $ Failure $ unlines
-    //         $ map formatRes stuckDevices) []
-    // where
-    //     formatRes nml = "Device " <> getIdBound nml
-    //         <> " is placed within a solid obstruction.\n    "
-    //         -- <> T.unpack (pprint nml)
+    let name = "Devices Stuck in Solids Test".to_string();
+    let stuckDevices: Vec<_> = fds_data
+        .devc
+        .iter()
+        .filter(|devc| stuckInSolid(fds_data, devc).unwrap_or(false))
+        .collect();
+    if stuckDevices.is_empty() {
+        VerificationResult::Result(name, TestResult::Success("No stuck devices".to_string()))
+    } else {
+        let issues = stuckDevices
+            .iter()
+            .map(|vent| {
+                VerificationResult::Result(
+                    format!("Devc {:?} Position", vent.id),
+                    TestResult::Failure("Positioned within solid obstruction".to_string()),
+                )
+            })
+            .collect();
+        VerificationResult::Tree(
+            "The following devices have issues with their positions".to_string(),
+            issues,
+        )
+    }
 }
 
 fn devcIsSprinkler(fds_data: &FdsFile, devc: &Devc) -> bool {
@@ -993,6 +1013,20 @@ fn isFaceOpenVent(fds_data: &FdsFile, cell: Cell, dir: Direction) -> bool {
         .any(|xb| faceOccupy(cellSize, *xb, faceXB))
 }
 
+/// Determine if if the first XB occupies more than or equal to 50% of the
+// second XB in all dimensions. This is used to determine if an obstruction
+// (first XB) causes a cell (second XB) to be solid or not.
+fn xbOccupy(xbA: Xb, xbB: Xb) -> bool {
+    let xbA = xbA.sort();
+    let xbB = xbB.sort();
+
+    let occupyX = occupyFatly((xbA.x1, xbA.x2), (xbB.x1, xbB.x2));
+    let occupyY = occupyFatly((xbA.y1, xbA.y2), (xbB.y1, xbB.y2));
+    let occupyZ = occupyFatly((xbA.z1, xbA.z2), (xbB.z1, xbB.z2));
+
+    occupyX && occupyY && occupyZ
+}
+
 /// This is a lower requirement than xbOccupy. All xbOccupy satisfies this as
 /// well.
 fn faceOccupy(cellSize: f64, xbA: Xb, xbB: Xb) -> bool {
@@ -1291,17 +1325,13 @@ fn getMeshLines<'fds_data>(
     };
     Some((xs, ys, zs))
 }
-///Use the OBST namelists to determine if a particular cell is solid or not.
+/// Use the OBST namelists to determine if a particular cell is solid or not.
 /// TODO: only considers basic OBSTs and not MULT or the like.
 fn isCellSolid(fds_data: &FdsFile, cell: (usize, (usize, usize, usize))) -> bool {
-    todo!()
-    // case find (\obst->xbOccupy (getXB obst) cellXB) obsts of
-    //     Nothing -> False
-    //     Just _ -> True
-    // where
-    //     cellXB = getCellXB fdsData cell
-    //     -- If any obst overlaps with this cell, then it's solid
-    //     obsts = fdsFile_Obsts fdsData
+    let cellXB = getCellXB(fds_data, cell).unwrap();
+    // -- If any obst overlaps with this cell, then it's solid
+    let obsts = &fds_data.obst;
+    fds_data.obst.iter().any(|obst| xbOccupy(obst.xb, cellXB))
 }
 /// Ensure that sprinklers and smoke detectors are beneath a ceiling.
 fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
