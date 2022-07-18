@@ -39,7 +39,7 @@ pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
             parameters_test(fds_data),
             outputDataCoverage(fds_data),
             flowCoverage(fds_data),
-            // leakage(fds_data),
+            leakage(fds_data),
             devicesTest(fds_data),
             spkDetCeilingTest(fds_data),
         ],
@@ -617,25 +617,42 @@ fn flowCoverage(fds_data: &FdsFile) -> VerificationResult {
     }
 }
 
+fn isScreenPart(part: &Part) -> bool {
+    part.drag_law.as_deref() == Some("SCREEN")
+}
+
+fn hasInertOrDefaultSurf(part: &Part) -> bool {
+    if let Some(surf_id) = part.surf_id.as_deref() {
+        surf_id == "INERT"
+    } else {
+        true
+    }
+}
+
 fn leakage(fds_data: &FdsFile) -> VerificationResult {
     let testName = "Leakage Implementation Test".to_string();
-    todo!()
-    //     parts = fdsFile_Parts fdsData
-    //     screenParts = filter isScreenPart parts
-    //     isScreenPart part = case part_DRAG_LAW part of
-    //         "SCREEN" -> True
-    //         _ -> False
-    //     hasInertOrDefaultSurf nml = case part_SURF_ID nml of
-    //         Nothing -> True
-    //         Just "INERT" -> True
-    //         _ -> False
-    // in if all (not . hasInertOrDefaultSurf) screenParts
-    //         then Node (CompletedTest testName $ Success
-    //             $ "No inert screens.")
-    //             []
-    //         else Node (CompletedTest testName $ Failure
-    //             $ "PART uses the SCREEN drag law, but uses an INERT surface.")
-    //             []
+    let screen_parts: Vec<_> = fds_data
+        .part
+        .iter()
+        .filter(|part| isScreenPart(part))
+        .collect();
+    let issues = screen_parts
+        .iter()
+        .map(|part| {
+            if hasInertOrDefaultSurf(part) {
+                VerificationResult::Result(
+                    format!("Screen {:?} Surface", part.id),
+                    TestResult::Failure("Has an INERT or default material type".to_string()),
+                )
+            } else {
+                VerificationResult::Result(
+                    format!("Screen {:?} Surface", part.id),
+                    TestResult::Failure("Has a specified material type".to_string()),
+                )
+            }
+        })
+        .collect();
+    VerificationResult::Tree("Screen Material Type".to_string(), issues)
 }
 
 /// Check if a device is stuck in a solid. Returns Nothing if it's not a
@@ -1711,7 +1728,7 @@ fn misc_tests(fds_data: &FdsFile) -> VerificationResult {
             VerificationResult::Result(
                 "Maximum Visibility Value".to_string(),
                 TestResult::Success(format!(
-                    "Maximum Visibility is {maximum_visibility}, above 100."
+                    "Maximum Visibility is {maximum_visibility} m, at least 100 m."
                 )),
             )
         } else {
