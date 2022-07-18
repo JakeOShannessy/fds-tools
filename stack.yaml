@@ -3,7 +3,6 @@ packages:
   - ./fds-utilities
   - ./fds-case-manage
   - ./fds-quick-monitor-program
-  - ./fute
   - ./fute-core
 extra-deps:
   - attoparsec-binary-0.2
