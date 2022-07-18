@@ -41,7 +41,7 @@ produceChartC destinationPath chartConfig (width, height) dList title filename =
     -- TODO: rendering to svg has been hanging
     let svg_opts = fo_size .~ (width, height)
             $ fo_format .~ SVG
-            $ fo_fonts .~ (pure loadSansSerifFonts)
+            -- $ fo_fonts .~ (pure loadSansSerifFonts)
             $ def
     -- let png_opts = fo_size .~ (width, height)
             -- $ fo_format .~ PNG
@@ -60,23 +60,23 @@ produceChartC destinationPath chartConfig (width, height) dList title filename =
 -- denv = createEnv B.vectorAlignmentFns 1000 700 loadSansSerifFonts
 -- {-# NOINLINE denv #-}
 
-loadSansSerifFonts :: FontSelector Double
-loadSansSerifFonts = selectFont
-    where
-    sansR = snd $ F.loadFont' "SourceSansPro_R" $(makeRelativeToProject "fonts/SourceSansPro_R.svg" >>= embedFile)
-    sansRB = snd $ F.loadFont' "SourceSansPro_RB" $(makeRelativeToProject "fonts/SourceSansPro_RB.svg" >>= embedFile)
-    sansRBI = snd $ F.loadFont' "SourceSansPro_RBI" $(makeRelativeToProject "fonts/SourceSansPro_RBI.svg" >>= embedFile)
-    sansRI = snd $ F.loadFont' "SourceSansPro_RI" $(makeRelativeToProject "fonts/SourceSansPro_RI.svg" >>= embedFile)
+-- loadSansSerifFonts :: FontSelector Double
+-- loadSansSerifFonts = selectFont
+--     where
+--     sansR = snd $ F.loadFont' "SourceSansPro_R" $(makeRelativeToProject "fonts/SourceSansPro_R.svg" >>= embedFile)
+--     sansRB = snd $ F.loadFont' "SourceSansPro_RB" $(makeRelativeToProject "fonts/SourceSansPro_RB.svg" >>= embedFile)
+--     sansRBI = snd $ F.loadFont' "SourceSansPro_RBI" $(makeRelativeToProject "fonts/SourceSansPro_RBI.svg" >>= embedFile)
+--     sansRI = snd $ F.loadFont' "SourceSansPro_RI" $(makeRelativeToProject "fonts/SourceSansPro_RI.svg" >>= embedFile)
 
-    selectFont :: B.FontStyle -> F.PreparedFont Double
-    selectFont fs = case (B._font_name fs, B._font_slant fs, B._font_weight fs) of
-        (_, B.FontSlantNormal , B.FontWeightNormal) -> alterFontFamily "sans-serif" sansR
-        (_, B.FontSlantNormal , B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRB
-        (_, B.FontSlantItalic , B.FontWeightNormal) -> alterFontFamily "sans-serif" sansRI
-        (_, B.FontSlantOblique, B.FontWeightNormal) -> alterFontFamily "sans-serif" sansRI
-        (_, B.FontSlantItalic , B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRBI
-        (_, B.FontSlantOblique, B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRBI
-{-# NOINLINE loadSansSerifFonts #-}
+--     selectFont :: B.FontStyle -> F.PreparedFont Double
+--     selectFont fs = case (B._font_name fs, B._font_slant fs, B._font_weight fs) of
+--         (_, B.FontSlantNormal , B.FontWeightNormal) -> alterFontFamily "sans-serif" sansR
+--         (_, B.FontSlantNormal , B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRB
+--         (_, B.FontSlantItalic , B.FontWeightNormal) -> alterFontFamily "sans-serif" sansRI
+--         (_, B.FontSlantOblique, B.FontWeightNormal) -> alterFontFamily "sans-serif" sansRI
+--         (_, B.FontSlantItalic , B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRBI
+--         (_, B.FontSlantOblique, B.FontWeightBold  ) -> alterFontFamily "sans-serif" sansRBI
+-- {-# NOINLINE loadSansSerifFonts #-}
 
 alterFontFamily :: String -> F.PreparedFont n -> F.PreparedFont n
 alterFontFamily n (fd, om) = (fd { F.fontDataFamily = n }, om)
@@ -89,7 +89,7 @@ produceRunChart destinationPath tZone simEndTime runData = do
     putStrLn "..."
     let svg_opts = fo_size .~ (800, 400)
             $ fo_format .~ SVG
-            $ fo_fonts .~ (pure loadSansSerifFonts)
+            -- $ fo_fonts .~ (pure loadSansSerifFonts)
             $ def
     (pickfn) <- {-# SCC producingMonitor #-} renderableToFile svg_opts (joinPath [destinationPath, "RunTime" ++ ".svg"]) chR
     putStrLn "SVG complete"

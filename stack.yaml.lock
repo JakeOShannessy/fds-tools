@@ -40,9 +40,6 @@ packages:
   original:
     hackage: gnuplot-0.5.6
 - completed:
-    cabal-file:
-      size: 1536
-      sha256: 987295d02e0150c1ac506e4bc4dc5a49e437ddef7b382534498e8bd3db770db0
     name: namelist-parser
     version: 0.2.2
     git: https://github.com/JakeOShannessy/namelist-parser.git
@@ -54,9 +51,6 @@ packages:
     git: https://github.com/JakeOShannessy/namelist-parser.git
     commit: 8c0148c088c10c4580dd127153555d077977d05a
 - completed:
-    cabal-file:
-      size: 831
-      sha256: 7aae4d08253a17481c31513af211ba4fc491fff6b2173689d329601649b990c3
     name: fds-input-parser
     version: 0.1.0.2
     git: https://github.com/JakeOShannessy/fds-input-parser.git
@@ -68,9 +62,6 @@ packages:
     git: https://github.com/JakeOShannessy/fds-input-parser.git
     commit: f5963f2d736c9f50fc2f662834be500db70901f0
 - completed:
-    cabal-file:
-      size: 2195
-      sha256: d04dae291cbe86e96f080dcb326ac9c896e919a67bb5f326e0aa2866bb473b94
     name: formattable
     version: 0.1.1
     git: https://github.com/Soostone/formattable.git
@@ -95,6 +86,13 @@ packages:
       sha256: 19d944da6aa37944332e0726372288319852e5f72aa57dbc3516dc15e760a502
   original:
     hackage: process-1.6.5.1@sha256:77a9afeb676357f67fe5cf1ad79aca0745fb6f7fb96b786d510af08f622643f6,2468
+- completed:
+    hackage: unix-2.7.2.2@sha256:15f5365c5995634e45de1772b9504761504a310184e676bc2ef60a14536dbef9,3496
+    pantry-tree:
+      size: 3536
+      sha256: 36434ced74d679622d61b69e8d92e1bd632d9ef3e284c63094653b2e473b0553
+  original:
+    hackage: unix-2.7.2.2
 snapshots:
 - completed:
     size: 502348

@@ -1052,7 +1052,7 @@ data Surf = Surf
     -- , surf_E_COEFFICIENT :: Double
     -- , surf_FIRELINE_MLR_MAX :: Double
     -- , surf_FREE_SLIP :: Bool
-    -- , surf_FYI :: Maybe String
+    , surf_FYI :: Maybe String
     -- , surf_GEOMETRY :: String
     -- , surf_HEAT_OF_VAPORIZATION :: Double
     -- , surf_HEAT_TRANSFER_COEFFICIENT :: Double
