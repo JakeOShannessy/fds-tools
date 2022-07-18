@@ -173,7 +173,6 @@ impl CsvDataBlock {
                 let value = match units.as_str() {
                     "" => {
                         if name == "Wall Time" {
-                            // println!("entry")
                             SmvValue::DateTime(entry.parse().unwrap())
                         } else {
                             SmvValue::Float(entry.parse().unwrap())
@@ -279,7 +278,6 @@ impl SmvVec for DataVector<f64, DateTime<Utc>> {
         match y_string.parse::<DateTime<Utc>>() {
             Err(e) => panic!("invalid datetime for \"{}\": {}", y_string, e),
             Ok(value) => {
-                println!("adding: {:?}", y_string);
                 self.insert(Point { x, y: value });
             }
         }

@@ -125,7 +125,6 @@ fn read_slice_file() -> std::io::Result<()> {
     // parse_slice_file(&buf).unwrap();
     loop {
         let read = buf_reader.read(&mut read_buffer)?;
-        println!("read {} bytes", read);
         match parse_slice_file(&read_buffer) {
             Ok(slice_file) => break,
             Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
@@ -192,6 +191,7 @@ pub trait FdsFileExt {
     fn thermal_detectors(&self) -> Vec<ThermalDetector>;
     fn heat_of_combustion(&self) -> f64;
     fn soot_production_rate(&self) -> f64;
+    fn total_max_hrr(&self) -> f64;
 }
 
 impl FdsFileExt for FdsFile {
@@ -202,7 +202,6 @@ impl FdsFileExt for FdsFile {
         self.devc
             .iter()
             .filter_map(|devc| {
-                println!("Looking at device: {:?}", devc.id);
                 if devc.is_sprinkler(self) {
                     Some(Sprinkler::from_devc(devc.clone(), self))
                 } else {
@@ -218,20 +217,74 @@ impl FdsFileExt for FdsFile {
         supplies::supplies(self)
     }
     fn smoke_detectors(&self) -> Vec<SmokeDetector> {
-        // todo!("list smoke detectors")
-        vec![]
+        self.devc
+            .iter()
+            .filter_map(|devc| {
+                if devc.is_smoke_detector(self) {
+                    Some(SmokeDetector::from_devc(devc.clone(), self))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
     fn thermal_detectors(&self) -> Vec<ThermalDetector> {
         // todo!("list thermal detectors")
         vec![]
     }
+    /// To calculate the heat of combustion, deteremine the oxygen consumption
+    /// then multiply by EPUMO2
+    /// TODO: include the other methods of specifying HoC.
+    /// Investigate the minor difference between this and the .out file value
     fn heat_of_combustion(&self) -> f64 {
-        // todo!("return heat of combustion")
-        0.0
+        // TODO: deal with multiple reacs.
+        let reac = self.reac.first().unwrap();
+        let y_s = reac.soot_yield.unwrap_or(0.0);
+        let y_co = reac.co_yield.unwrap_or(0.0);
+        let soot_h_fraction = reac.soot_h_fraction.unwrap_or(0.1);
+        // -- soot_h_fraction = case getParameterMaybe reac "SOOT_H_FRACTION" of
+        // --     Just (ParDouble x) -> x
+        // --     Nothing -> 0 -- TODO: abstract defaults to a separate table
+        let epumo2 = reac.epumo2.unwrap_or(13100.0);
+        // -- for fuel molecule CxHyOzNv
+        // TODO: add defaults
+        let x = reac.c.unwrap_or(0.0);
+        let y = reac.h.unwrap_or(0.0);
+        let z = reac.o.unwrap_or(0.0);
+        let v = reac.n.unwrap_or(0.0);
+
+        let w_c = 12.01; // Molar mass of atomic carbon.
+        let w_h = 1.008; // Molar mass of atomic hydrogen.
+        let w_o = 15.999; // Molar mass of atomic oxygen.
+        let w_n = 14.007; //Molar mass of atomic nitrogen.
+
+        let w_o2 = w_o * 2.0;
+        let w_co = 1.0 * w_c + 1.0 * w_o;
+
+        let v_F = 1.0;
+
+        // Molar mass of fuel.
+        let w_F = x * w_c + y * w_h + z * w_o + v * w_n;
+
+        // 'v_' represents molar fraction
+        let w_S = soot_h_fraction * w_h + (1.0 - soot_h_fraction) * w_c;
+        let v_s = w_F / w_S * y_s;
+        let v_co = w_F / w_co * y_co;
+        let v_co2 = x - v_co - (1.0 - soot_h_fraction) * v_s;
+        let v_h2o = y / 2.0 - soot_h_fraction / 2.0 * v_s;
+        let v_o2 = v_co2 + v_co / 2.0 + v_h2o / 2.0 - z / 2.0;
+        let v_n2 = v / 2.0;
+        v_o2 * w_o2 * epumo2 / (v_F * w_F)
     }
     fn soot_production_rate(&self) -> f64 {
-        // todo!("return soot production rate")
-        0.0
+        let reac = self.reac.first().unwrap();
+        let y_s = reac.soot_yield.unwrap_or(0.0);
+        let hoc = self.heat_of_combustion();
+        let hrr = self.total_max_hrr();
+        y_s / hoc * hrr
+    }
+    fn total_max_hrr(&self) -> f64 {
+        self.burners().iter().map(|burner| burner.max_hrr()).sum()
     }
 }
 

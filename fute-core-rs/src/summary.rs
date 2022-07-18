@@ -6,28 +6,23 @@ use fds_input_parser::{decode::Resolution, FdsFile};
 use html::HtmlElement;
 
 pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
-    // println!("{:?}", fds_data);
+    // TODO: show errors better
     let chid = fds_data
         .head
         .as_ref()
-        .expect("No HEAD timelist")
-        .chid
-        .as_ref()
-        .unwrap()
-        .clone();
-    let time = fds_data.time.as_ref().expect("No TIME namelist");
-    let t_start = time.t_begin;
-    let t_end = time.t_end;
-    let simulation_length = t_end.expect("No T_END value") - t_start.unwrap_or(0.0);
+        .and_then(|head| head.chid.as_deref())
+        .unwrap_or("ERROR: No Head Namelist")
+        .to_string();
+    let time = fds_data.time.as_ref();
+    let t_start = time.and_then(|t| t.t_begin).unwrap_or(0.0);
+    let t_end = time.and_then(|t| t.t_end).unwrap_or(1.0);
+    let simulation_length = t_end - t_start;
     let burners = fds_data.burners();
     let n_burners = burners.len();
-    let total_max_hrr: f64 = burners.iter().map(|burner| burner.max_hrr()).sum();
+    let total_max_hrr: f64 = fds_data.total_max_hrr();
     let ndrs: Vec<Vec<_>> = burners.iter().map(|burner| burner.ndr()).collect();
     let extracts = fds_data.extracts();
     let n_extract_vents = extracts.len();
-    for extract in &extracts {
-        println!("Extract: {:?}", extract);
-    }
     let total_extract_rate = extracts
         .iter()
         .map(|extract| extract.flow_rate().abs())
@@ -52,16 +47,21 @@ pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
 
     let sprinklers = fds_data.sprinklers();
     let n_sprinklers = sprinklers.len();
-    let sprinkler_activation_temperatures = sprinklers
+    let mut sprinkler_activation_temperatures: Vec<f64> = sprinklers
         .iter()
         .flat_map(|sprinkler| sprinkler.activation_temperature())
         .collect();
+    sprinkler_activation_temperatures.dedup();
+    sprinkler_activation_temperatures.sort_by(|a, b| a.total_cmp(b));
+
     let smoke_detectors = fds_data.smoke_detectors();
     let n_smoke_detectors = smoke_detectors.len();
-    let smoke_detector_obscurations: Vec<f64> = smoke_detectors
+    let mut smoke_detector_obscurations: Vec<f64> = smoke_detectors
         .iter()
-        .map(|detector| detector.obscuration())
+        .filter_map(|detector| detector.obscuration())
         .collect();
+    smoke_detector_obscurations.dedup();
+    smoke_detector_obscurations.sort_by(|a, b| a.total_cmp(b));
 
     let n_thermal_detectors = fds_data.thermal_detectors().len();
 
@@ -343,7 +343,7 @@ impl InputSummary {
                     .push(HtmlChild::String("# Detectors".to_string()));
                 chid_cell
                     .children
-                    .push(HtmlChild::String(format!("{}", self.n_sprinklers)));
+                    .push(HtmlChild::String(format!("{}", self.n_smoke_detectors)));
                 chid_row.children.push(HtmlChild::Element(label_cell));
                 chid_row.children.push(HtmlChild::Element(chid_cell));
                 body.children.push(HtmlChild::Element(chid_row));

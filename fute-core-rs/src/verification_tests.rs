@@ -29,12 +29,10 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 
 /// Verify an input file.
 pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
-    println!("{fds_data:#?}");
     VerificationResult::Tree(
         "Verification Tests".to_string(),
         vec![
             meshes_overlap_test(fds_data),
-            reaction_tests(fds_data),
             burners_test(fds_data),
             parameters_test(fds_data),
             outputDataCoverage(fds_data),
@@ -373,7 +371,6 @@ fn ventHasFlow(fds_data: &FdsFile, vent: &Vent) -> bool {
         .filter(|hvac| isLinkedToVent(vent, hvac));
     let isHVAC = linkedHVACs.count() != 0;
     let hasSurfFlow = vent.getSurfList(fds_data).iter().any(|s| surfHasFlow(s));
-    println!("Vent: {:?} hasSurfFlow: {hasSurfFlow}", vent.id);
     isHVAC || hasSurfFlow
 }
 
@@ -748,12 +745,9 @@ fn getSmokeDetectorPropIds(fds_data: &FdsFile) -> Vec<&str> {
     fds_data
         .prop
         .iter()
-        .filter(|prop| isSmokeDetectorProp(fds_data, prop))
+        .filter(|prop| prop.is_smoke_detector_prop())
         .filter_map(|prop| prop.id.as_deref())
         .collect()
-}
-fn isSmokeDetectorProp(fds_data: &FdsFile, prop: &Prop) -> bool {
-    prop.quantity.as_deref() == Some("CHAMBER OBSCURATION")
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1216,14 +1210,6 @@ fn isInMesh(point: Xyz, mesh: &Mesh) -> bool {
     .all(|s| *s)
 }
 
-/// Same as determineMesh but returns the index of the mesh rather than the mesh
-/// itself.
-fn determineMeshIndex(fds_data: &FdsFile, point: Xyz) -> Option<usize> {
-    todo!()
-    // = fmap (+1) $ findIndex (isInMesh point) meshes
-    //         where
-    //             meshes = fdsFile_Meshes fdsData :: [Mesh]
-}
 /// Determine in which cell within a mesh a point lies. Return Nothing if the
 /// point does not lie within the mesh.
 fn determineCellInMesh(
@@ -1317,7 +1303,11 @@ fn getMeshLines<'fds_data>(
     };
 
     let xs = if let Some(trnx) = trnx {
-        todo!()
+        // TODO actually implement TRNs
+        (0..ijk.i)
+            .into_iter()
+            .map(|n| xmin + (n as f64) * delX)
+            .collect()
     } else {
         (0..ijk.i)
             .into_iter()
@@ -1325,7 +1315,11 @@ fn getMeshLines<'fds_data>(
             .collect()
     };
     let ys = if let Some(trny) = trny {
-        todo!()
+        // TODO actually implement TRNs
+        (0..ijk.j)
+            .into_iter()
+            .map(|n| ymin + (n as f64) * delY)
+            .collect()
     } else {
         (0..ijk.j)
             .into_iter()
@@ -1333,7 +1327,11 @@ fn getMeshLines<'fds_data>(
             .collect()
     };
     let zs = if let Some(trnz) = trnz {
-        todo!()
+        // TODO actually implement TRNs
+        (0..ijk.k)
+            .into_iter()
+            .map(|n| zmin + (n as f64) * delZ)
+            .collect()
     } else {
         (0..ijk.k)
             .into_iter()
@@ -1392,12 +1390,6 @@ fn hasFlowDevc(fds_data: &FdsFile, vent: &Vent) -> bool {
         .filter(|devc| devc.quantity.as_deref() == Some("VOLUME FLOW"));
     let trackingFlowMatchingXB = flow_devcs.any(|devc| {
         if let (Some(xb_a), Some(xb_b)) = (vent.xb, devc.xb) {
-            println!(
-                "trackingFlowMatchingXB: Vent: {:?} devc: {:?}, {}",
-                vent.id,
-                devc.id,
-                xb_a == xb_b
-            );
             xb_a == xb_b
         } else {
             false
@@ -1427,26 +1419,7 @@ fn hasFlowDevc(fds_data: &FdsFile, vent: &Vent) -> bool {
     let trackingFlowViaDuctID = relevantDuctIDDevices
         .iter()
         .any(|devc| devc.quantity.as_deref() == Some("DUCT VOLUME FLOW"));
-    println!(
-            "Vent: {:?}\n  trackingFlowMatchingXB: {trackingFlowMatchingXB}\n  trackingFlowViaDuctID: {trackingFlowViaDuctID}",vent.id
-        );
     trackingFlowMatchingXB || trackingFlowViaDuctID
-}
-
-// matchXBs :: (MightHaveXB a, MightHaveXB b) => a -> b -> Bool
-// fn matchXbs(xb_a:Xb, xb_b:Xb) = case (tryGetXB nmlA, tryGetXB nmlB) of
-//     (Just a, Just b) -> a == b
-//     _ -> False
-
-/// Check one obstruction and determine if it intersects any other namelists.
-fn obst_intersects_with_others(fds_data: FdsFile) -> bool {
-    todo!()
-    // obstIntersectsWithOthers :: HasXB a => FdsFile -> a -> [Obst]
-    // obstIntersectsWithOthers fdsData namelist =
-    //     let
-    //         obsts :: [Obst]
-    //         obsts = fdsFile_Obsts fdsData
-    //     in filter (nmlIntersect namelist) obsts
 }
 
 pub struct MeshIntersection {
@@ -1497,88 +1470,6 @@ fn meshes_overlap_test(fds_data: &FdsFile) -> VerificationResult {
     }
 }
 
-/// Test that the REAC properties are reasonable.
-fn reaction_tests(fds_data: &FdsFile) -> VerificationResult {
-    let soot_yield = soot_yield_test(fds_data);
-    let co_yield = co_yield_test(fds_data);
-    VerificationResult::Tree("Reaction Tests".to_string(), vec![soot_yield, co_yield])
-}
-
-fn soot_yield_test(fds_data: &FdsFile) -> VerificationResult {
-    let name = "Soot Yield".to_string();
-    let value = match fds_data.reac.len() {
-        0 => {
-            return VerificationResult::Result(
-                name,
-                TestResult::Failure("No Reaction Specified".to_string()),
-            )
-        }
-        1 => fds_data.reac[0].soot_yield,
-        _ => {
-            return VerificationResult::Result(
-                name,
-                TestResult::Failure("Multiple Reactions Specified".to_string()),
-            )
-        }
-    };
-    if let Some(value) = value {
-        if value == 0.1 || value == 0.07 {
-            VerificationResult::Result(name, TestResult::Success(format!("{}", value)))
-        } else {
-            VerificationResult::Result(name, TestResult::Failure(format!("{}", value)))
-        }
-    } else {
-        VerificationResult::Result(
-            name,
-            TestResult::Failure("No Soot Yield Specified".to_string()),
-        )
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum COYieldTestSuccess {
-    GoodValue(f64),
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum COYieldTestFailure {
-    NoReac,
-    MultipleReacs,
-    BadValue(f64),
-    NoValue,
-}
-
-fn co_yield_test(fds_data: &FdsFile) -> VerificationResult {
-    let name = "CO Yield".to_string();
-    let value = match fds_data.reac.len() {
-        0 => {
-            return VerificationResult::Result(
-                name,
-                TestResult::Failure("No Reaction Specified".to_string()),
-            )
-        }
-        1 => fds_data.reac[0].co_yield,
-        _ => {
-            return VerificationResult::Result(
-                name,
-                TestResult::Failure("Multiple Reactions Specified".to_string()),
-            )
-        }
-    };
-    if let Some(value) = value {
-        if value == 0.05 {
-            VerificationResult::Result(name, TestResult::Failure(format!("{}", value)))
-        } else {
-            VerificationResult::Result(name, TestResult::Success(format!("{}", value)))
-        }
-    } else {
-        VerificationResult::Result(
-            name,
-            TestResult::Failure("No CO Yield Specified".to_string()),
-        )
-    }
-}
-
 fn parameters_test(fds_data: &FdsFile) -> VerificationResult {
     let name = "Input Verification Tests".to_string();
     let tests: Vec<fn(&FdsFile) -> VerificationResult> = vec![
@@ -1606,7 +1497,7 @@ fn reac_tests(fds_data: &FdsFile) -> VerificationResult {
                 VerificationResult::Result(
                     testName,
                      TestResult::Failure(format!(
-                         "{propName} was {value}, which is not one of the usual value of {possibleValues:?}."
+                         "{propName} was {value}, which is not one of the usual values of {possibleValues:?}."
                      )),
                  )
             }
@@ -1632,7 +1523,7 @@ fn reac_tests(fds_data: &FdsFile) -> VerificationResult {
                 VerificationResult::Result(
                     testName,
                      TestResult::Failure(format!(
-                         "{propName} was {value}, which is not one of the usual value of {possibleValues:?}."
+                         "{propName} was {value}, which is not one of the usual values of {possibleValues:?}."
                      )),
                  )
             }
@@ -1668,7 +1559,7 @@ fn specified(fds_data: &FdsFile, nml: &str, exists: fn(&FdsFile) -> bool) -> Ver
     } else {
         VerificationResult::Result(
             format!("{nml} Namelist Existence"),
-            TestResult::Failure(format!("No {nml} namelist not specified.")),
+            TestResult::Failure(format!("No {nml} namelist specified.")),
         )
     }
 }
@@ -2061,18 +1952,19 @@ pub struct SmokeDetector {
 
 impl SmokeDetector {
     pub fn from_devc(devc: Devc, fds_file: &FdsFile) -> Self {
-        // let prop = {
-        //     fds_file.props.iter().find(|&&prop| prop.id.as_ref() == devc.prop_id.as_ref()).unwrap().clone()
-        // };
-        // Self {
-        //     devc,
-        //     prop,
-        // }
-        todo!()
+        let prop = {
+            fds_file
+                .prop
+                .iter()
+                .find(|prop| prop.id.as_ref() == devc.prop_id.as_ref())
+                .unwrap()
+                .clone()
+        };
+        Self { devc, prop }
     }
-    pub fn obscuration(&self) -> f64 {
-        // self.prop.activation_temperature
-        todo!()
+    pub fn obscuration(&self) -> Option<f64> {
+        // TODO: be cautious of defaults
+        self.prop.activation_obscuration.or(Some(3.24))
     }
 }
 
@@ -2083,18 +1975,18 @@ pub struct ThermalDetector {
 
 impl ThermalDetector {
     pub fn from_devc(devc: Devc, fds_file: &FdsFile) -> Self {
-        todo!()
-        // let prop = {
-        //     fds_file.props.iter().find(|&&prop| prop.id.as_ref() == devc.prop_id.as_ref()).unwrap().clone()
-        // };
-        // Self {
-        //     devc,
-        //     prop,
-        // }
+        let prop = {
+            fds_file
+                .prop
+                .iter()
+                .find(|prop| prop.id.as_ref() == devc.prop_id.as_ref())
+                .unwrap()
+                .clone()
+        };
+        Self { devc, prop }
     }
-    pub fn activation_temperature(&self) -> f64 {
-        // self.prop.activation_temperature
-        todo!()
+    pub fn activation_temperature(&self) -> Option<f64> {
+        self.prop.activation_temperature
     }
 }
 

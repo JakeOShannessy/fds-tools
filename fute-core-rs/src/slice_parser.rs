@@ -47,7 +47,6 @@ impl<R: Read> SliceParser<R> {
         // let read = input.read(&mut read_buffer).unwrap();
         let (rem, header) = loop {
             let read = input.read(&mut read_buffer).unwrap();
-            println!("read {} bytes", read);
             match parse_slice_header(&read_buffer) {
                 Ok(header) => break header,
                 Err(nom::Err::Incomplete(n)) => println!("Needed: {:?}", n),
@@ -82,7 +81,6 @@ impl<R: Read> Iterator for SliceParser<R> {
                     break x;
                 }
                 Err(nom::Err::Incomplete(n)) => {
-                    println!("Needed: {:?}", n);
                     match n {
                         nom::Needed::Size(n) => self.buf.reserve(n.into()),
                         _ => panic!("extra buffer size not known"),
@@ -92,7 +90,6 @@ impl<R: Read> Iterator for SliceParser<R> {
                     if read == 0 {
                         panic!("no data frame")
                     }
-                    println!("read {}", read);
                 }
                 Err(nom::Err::Error(e)) => panic!("Error: {:?}", e.code),
                 Err(nom::Err::Failure(e)) => panic!("Failure: {:?}", e.code),

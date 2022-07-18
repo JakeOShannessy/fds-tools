@@ -384,6 +384,7 @@ pub struct BurnerPanel<'a> {
     pub surf: &'a Surf,
     /// References to the meshes the burner lies within.
     pub meshes: Vec<&'a Mesh>,
+    // pub reac: &'a Reac,
 }
 
 impl<'a> BurnerPanel<'a> {
@@ -396,8 +397,12 @@ impl<'a> BurnerPanel<'a> {
     pub fn hrrpua(&self) -> f64 {
         if let Some(hrrpua) = self.surf.hrrpua {
             hrrpua
-        } else if let Some(_mlrpua) = self.surf.mlrpua {
-            todo!("Cannot handle MLRPUA")
+        } else if let Some(mlrpua) = self.surf.mlrpua {
+            // MLRPUA is in kg/m^2/s, we simply need to multiply the mass loss
+            // rate by the heat of combustion in kJ/kg.
+            // self.reac.head_of_combustion() * mlrpua
+            // TODO: finish
+            0.0
         } else {
             0.0
         }
