@@ -3,29 +3,14 @@
 <?define ProductUpgradeCode = "18709979-23a5-45d7-a7f3-1b3fedb0f653"?>
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
-    <Product Name='FDS Tools'
-            Id='*'
-            UpgradeCode="$(var.ProductUpgradeCode)"
-            Language='1033'
-            Version='$(var.ProductVersion)'
-            Manufacturer='Smoke Cloud'>
-        <Package Id='*'
-                InstallScope='perUser'
-                InstallPrivileges='limited'
-                Keywords='Installer'
-                Description="FDS Tools Installer"
-                Comments='Installs the executable and provides QuickChart in context menu on .smv files.'
-                Manufacturer='Jake'
-                InstallerVersion='200'
-                Platform='x64'
-                Languages='1033'
-                Compressed='yes' />
+    <Product Name='FDS Tools' Id='*' UpgradeCode="$(var.ProductUpgradeCode)" Language='1033' Version='$(var.ProductVersion)' Manufacturer='Smoke Cloud'>
+        <Package Id='*' InstallScope='perUser' InstallPrivileges='limited' Keywords='Installer' Description="FDS Tools Installer" Comments='Installs the executable and provides QuickChart in context menu on .smv files.' Manufacturer='Jake' InstallerVersion='200' Platform='x64' Languages='1033' Compressed='yes' />
         <!-- <Condition Message="You need to be an administrator to install this product.">Privileged</Condition> -->
         <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' />
         <Property Id='DiskPrompt' Value="FDS Tools Suite Installer" />
         <Upgrade Id="$(var.ProductUpgradeCode)">
-            <UpgradeVersion Minimum="$(var.ProductVersion)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
-            <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" Property="OLDERVERSIONBEINGUPGRADED"/>
+            <UpgradeVersion Minimum="$(var.ProductVersion)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED" />
+            <UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" Property="OLDERVERSIONBEINGUPGRADED" />
         </Upgrade>
         <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>
         <Property Id="ALLUSERS" Secure="yes" Value="2" />
@@ -36,88 +21,32 @@
                     <Directory Id='INSTALLDIR' Name='FDS Tools'>
                         <Component Id='FuteScript' Guid='020e5228-fa89-48ff-add5-8d39c5d70f9b' Win64="yes">
                             <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]" Permanent="yes" Part="last" Action="set" System="no" />
-                            <File Id='FuteScriptCMD' Name='fute.cmd' Source='scripts/fute.cmd' KeyPath='yes'>
-                            </File>
+                            <File Id='FuteScriptCMD' Name='fute.cmd' Source='scripts/fute.cmd' KeyPath='yes'></File>
                         </Component>
                         <Directory Id='BINDIR' Name='bin'>
-                            <Component Id='QuickMon' Guid='1ab03b30-4375-4d2d-9dcc-56d139bc6943' Win64="yes">
-                                <File Id='QuickMonEXE' Name='fute-rs.exe' Source='target/release/fute-rs.exe'>
-                                </File>
+                            <Component Id='FuteComponent' Guid='1ab03b30-4375-4d2d-9dcc-56d139bc6943' Win64="yes">
+                                <File Id='FuteEXE' Name='fute-rs.exe' Source='target/release/fute-rs.exe'></File>
                                 <RegistryKey Id='SMVFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\Smoke Cloud - Chart\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; chart &quot;%1&quot;" KeyPath='yes'/>
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; chart &quot;%1&quot;" KeyPath='yes' />
                                 </RegistryKey>
                                 <RegistryKey Id='SMVFileTypeRegOtherChartAndVerify' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\Smoke Cloud - Verify\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; verify &quot;%1&quot;"/>
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; verify &quot;%1&quot;" />
                                 </RegistryKey>
                                 <RegistryKey Id='FDSFileTypeRegOtherVerify' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.fds\Shell\Smoke Cloud - Verify Input\Command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; verify-input &quot;%1&quot;"/>
+                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; verify-input &quot;%1&quot;" />
                                 </RegistryKey>
                             </Component>
-                            <!-- <Component Id='DetAct' Guid='39230750-a65f-4768-87bd-4ad212640dc6'>
-                                <File Id='DetActEXE' Name='DetectionActivation.exe' Source='FDSUtilities/dist/build/DetectionActivation/DetectionActivation.exe' KeyPath='yes'>
-                                </File>
-                            </Component> -->
-                            <Component Id='FuteComponent' Guid='e347a522-cde9-4228-a6cf-cc210f31cf15' Win64="yes">
-                                <File Id='FuteEXE' Name='fute.exe' Source='dist/fute.exe'>
-                                </File>
-                                <!-- <RegistryKey Id='FDSFileTypeReg' Root='HKLM' Key='SOFTWARE\Classes\.fds' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="fdsDoc"/>
-                                </RegistryKey> -->
-                                <!-- <RegistryKey Id='FDSFileTypeRegCommand' Root='HKLM' Key='SOFTWARE\Classes\.fds\Shell\FDSVerification\command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\FDSVerification.exe&quot; &quot;%1&quot;"/>
-                                </RegistryKey> -->
-                                <!-- <RegistryKey Id='FDSFileTypeRegOther' Root='HKLM' Key='SOFTWARE\Windows\CurrentVersion\Explorer\FileExts\.fds\UserChoice' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Name="ProgId" Value="fdsDoc"/>
-                                </RegistryKey> -->
-                                <!-- <RegistryKey Id='FDSFileTypeNameReg' Root='HKLM' Key='SOFTWARE\Classes\fdsDoc' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="FDS Input File"/>
-                                </RegistryKey> -->
-                                <!-- <RegistryKey Id='FDSVerificationContextMenuReg' Root='HKLM' Key='SOFTWARE\Classes\fdsDoc\Shell\FDSVerification\command' ForceDeleteOnUninstall="yes">
-                                    <RegistryValue Type='string' Value="&quot;[BINDIR]\fute.exe&quot; verify-input &quot;%1&quot; &#8211;&#8211;show"/>
-                                </RegistryKey> -->
-                            </Component>
-                            <!-- <Component Id='CommonRender' Guid='ec39446c-f8ef-4fbf-a75f-8bc07c87dce1' Win64="yes">
-                                <File Id='libcairo' Name='libcairo-2.dll' Source='lib64/libcairo-2.dll' KeyPath='yes'></File>
-                                <File Id='libfontconfig' Name='libfontconfig-1.dll' Source='lib64/libfontconfig-1.dll'></File>
-                                <File Id='libfreetype' Name='libfreetype-6.dll' Source='lib64/libfreetype-6.dll'></File>
-                                <File Id='libiconv' Name='libiconv-2.dll' Source='lib64/libiconv-2.dll'></File>
-                                <File Id='liblzma' Name='liblzma-5.dll' Source='lib64/liblzma-5.dll'></File>
-                                <File Id='libpixman' Name='libpixman-1-0.dll' Source='lib64/libpixman-1-0.dll'></File>
-                                <File Id='libpng' Name='libpng16-16.dll' Source='lib64/libpng16-16.dll'></File>
-                                <File Id='libbz2' Name='libbz2-1.dll' Source='lib64/libbz2-1.dll'></File>
-                                <File Id='libexpat' Name='libexpat-1.dll' Source='lib64/libexpat-1.dll'></File>
-                                <File Id='libgcc_s_seh' Name='libgcc_s_seh-1.dll' Source='lib64/libgcc_s_seh-1.dll'></File>
-                                <File Id='libintl' Name='libintl-8.dll' Source='lib64/libintl-8.dll'></File>
-                                <File Id='libwinpthread' Name='libwinpthread-1.dll' Source='lib64/libwinpthread-1.dll'></File>
-                                <File Id='libharfbuzz' Name='libharfbuzz-0.dll' Source='lib64/libharfbuzz-0.dll'></File>
-                                <File Id='libgraphite2' Name='libgraphite2.dll' Source='lib64/libgraphite2.dll'></File>
-                                <File Id='libstdcpp' Name='libstdc++-6.dll' Source='lib64/libstdc++-6.dll'></File>
-                                <File Id='libglib' Name='libglib-2.0-0.dll' Source='lib64/libglib-2.0-0.dll'></File>
-                                <File Id='libpcre' Name='libpcre-1.dll' Source='lib64/libpcre-1.dll'></File>
-                                <File Id='zlib1' Name='zlib1.dll' Source='lib64/zlib1.dll'></File>
-                            </Component> -->
                         </Directory>
                     </Directory>
                 </Directory>
             </Directory>
         </Directory>
         <InstallExecuteSequence>
-            <RemoveExistingProducts After="InstallValidate"/>
+            <RemoveExistingProducts After="InstallValidate" />
         </InstallExecuteSequence>
-        <Feature Id='QuickMonitor' Level='1'>
-            <ComponentRef Id='QuickMon' />
-            <!-- <ComponentRef Id='CommonRender' /> -->
-        </Feature>
-        <!-- <Feature Id='DetectionActivation' Level='1'>
-            <ComponentRef Id='DetAct' />
-        </Feature> -->
-        <!-- <Feature Id='FDSVerification' Level='1'>
-            <ComponentRef Id='FDSVerificationComponent' />
-        </Feature> -->
         <Feature Id='Fute' Level='1'>
             <ComponentRef Id='FuteComponent' />
             <ComponentRef Id='FuteScript' />
-            <!-- <ComponentRef Id='CommonRender' /> -->
         </Feature>
     </Product>
 </Wix>
