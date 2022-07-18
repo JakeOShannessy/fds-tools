@@ -27,7 +27,7 @@ use std::{
 /// Output the number of cells for each mesh as a human readable table. This is
 /// not machine readable.
 pub fn count_cells(input_path: &Path) -> u64 {
-    let fds_data = parse_and_decode_fds_input_file(input_path);
+    let fds_data = parse_and_decode_fds_input_file(input_path).unwrap();
     let meshes: Vec<Mesh> = fds_data.mesh;
     let mut total_cells = 0;
     for mesh in meshes {
@@ -61,7 +61,7 @@ pub fn meshes(fds_path: &Path) {
     // use fute_core::parse_and_decode_fds_input_file;
     use num_format::{Locale, ToFormattedString};
 
-    let fds_file = parse_and_decode_fds_input_file(fds_path);
+    let fds_file = parse_and_decode_fds_input_file(fds_path).unwrap();
     let meshes = fds_file.mesh;
     let mut table = Table::new();
     table.set_titles(Row::new(vec![
@@ -193,7 +193,7 @@ pub fn peak_hrr(fds_path: &Path) {
     use fute_core::FdsFileExt;
     // use fute_core::FdsFile;
     // use fute_core::parse_and_decode_fds_input_file;
-    let fds_file = parse_and_decode_fds_input_file(fds_path);
+    let fds_file = parse_and_decode_fds_input_file(fds_path).unwrap();
     let hrr: f64 = fds_file
         .burners()
         .iter()
@@ -353,7 +353,7 @@ pub fn plot_hrr(smv_path: &Path) {
 //         // Right a  -> T.putStrLn $ renderVerificationConsoleText a
 pub fn verify_input(fds_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("verifying: {}", fds_path.display());
-    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path);
+    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(fds_path).unwrap();
     let verification_result = fute_core::verify_input(&fds_data);
     print_verification_tree(&verification_result, 0);
     let input_summary = summarise_input(&fds_data);
@@ -449,7 +449,7 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fds_path.push(smv_file.input_filename);
 
     println!("verifying: {}", fds_path.display());
-    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(&fds_path);
+    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(&fds_path).unwrap();
     let verification_result = fute_core::verify_input(&fds_data);
     print_verification_tree(&verification_result, 0);
     let input_summary = summarise_input(&fds_data);

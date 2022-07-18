@@ -4,6 +4,7 @@ use crate::{
 };
 use fds_input_parser::{decode::Resolution, FdsFile};
 use html::HtmlElement;
+use num_traits::ToPrimitive;
 
 pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
     // TODO: show errors better
@@ -35,7 +36,7 @@ pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
     let meshes = &fds_data.mesh;
     let mut mesh_resolutions: Vec<_> = meshes.iter().map(|mesh| mesh.resolution()).collect();
     mesh_resolutions.dedup();
-    mesh_resolutions.sort_by(|a, b| a.volume().total_cmp(&b.volume()));
+    mesh_resolutions.sort();
 
     let n_meshes = meshes.len();
     let n_cells: u64 = meshes.iter().map(|mesh| mesh.n_cells()).sum();
@@ -511,7 +512,9 @@ impl InputSummary {
                     let mut li = HtmlElement::new("li".to_string());
                     li.children.push(HtmlChild::String(format!(
                         "{:.2}m × {:.2} m × {:.2} m",
-                        mesh_resolution.x, mesh_resolution.y, mesh_resolution.z
+                        mesh_resolution.x.to_f64().unwrap(),
+                        mesh_resolution.y.to_f64().unwrap(),
+                        mesh_resolution.z.to_f64().unwrap()
                     )));
                     list.children.push(HtmlChild::Element(li));
                 }

@@ -144,7 +144,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chid"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=16185b65a521a03131e95db184f8f3c237e1162c#16185b65a521a03131e95db184f8f3c237e1162c"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=803d824e73d4222e00c45d6265b032e1ab6cfa84#803d824e73d4222e00c45d6265b032e1ab6cfa84"
 dependencies = [
  "arrayvec 0.7.2",
 ]
@@ -408,9 +408,11 @@ dependencies = [
 [[package]]
 name = "fds-input-parser"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=16185b65a521a03131e95db184f8f3c237e1162c#16185b65a521a03131e95db184f8f3c237e1162c"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=803d824e73d4222e00c45d6265b032e1ab6cfa84#803d824e73d4222e00c45d6265b032e1ab6cfa84"
 dependencies = [
  "namelist",
+ "num-rational",
+ "num-traits",
  "paste",
 ]
 
@@ -504,6 +506,7 @@ dependencies = [
  "downcast-rs",
  "fds-input-parser",
  "nom",
+ "num-traits",
  "regex",
  "serde",
  "version-compare",
@@ -730,6 +733,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-bigint"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f93ab6289c7b344a8a9f60f88d80aa20032336fe78da341afc91c8a2341fc75f"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-format"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -767,6 +781,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
 dependencies = [
  "autocfg",
+ "num-bigint",
  "num-integer",
  "num-traits",
 ]

@@ -5,3 +5,6 @@ members = [
     "fute-rs",
     "plot3d-rs",
 ]
+
+# [patch."ssh://git@github.com/JakeOShannessy/red-smoke.git"]
+# fds-input-parser = { path = "../red-smoke/fds-input-parser" }

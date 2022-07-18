@@ -13,7 +13,7 @@ pub mod simple_flow;
 mod slice_parser;
 mod smv_parser;
 pub mod summary;
-mod verification_tests;
+pub mod verification_tests;
 use arrayvec::ArrayString;
 use burners::Burner;
 use csv_parser::{CsvDataBlock, SmvValue};
@@ -292,6 +292,7 @@ impl FdsFileExt for FdsFile {
 mod tests {
     use super::*;
 
+    #[ignore]
     #[test]
     fn read_buffered_slice() {
         read_slice_file().unwrap();

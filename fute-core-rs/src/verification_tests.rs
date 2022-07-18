@@ -22,7 +22,7 @@ pub fn verify(smv_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     // Find the input file from the SMV file.
     let mut input_path = PathBuf::from(smv_path.parent().unwrap());
     input_path.push(smv_file.input_filename);
-    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(&input_path);
+    let fds_data = fds_input_parser::parse_and_decode_fds_input_file(&input_path)?;
     let verification_result = verify_input(&fds_data);
     Ok(())
 }
@@ -122,6 +122,14 @@ pub enum VerificationResult {
 }
 
 impl VerificationResult {
+    pub fn has_failures(&self) -> bool {
+        match self {
+            VerificationResult::Result(_, TestResult::Failure(_)) => true,
+            VerificationResult::Result(_, TestResult::Success(_)) => false,
+            VerificationResult::Result(_, TestResult::Warning(_)) => false,
+            VerificationResult::Tree(_, results) => results.iter().any(|s| s.has_failures()),
+        }
+    }
     pub fn worst_result(&self) -> Option<&TestResult> {
         match self {
             VerificationResult::Result(name, res) => Some(res),
@@ -661,7 +669,7 @@ fn stuckInSolid(fds_data: &FdsFile, devc: &Devc) -> Option<bool> {
 }
 
 /// Ensure that no devices are stuck in solids.
-fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
+pub fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
     let name = "Devices Stuck in Solids Test".to_string();
     let stuckDevices: Vec<_> = fds_data
         .devc
@@ -1349,7 +1357,7 @@ fn isCellSolid(fds_data: &FdsFile, cell: (usize, (usize, usize, usize))) -> bool
     fds_data.obst.iter().any(|obst| xbOccupy(obst.xb, cellXB))
 }
 /// Ensure that sprinklers and smoke detectors are beneath a ceiling.
-fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
+pub fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
     let name = "Sprinklers and detectors immediately below ceiling".to_string();
     let nonBeneathCeiling: Vec<_> = fds_data
         .devc
@@ -1382,8 +1390,7 @@ fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
 }
 /// Take the xb dimensions of a vent and see if there is a flow vent with the
 /// matching dimensions, or a device that references it as a duct node.
-// hasFlowDevc :: FdsFile -> Vent -> Bool
-fn hasFlowDevc(fds_data: &FdsFile, vent: &Vent) -> bool {
+pub fn hasFlowDevc(fds_data: &FdsFile, vent: &Vent) -> bool {
     let mut flow_devcs = fds_data
         .devc
         .iter()
