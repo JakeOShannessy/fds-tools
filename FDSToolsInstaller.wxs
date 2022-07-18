@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<?define ProductVersion = "1.15.0"?>
+<?define ProductVersion = "1.16.0"?>
 <?define ProductUpgradeCode = "18709979-23a5-45d7-a7f3-1b3fedb0f653"?>
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
@@ -41,7 +41,7 @@
                         </Component>
                         <Directory Id='BINDIR' Name='bin'>
                             <Component Id='QuickMon' Guid='1ab03b30-4375-4d2d-9dcc-56d139bc6943' Win64="yes">
-                                <File Id='QuickMonEXE' Name='fute-rs.exe' Source='dist/fute-rs.exe'>
+                                <File Id='QuickMonEXE' Name='fute-rs.exe' Source='target/release/fute-rs.exe'>
                                 </File>
                                 <RegistryKey Id='SMVFileTypeRegOther' Root='HKMU' Key='Software\Classes\SystemFileAssociations\.smv\Shell\Smoke Cloud - Chart\Command' ForceDeleteOnUninstall="yes">
                                     <RegistryValue Type='string' Value="&quot;[BINDIR]\fute-rs.exe&quot; chart &quot;%1&quot;" KeyPath='yes'/>

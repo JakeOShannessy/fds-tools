@@ -144,7 +144,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chid"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=a3e971cd2e396211ef510ed530c268744850b749#a3e971cd2e396211ef510ed530c268744850b749"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=16185b65a521a03131e95db184f8f3c237e1162c#16185b65a521a03131e95db184f8f3c237e1162c"
 dependencies = [
  "arrayvec 0.7.2",
 ]
@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "fds-input-parser"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=a3e971cd2e396211ef510ed530c268744850b749#a3e971cd2e396211ef510ed530c268744850b749"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=16185b65a521a03131e95db184f8f3c237e1162c#16185b65a521a03131e95db184f8f3c237e1162c"
 dependencies = [
  "namelist",
  "paste",
@@ -493,7 +493,7 @@ dependencies = [
 
 [[package]]
 name = "fute-core"
-version = "1.15.0"
+version = "1.16.0"
 dependencies = [
  "ansi_term",
  "arrayvec 0.7.2",
@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "fute-rs"
-version = "1.15.0"
+version = "1.16.0"
 dependencies = [
  "ansi_term",
  "chid",

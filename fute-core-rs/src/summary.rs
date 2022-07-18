@@ -33,7 +33,10 @@ pub fn summarise_input(fds_data: &FdsFile) -> InputSummary {
     let total_supply_rate = supplies.iter().map(|supply| supply.flow_rate().abs()).sum();
 
     let meshes = &fds_data.mesh;
-    let mesh_resolutions: Vec<_> = meshes.iter().map(|mesh| mesh.resolution()).collect();
+    let mut mesh_resolutions: Vec<_> = meshes.iter().map(|mesh| mesh.resolution()).collect();
+    mesh_resolutions.dedup();
+    mesh_resolutions.sort_by(|a, b| a.volume().total_cmp(&b.volume()));
+
     let n_meshes = meshes.len();
     let n_cells: u64 = meshes.iter().map(|mesh| mesh.n_cells()).sum();
     // let (sX, sY, sZ) = fds_data.smallest_resolution();
