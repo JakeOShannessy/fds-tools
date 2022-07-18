@@ -6,13 +6,13 @@ edition = "2018"
 
 [dependencies]
 ansi_term = "0.12"
-chid = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "ec335ae1cfce97bd0c7b1346eec503f62d274b90"}
+chid = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "ff3791b00910dc06745a1e70f95c7d3fc7514d63"}
 chrono = "0.4"
 clap = {version = "3", features = ["cargo"]}
 csv = "1"
 data-vector = { git = "https://github.com/JakeOShannessy/data-vector.git"}
 env_logger = "0.9"
-fds-input-parser = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "ec335ae1cfce97bd0c7b1346eec503f62d274b90"}
+fds-input-parser = {git = "ssh://git@github.com/JakeOShannessy/red-smoke.git", rev = "ff3791b00910dc06745a1e70f95c7d3fc7514d63"}
 fute-core = { path = "../fute-core-rs" }
 lazy_static = "1"
 log = "0.4"

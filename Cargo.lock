@@ -144,7 +144,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chid"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=ec335ae1cfce97bd0c7b1346eec503f62d274b90#ec335ae1cfce97bd0c7b1346eec503f62d274b90"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=ff3791b00910dc06745a1e70f95c7d3fc7514d63#ff3791b00910dc06745a1e70f95c7d3fc7514d63"
 dependencies = [
  "arrayvec 0.7.2",
 ]
@@ -408,7 +408,7 @@ dependencies = [
 [[package]]
 name = "fds-input-parser"
 version = "0.1.8"
-source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=ec335ae1cfce97bd0c7b1346eec503f62d274b90#ec335ae1cfce97bd0c7b1346eec503f62d274b90"
+source = "git+ssh://git@github.com/JakeOShannessy/red-smoke.git?rev=ff3791b00910dc06745a1e70f95c7d3fc7514d63#ff3791b00910dc06745a1e70f95c7d3fc7514d63"
 dependencies = [
  "namelist",
  "paste",
@@ -567,9 +567,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.12.2"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "607c8a29735385251a339424dd462993c0fed8fa09d378f259377df08c126022"
+checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hermit-abi"
@@ -788,9 +788,9 @@ checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
 
 [[package]]
 name = "os_str_bytes"
-version = "6.1.0"
+version = "6.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21326818e99cfe6ce1e524c2a805c189a99b5ae555a35d19f9a284b427d86afa"
+checksum = "648001efe5d5c0102d8cea768e348da85d90af8ba91f0bea908f157951493cd4"
 
 [[package]]
 name = "paste"

@@ -3,6 +3,8 @@ use crate::{html::HtmlChild, html::HtmlElement, FdsFileExt};
 use fds_input_parser::xb::HasXB;
 use fds_input_parser::FdsFile;
 use fds_input_parser::{decode::*, xb::MightHaveXB};
+use std::cmp::{max, min};
+use std::collections::HashSet;
 use std::ops::Deref;
 use std::{
     cmp::Ordering,
@@ -39,7 +41,7 @@ pub fn verify_input(fds_data: &FdsFile) -> VerificationResult {
             flowCoverage(fds_data),
             // leakage(fds_data),
             // devicesTest(fds_data),
-            // spkDetCeilingTest(fds_data),
+            spkDetCeilingTest(fds_data),
         ],
     )
 }
@@ -650,22 +652,688 @@ fn devicesTest(fds_data: &FdsFile) -> VerificationResult {
     //         <> " is placed within a solid obstruction.\n    "
     //         -- <> T.unpack (pprint nml)
 }
+
+fn devcIsSprinkler(fds_data: &FdsFile, devc: &Devc) -> bool {
+    if let Some(prop_id) = &devc.prop_id {
+        getThermalDetectorPropIds(fds_data).contains(prop_id.as_str())
+    } else {
+        false
+    }
+}
+
+fn getThermalDetectorPropIds(fds_data: &FdsFile) -> HashSet<&str> {
+    getThermalDetectorProps(fds_data)
+        .into_iter()
+        .filter_map(|s| s.id.as_deref())
+        .collect()
+}
+
+fn getThermalDetectorProps(fds_data: &FdsFile) -> Vec<&Prop> {
+    fds_data
+        .prop
+        .iter()
+        .filter(|s| isThermalDetectorProp(fds_data, s))
+        .collect()
+}
+
+fn isThermalDetectorProp(fds_data: &FdsFile, prop: &Prop) -> bool {
+    prop.quantity.as_deref() == Some("LINK TEMPERATURE")
+}
+
+// getSprinklerPropIds :: FDSFile -> [String]
+// getSprinklerPropIds fdsData =
+//     catMaybes $ fmap getId (getSprinklerProps fdsData)
+
+// getSprinklerProps :: FDSFile -> [Prop]
+// getSprinklerProps fdsData =
+//         filter isSprinklerProp
+//         $ fdsFile_Props fdsData
+
+// isSprinklerProp :: Prop -> Bool
+// isSprinklerProp nml = prop_QUANTITY nml == Just "SPRINKLER LINK TEMPERATURE"
+
+fn getSmokeDetectors(fds_data: &FdsFile) -> Vec<&Devc> {
+    fds_data
+        .devc
+        .iter()
+        .filter(|devc| devcIsSmokeDetector(fds_data, devc))
+        .collect()
+}
+
+fn devcIsSmokeDetector(fds_data: &FdsFile, devc: &Devc) -> bool {
+    if let Some(prop_id) = devc.prop_id.as_deref() {
+        getSmokeDetectorPropIds(fds_data).contains(&prop_id)
+    } else {
+        false
+    }
+}
+fn getSmokeDetectorPropIds(fds_data: &FdsFile) -> Vec<&str> {
+    fds_data
+        .prop
+        .iter()
+        .filter(|prop| isSmokeDetectorProp(fds_data, prop))
+        .filter_map(|prop| prop.id.as_deref())
+        .collect()
+}
+fn isSmokeDetectorProp(fds_data: &FdsFile, prop: &Prop) -> bool {
+    prop.quantity.as_deref() == Some("CHAMBER OBSCURATION")
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Direction {
+    NegX,
+    PosX,
+    NegY,
+    PosY,
+    NegZ,
+    PosZ,
+}
+
+/// Check if a device is stuck in a solid. Returns Nothing if it's not a
+/// sensible question (e.g. it is not a point device).
+fn devcStuckInSolid(fds_data: &FdsFile, devc: &Devc) -> bool {
+    let xyz = if let Some(xyz) = devc.xyz {
+        xyz
+    } else {
+        return false;
+    };
+    let cell = if let Some(cell) = determineCell(fds_data, xyz) {
+        cell
+    } else {
+        // TODO: actually this means out of bounds which is just as bad
+        return false;
+    };
+    isCellSolid(fds_data, cell)
+}
+
+/// Check if the cell directly above a device is solid. This is useful to make
+/// sure that sprinklers and smoke detectors are directly beneath the a ceiling.
+///
+/// TODO: This is more complicated as it may not be a solid cell, but a solid
+/// surface. This is exacerbated by being on a mesh boundary.
+fn devcBeneathCeiling(fds_data: &FdsFile, devc: &Devc) -> bool {
+    let xyz = if let Some(xyz) = devc.xyz {
+        xyz
+    } else {
+        return false;
+    };
+    let cell = if let Some(cell) = determineCell(fds_data, xyz) {
+        cell
+    } else {
+        // TODO: actually this means out of bounds which is just as bad
+        return false;
+    };
+    isFaceSolid(fds_data, cell, Direction::PosZ)
+}
+
+fn getFaceXB(fds_data: &FdsFile, cell: (usize, (usize, usize, usize)), dir: Direction) -> Xb {
+    let cellXB = getCellXB(fds_data, cell).unwrap();
+    let Xb {
+        x1,
+        x2,
+        y1,
+        y2,
+        z1,
+        z2,
+    } = cellXB.sort();
+    match dir {
+        Direction::NegX => Xb::new(x1, x1, y1, y2, z1, z2),
+        Direction::PosX => Xb::new(x2, x2, y1, y2, z1, z2),
+        Direction::NegY => Xb::new(x1, x2, y1, y1, z1, z2),
+        Direction::PosY => Xb::new(x1, x2, y2, y2, z1, z2),
+        Direction::NegZ => Xb::new(x1, x2, y1, y2, z1, z1),
+        Direction::PosZ => Xb::new(x1, x2, y1, y2, z2, z2),
+    }
+}
+
+/// Get the solidness of a single face at cell @cell@ and direction @dir@. NB:
+/// This does not consider neighbouring cells.
+fn isFaceSolid(
+    fds_data: &FdsFile,
+    cell: (usize, (usize, usize, usize)),
+    direction: Direction,
+) -> bool {
+    let cellSize = getMinDim(fds_data, cell).unwrap();
+    let faceXB = getFaceXB(fds_data, cell, direction);
+    // Exclude 'OPEN' vents and obsts, as they are not solid
+    let solidObsts: Vec<_> = fds_data
+        .obst
+        .iter()
+        .filter(|obst| !hasOpenSurf(fds_data, *obst))
+        .collect();
+    let solidVents: Vec<_> = fds_data
+        .vent
+        .iter()
+        .filter(|vent| !hasOpenSurf(fds_data, *vent))
+        .collect();
+    let mut obstsAndVentsXBs = vec![];
+    for obst in solidObsts {
+        obstsAndVentsXBs.push(obst.xb);
+    }
+    for vent in solidVents {
+        if let Some(xb) = vent.xb {
+            obstsAndVentsXBs.push(xb);
+        }
+    }
+    if obstsAndVentsXBs
+        .iter()
+        .any(|xb| faceOccupy(cellSize, *xb, faceXB))
+    {
+        true
+    } else {
+        // Face is an external mesh boundary
+        isFaceExternalMeshBoundary(fds_data, cell, Direction::PosZ) // TODO: check direction here
+            // Which is not covered by an 'OPEN' vent
+            && (!(isFaceOpenVent(fds_data, cell, Direction::PosZ)))
+    }
+}
+
+/// Determine if a face is an external mesh boundary. I.e., it could be 'OPEN'.
+fn isFaceExternalMeshBoundary(
+    fds_data: &FdsFile,
+    cell @ (meshNum, (i, j, k)): Cell,
+    dir: Direction,
+) -> bool {
+    let mesh = fds_data.mesh.get(meshNum).unwrap();
+    // -- First we need to determine if the cell is on the edge of the mesh (in
+    // -- the chosen direction) | @cellN@ is the cell number in the chosen
+    // -- direction
+    let cellN = match dir {
+        Direction::PosX => i,
+        Direction::NegX => i,
+        Direction::PosY => j,
+        Direction::NegY => j,
+        Direction::PosZ => k,
+        Direction::NegZ => k,
+    };
+    let (meshMaxI, meshMaxJ, meshMaxK) = {
+        // -- These are lines not cells
+        let (xs, ys, zs) = getMeshLines(fds_data, meshNum, mesh).unwrap();
+        let nCellsI = xs.len() - 1;
+        let nCellsJ = ys.len() - 1;
+        let nCellsK = zs.len() - 1;
+        // -- We need to subtract 1 to go from the quantity to the max index
+        (nCellsI - 1, nCellsJ - 1, nCellsK - 1)
+    };
+    // -- | @maxCellN@ is the boundary cell number of the mesh in the chosen
+    // -- direction
+    let maxCellN = match dir {
+        Direction::PosX => meshMaxI,
+        Direction::NegX => 0,
+        Direction::PosY => meshMaxJ,
+        Direction::NegY => 0,
+        Direction::PosZ => meshMaxK,
+        Direction::NegZ => 0,
+    };
+    // -- This determines if the cell is at the edge of the mesh in the chosen
+    // -- direction.
+    let cellIsMeshBoundary = cellN == maxCellN;
+    // -- TODO: how do we determine if the cell is external?
+    // --
+    // -- Next we need to determine if there is another mesh on the other side
+    // -- of this boundary. I.e., determine whether it is external.
+    // --
+    // -- To do this we will take the midpoint of the face, then go "up" a
+    // -- small amount in the direction of the normal axis. We will then check
+    // -- if this point lies within another mesh. This is not a great way to do
+    // -- this, but it will suffice for now, until we have better data
+    // -- structures in place.
+    // --
+    // -- TODO: improve this.
+    let faceMidPoint = {
+        let Xb {
+            x1,
+            x2,
+            y1,
+            y2,
+            z1,
+            z2,
+        } = getFaceXB(fds_data, cell, dir);
+        match dir {
+            Direction::PosX => (Xb::new(x2, x2, y1, y2, z1, z2)).midpoint(),
+            Direction::NegX => (Xb::new(x1, x1, y1, y2, z1, z2)).midpoint(),
+            Direction::PosY => (Xb::new(x1, x2, y2, y2, z1, z2)).midpoint(),
+            Direction::NegY => (Xb::new(x1, x2, y1, y1, z1, z2)).midpoint(),
+            Direction::PosZ => (Xb::new(x1, x2, y1, y2, z2, z2)).midpoint(),
+            Direction::NegZ => (Xb::new(x1, x2, y1, y2, z1, z1)).midpoint(),
+        }
+    };
+    let eps = 0.000001;
+    let faceMidPointPlus = match dir {
+        Direction::PosX => addXyz(
+            faceMidPoint,
+            Xyz {
+                x: eps,
+                y: 0.0,
+                z: 0.0,
+            },
+        ),
+        Direction::NegX => addXyz(
+            faceMidPoint,
+            Xyz {
+                x: (-eps),
+                y: 0.0,
+                z: 0.0,
+            },
+        ),
+        Direction::PosY => addXyz(
+            faceMidPoint,
+            Xyz {
+                x: 0.0,
+                y: eps,
+                z: 0.0,
+            },
+        ),
+        Direction::NegY => addXyz(
+            faceMidPoint,
+            Xyz {
+                x: 0.0,
+                y: (-eps),
+                z: 0.0,
+            },
+        ),
+        Direction::PosZ => addXyz(
+            faceMidPoint,
+            Xyz {
+                x: 0.0,
+                y: 0.0,
+                z: eps,
+            },
+        ),
+        Direction::NegZ => addXyz(
+            faceMidPoint,
+            Xyz {
+                x: 0.0,
+                y: 0.0,
+                z: (-eps),
+            },
+        ),
+    };
+    cellIsMeshBoundary &&
+            // check if the point just over the bounday is within any mesh
+            !fds_data.mesh.iter().any(|mesh|isInMesh(faceMidPointPlus,mesh))
+}
+
+fn addXyz(a: Xyz, b: Xyz) -> Xyz {
+    Xyz {
+        x: a.x + b.x,
+        y: a.y + b.y,
+        z: a.z + b.z,
+    }
+}
+
+pub type Cell = (usize, (usize, usize, usize));
+
+/// Determine if a face is an 'OPEN' vent at cell @cell@ and direction @dir@.
+/// NB: This does not consider MB style mesh boundary specs
+fn isFaceOpenVent(fds_data: &FdsFile, cell: Cell, dir: Direction) -> bool {
+    let cellSize = getMinDim(fds_data, cell).unwrap();
+    let faceXB = getFaceXB(fds_data, cell, dir);
+    let openObsts: Vec<_> = fds_data
+        .obst
+        .iter()
+        .filter(|obst| hasOpenSurf(fds_data, *obst))
+        .collect();
+    let openVents: Vec<_> = fds_data
+        .vent
+        .iter()
+        .filter(|vent| hasOpenSurf(fds_data, *vent))
+        .collect();
+    let mut obstsAndVentsXBs = vec![];
+    for obst in openObsts {
+        obstsAndVentsXBs.push(obst.xb);
+    }
+    for vent in openVents {
+        if let Some(xb) = vent.xb {
+            obstsAndVentsXBs.push(xb);
+        }
+    }
+    obstsAndVentsXBs
+        .iter()
+        .any(|xb| faceOccupy(cellSize, *xb, faceXB))
+}
+
+/// This is a lower requirement than xbOccupy. All xbOccupy satisfies this as
+/// well.
+fn faceOccupy(cellSize: f64, xbA: Xb, xbB: Xb) -> bool {
+    let Xb {
+        x1,
+        x2,
+        y1,
+        y2,
+        z1,
+        z2,
+    } = xbB;
+    let xSame = x1 == x2;
+    let ySame = y1 == y2;
+    let zSame = z1 == z2;
+    match (xSame, ySame, zSame) {
+        (true, false, false) => faceOccupyX(cellSize, xbA, xbB),
+        (false, true, false) => faceOccupyY(cellSize, xbA, xbB),
+        (false, false, true) => faceOccupyZ(cellSize, xbA, xbB),
+        _ => panic!("Not a face"),
+    }
+}
+
+fn faceOccupyX(cellSize: f64, xbA: Xb, xbB: Xb) -> bool {
+    let xbA = xbA.sort();
+    let xbB = xbB.sort();
+    let occupyX = occupyThinly(
+        (xbA.x1, xbA.x2),
+        (xbB.x1 - (cellSize / 2.0), xbB.x2 + (cellSize / 2.0)),
+    );
+    let occupyY = occupyFatly((xbA.y1, xbA.y2), (xbB.y1, xbB.y2));
+    let occupyZ = occupyFatly((xbA.z1, xbA.z2), (xbB.z1, xbB.z2));
+    occupyX && occupyY && occupyZ
+}
+
+fn faceOccupyY(cellSize: f64, xbA: Xb, xbB: Xb) -> bool {
+    let xbA = xbA.sort();
+    let xbB = xbB.sort();
+    let occupyX = occupyFatly((xbA.x1, xbA.x2), (xbB.x1, xbB.x2));
+    let occupyY = occupyThinly(
+        (xbA.y1, xbA.y2),
+        (xbB.y1 - (cellSize / 2.0), xbB.y2 + (cellSize / 2.0)),
+    );
+    let occupyZ = occupyFatly((xbA.z1, xbA.z2), (xbB.z1, xbB.z2));
+    occupyX && occupyY && occupyZ
+}
+
+fn faceOccupyZ(cellSize: f64, xbA: Xb, xbB: Xb) -> bool {
+    let xbA = xbA.sort();
+    let xbB = xbB.sort();
+    let occupyX = occupyFatly((xbA.x1, xbA.x2), (xbB.x1, xbB.x2));
+    let occupyY = occupyFatly((xbA.y1, xbA.y2), (xbB.y1, xbB.y2));
+    let occupyZ = occupyThinly(
+        (xbA.z1, xbA.z2),
+        (xbB.z1 - (cellSize / 2.0), xbB.z2 + (cellSize / 2.0)),
+    );
+    occupyX && occupyY && occupyZ
+}
+
+/// xbOccupy but along one dimension. Testing if the first occupies the second.
+fn occupyFatly((xMin, xMax): (f64, f64), (xMinB, xMaxB): (f64, f64)) -> bool {
+    let xMidB = (xMinB + xMaxB) / 2.0;
+    (xMin < xMidB) && (xMax >= xMidB)
+}
+
+/// xbOccupy but along one dimension. Testing if the first occupies the second.
+fn occupyThinly((xMin, xMax): (f64, f64), (xMinB, xMaxB): (f64, f64)) -> bool {
+    ((xMin >= xMinB) && (xMin <= xMaxB)) || ((xMax >= xMinB) && (xMax <= xMaxB))
+}
+
+fn hasOpenSurf(fds_data: &FdsFile, nml: &impl HasSurf) -> bool {
+    nml.getSurfList(fds_data)
+        .iter()
+        .any(|surf| isOpenSurf(surf))
+}
+
+fn isOpenSurf(surf: &Surf) -> bool {
+    surf.id.as_deref() == Some("OPEN")
+}
+
+fn getMinDim(fds_data: &FdsFile, cell: (usize, (usize, usize, usize))) -> Option<f64> {
+    let Xb {
+        x1,
+        x2,
+        y1,
+        y2,
+        z1,
+        z2,
+    } = getCellXB(fds_data, cell)?;
+    let delX = (x2 - x1).abs();
+    let delY = (y2 - y1).abs();
+    let delZ = (z2 - z1).abs();
+    Some(fmin(delX, fmin(delY, delX)))
+}
+
+fn getCellXB(
+    fds_data: &FdsFile,
+    (meshNum, (i, j, k)): (usize, (usize, usize, usize)),
+) -> Option<Xb> {
+    let mesh = fds_data.mesh.get(meshNum)?;
+    let (xs, ys, zs) = getMeshLines(fds_data, meshNum, mesh)?;
+    let x1 = *xs.get(i)?;
+    let x2 = *xs.get(i + 1)?;
+    let y1 = *ys.get(j)?;
+    let y2 = *ys.get(j + 1)?;
+    let z1 = *zs.get(k)?;
+    let z2 = *zs.get(k + 1)?;
+    Some(Xb {
+        x1,
+        x2,
+        y1,
+        y2,
+        z1,
+        z2,
+    })
+}
+
+/// Determine the cell in which a point lies. The output is (MeshNum, (I,J,K)).
+fn determineCell(fds_data: &FdsFile, point: Xyz) -> Option<(usize, (usize, usize, usize))> {
+    let (meshIndex, mesh) = determineMesh(fds_data, point)?;
+    let cell = determineCellInMesh(fds_data, point, meshIndex, mesh)?;
+    Some((meshIndex, cell))
+}
+
+/// Determine which mesh the point is in. Output is MeshNum. This assumes that
+/// there are no overlapping meshes.
+fn determineMesh(fds_data: &FdsFile, point: Xyz) -> Option<(usize, &Mesh)> {
+    fds_data
+        .mesh
+        .iter()
+        .enumerate()
+        .find(|(_, m)| isInMesh(point, m))
+}
+
+fn fmin(a: f64, b: f64) -> f64 {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+
+fn fmax(a: f64, b: f64) -> f64 {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+fn isInMesh(point: Xyz, mesh: &Mesh) -> bool {
+    let xb = if let Some(xb) = Some(mesh.xb) {
+        xb
+    } else {
+        return false;
+    };
+
+    let xmin = fmin(xb.x1, xb.x2);
+    let ymin = fmin(xb.y1, xb.y2);
+    let zmin = fmin(xb.z1, xb.z2);
+
+    let xmax = fmax(xb.x1, xb.x2);
+    let ymax = fmax(xb.y1, xb.y2);
+    let zmax = fmax(xb.z1, xb.z2);
+    [
+        (point.x >= xmin) && (point.x <= xmax),
+        (point.y >= ymin) && (point.y <= ymax),
+        (point.z >= zmin) && (point.z <= zmax),
+    ]
+    .iter()
+    .all(|s| *s)
+}
+
+/// Same as determineMesh but returns the index of the mesh rather than the mesh
+/// itself.
+fn determineMeshIndex(fds_data: &FdsFile, point: Xyz) -> Option<usize> {
+    todo!()
+    // = fmap (+1) $ findIndex (isInMesh point) meshes
+    //         where
+    //             meshes = fdsFile_Meshes fdsData :: [Mesh]
+}
+/// Determine in which cell within a mesh a point lies. Return Nothing if the
+/// point does not lie within the mesh.
+fn determineCellInMesh(
+    fds_data: &FdsFile,
+    point: Xyz,
+    meshIndex: usize,
+    mesh: &Mesh,
+) -> Option<(usize, usize, usize)> {
+    let (xs, ys, zs) = getMeshLines(fds_data, meshIndex, mesh)?;
+    let iCell = findPointInLine(&xs, point.x)?;
+    let jCell = findPointInLine(&ys, point.y)?;
+    let kCell = findPointInLine(&zs, point.z)?;
+    Some((iCell, jCell, kCell))
+}
+
+fn findPointInLine(ps: &[f64], p: f64) -> Option<usize> {
+    let mut ns = ps.iter().enumerate();
+    // If p is less than the first value of x, it lies outside the mesh;
+    if let Some((i, &x)) = ns.next() {
+        if p < x {
+            return None;
+        }
+    }
+    for (i, &x) in ns {
+        if p < x {
+            return Some(i - 1);
+        }
+    }
+    None
+}
+
+/// Uniform meshes can be determined using simply the MESH namelist. For
+/// non-uniform meshes we need to use the TRN entries.
+fn getMeshLines<'fds_data>(
+    fds_data: &'fds_data FdsFile,
+    meshIndex: usize,
+    mesh: &'fds_data Mesh,
+) -> Option<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    let ijk = mesh.ijk;
+    let xb = mesh.xb;
+
+    let xmin = fmin(xb.x1, xb.x2);
+    let ymin = fmin(xb.y1, xb.y2);
+    let zmin = fmin(xb.z1, xb.z2);
+
+    let xmax = fmax(xb.x1, xb.x2);
+    let ymax = fmax(xb.y1, xb.y2);
+    let zmax = fmax(xb.z1, xb.z2);
+
+    let delX = (xmax - xmin) / (ijk.i as f64);
+
+    let delY = (ymax - ymin) / (ijk.j as f64);
+    let delZ = (zmax - zmin) / (ijk.k as f64);
+
+    // Get the relevant TRNs
+    let trnx = {
+        let trns: Vec<&'fds_data Trnx> = fds_data
+            .trnx
+            .iter()
+            .filter(|trn| trn.mesh_number == meshIndex as i64 + 1)
+            .collect();
+        if trns.len() > 1 {
+            panic!("multiple TRNS found for mesh {}", meshIndex)
+        } else {
+            trns.first().copied()
+        }
+    };
+    let trny = {
+        let trns: Vec<_> = fds_data
+            .trny
+            .iter()
+            .filter(|trn| trn.mesh_number == meshIndex as i64 + 1)
+            .collect();
+        if trns.len() > 1 {
+            panic!("multiple TRNS found for mesh {}", meshIndex)
+        } else {
+            trns.first().copied()
+        }
+    };
+    let trnz = {
+        let trns: Vec<_> = fds_data
+            .trnz
+            .iter()
+            .filter(|trn| trn.mesh_number == meshIndex as i64 + 1)
+            .collect();
+        if trns.len() > 1 {
+            panic!("multiple TRNS found for mesh {}", meshIndex)
+        } else {
+            trns.first().copied()
+        }
+    };
+
+    let xs = if let Some(trnx) = trnx {
+        todo!()
+    } else {
+        (0..ijk.i)
+            .into_iter()
+            .map(|n| xmin + (n as f64) * delX)
+            .collect()
+    };
+    let ys = if let Some(trny) = trny {
+        todo!()
+    } else {
+        (0..ijk.j)
+            .into_iter()
+            .map(|n| ymin + (n as f64) * delY)
+            .collect()
+    };
+    let zs = if let Some(trnz) = trnz {
+        todo!()
+    } else {
+        (0..ijk.k)
+            .into_iter()
+            .map(|n| zmin + (n as f64) * delZ)
+            .collect()
+    };
+    Some((xs, ys, zs))
+}
+///Use the OBST namelists to determine if a particular cell is solid or not.
+/// TODO: only considers basic OBSTs and not MULT or the like.
+fn isCellSolid(fds_data: &FdsFile, cell: (usize, (usize, usize, usize))) -> bool {
+    todo!()
+    // case find (\obst->xbOccupy (getXB obst) cellXB) obsts of
+    //     Nothing -> False
+    //     Just _ -> True
+    // where
+    //     cellXB = getCellXB fdsData cell
+    //     -- If any obst overlaps with this cell, then it's solid
+    //     obsts = fdsFile_Obsts fdsData
+}
 /// Ensure that sprinklers and smoke detectors are beneath a ceiling.
 fn spkDetCeilingTest(fds_data: &FdsFile) -> VerificationResult {
-    let testName = "Sprinklers and detectors immediately below ceiling".to_string();
-    todo!()
-    //     nonBeneathCeiling = filter
-    //         (not . fromMaybe False . beneathCeiling fdsData)
-    //         $ filter (\x-> isSprinkler fdsData x || isSmokeDetector fdsData x)
-    //         $ fdsFile_Devcs fdsData
-    // in if null nonBeneathCeiling
-    //     then Node (CompletedTest testName $ Success $ "No distant devices.") []
-    //     else Node (CompletedTest testName $ Failure $ unlines
-    //         $ map formatRes nonBeneathCeiling) []
-    // where
-    //     formatRes nml = "Device " <> getIdBound nml
-    //         <> " is not directly beneath the ceiling.\n    "
-    //         -- <> T.unpack (pprint nml)
+    let name = "Sprinklers and detectors immediately below ceiling".to_string();
+    let nonBeneathCeiling: Vec<_> = fds_data
+        .devc
+        .iter()
+        .filter(|devc| devcIsSprinkler(fds_data, *devc) || devcIsSmokeDetector(fds_data, devc))
+        .filter(|devc| !devcBeneathCeiling(fds_data, devc))
+        .collect();
+    if nonBeneathCeiling.is_empty() {
+        VerificationResult::Result(
+            name,
+            TestResult::Success(
+                "All sprinklers and detectors are immediately below the ceiling".to_string(),
+            ),
+        )
+    } else {
+        let issues = nonBeneathCeiling
+            .iter()
+            .map(|devc| {
+                VerificationResult::Result(
+                    format!("Devc {:?} Location", devc.id),
+                    TestResult::Failure("Not immediately beneath ceiling".to_string()),
+                )
+            })
+            .collect();
+        VerificationResult::Tree(
+            "The following devices have issues with their location".to_string(),
+            issues,
+        )
+    }
 }
 /// Take the xb dimensions of a vent and see if there is a flow vent with the
 /// matching dimensions, or a device that references it as a duct node.
